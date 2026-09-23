@@ -1,0 +1,15 @@
+# Experiment-generated data and model outputs
+data/
+checkpoints/
+artifacts/
+
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local tooling and logs
+.pytest_cache/
+.mypy_cache/
+*.log
