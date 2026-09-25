@@ -1,5 +1,7 @@
 # Experiment-generated data and model outputs
-data/
+data/*
+!data/openpocus/
+data/openpocus/raw/
 checkpoints/
 artifacts/
 
@@ -13,3 +15,11 @@ venv/
 .pytest_cache/
 .mypy_cache/
 *.log
+settings.local.json
+.claude
+CLAUDE.local.md
+CLAUDE.local.md.bak.*
+.claude-free
+.makery/
+__trash__/
+__stash__/

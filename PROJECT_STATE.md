@@ -1,6 +1,6 @@
 # Current Phase
 
-F001, F001b, and F001c are completed pilot feasibility studies. The leading scenario is now provisionally prehospital/ambulance POCUS; exact task, dataset fit, and architecture are not locked.
+F001, F001b, and F001c are completed pilot feasibility studies. The leading scenario is now provisionally prehospital/ambulance POCUS; exact task, dataset fit, and architecture are not locked. The OpenPOCUS lung dataset is downloaded and labeled locally (T001 done, PR pending); the T002 audit is mostly covered by `data/openpocus/README.md`.
 
 ## Leading hypothesis
 
@@ -15,10 +15,18 @@ Explore resource-aware inference for a provisional prehospital/ambulance POCUS s
 
 These DermaMNIST/DeiT experiments remain historical feasibility pilots. They do not lock the POCUS scenario, prediction task, or final architecture.
 
+## Dataset: OpenPOCUS lung ultrasound
+
+- **Source:** Kumar et al. 2026 (`docs/OpenPOCUS_paper_Kumar2026.pdf`), CC BY-NC-SA 4.0. Fetch with `bash data/openpocus/download_openpocus.sh` (~5.3 GB into ignored `data/openpocus/raw/`); labels are committed as `data/openpocus/labels.csv`, rebuilt and checked against the spreadsheet's 94 summary totals by `build_labels.py`.
+- **Contents:** 226 exams (one folder each) of emergency-department patients with respiratory symptoms, 2020–2022; 50% COVID-positive. 12-zone or 8-zone protocol; each zone is one video clip. About 1,871 labeled clips, 325,731 frames, 512×512 JPG.
+- **Labels:** per patient per zone, not per frame: normal, B-lines, consolidation, both, indeterminate. Also per patient: COVID status, abnormal flag, device (5 probe types in use, 59% Butterfly). **No pneumothorax or trauma labels.**
+- **Caveats:** 67% of frames are normal. `Pt146/151/156/157/160 A/B/C` look like repeat exams of one person and must share a split side. Splits must be patient-level; frames within a clip are near-duplicates. Details in `data/openpocus/README.md`.
+
 ## Not yet decided
 
-- Exact POCUS prediction task supported by the selected public dataset
-- Whether and how the public POCUS data can serve as a technical proxy for prehospital/ambulance use; it may not represent trauma/ambulance patients exactly
+- Exact POCUS prediction task; OpenPOCUS supports zone-level finding (5 classes), B-lines or normal/abnormal (binary), and patient-level COVID status
+- Frame-level vs clip-level prediction unit
+- Whether and how OpenPOCUS can serve as a technical proxy for prehospital/ambulance use; its patients are emergency-department respiratory/COVID cases with no pneumothorax or trauma labels
 - Final medical scenario and scenario-specific utility/constraints
 - Model architecture (a ViT is a research possibility, not a commitment)
 - Runtime adaptivity signal and deployable policy/controller
@@ -29,11 +37,11 @@ These DermaMNIST/DeiT experiments remain historical feasibility pilots. They do 
 
 ## Current objective
 
-Audit the public POCUS dataset, determine the dataset-supported prediction task, and record Dolly/TA feedback (currently pending) before locking the scenario and evaluation objective. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched; define a pre-specified evaluation protocol for the selected POCUS task.
+Open the T001 PR, finish the T002 audit (remaining: frame rate, clip duration, and a written scenario-mismatch note), determine the dataset-supported prediction task, and record Dolly/TA feedback (currently pending) before locking the scenario and evaluation objective. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched; define a pre-specified evaluation protocol for the selected POCUS task.
 
 ## Plan
 
-Integrate and audit the POCUS dataset (T001–T002)
+Integrate (T001, done pending PR) and audit (T002, mostly done) the POCUS dataset
 → record feedback and lock the dataset-supported task (T004–T005)
 → specify and run the F002 static baseline (T006–T008)
 → characterize adaptive options and construct shared operating points (T009–T010)

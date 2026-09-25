@@ -74,6 +74,18 @@ git push
 
 Branch-based work will be used when multiple people are developing in parallel.
 
+## Datasets
+
+Each dataset folder under `data/` holds its download script. Only the script is committed; everything it creates is excluded from Git.
+
+**OpenPOCUS** (lung-ultrasound video, general classification, no pneumothorax labels) is fetched with:
+
+```bash
+bash data/openpocus/download_openpocus.sh
+```
+
+This pulls `Lung Database.zip` (~5.3 GB) and the license file into `data/openpocus/`, unpacks the frames into `raw/`, and writes `labels.csv` plus a `README.md` explaining the label codes. The dataset itself is CC BY-NC-SA 4.0 (non-commercial, share-alike); the accompanying paper is CC BY 4.0. Background on the dataset (device breakdown, labeling protocol, interrater reliability) is in `docs/OpenPOCUS_paper_Kumar2026.pdf` and `docs/OpenPOCUS_supplementary_S1.pdf`.
+
 ## Reproducibility
 
 Experiment-specific setup and run instructions live inside each experiment directory. Generated datasets, checkpoints, artifacts, caches, and local environments are excluded from Git.
