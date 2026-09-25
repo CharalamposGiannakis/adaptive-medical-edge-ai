@@ -2,6 +2,8 @@
 data/*
 !data/openpocus/
 data/openpocus/raw/
+data/openpocus/Lung Database.zip
+data/openpocus/.extract/
 checkpoints/
 artifacts/
 
@@ -17,9 +19,10 @@ venv/
 *.log
 settings.local.json
 .claude
+CLAUDE.md
 CLAUDE.local.md
 CLAUDE.local.md.bak.*
 .claude-free
 .makery/
 __trash__/
-__stash__/
+__stash__
