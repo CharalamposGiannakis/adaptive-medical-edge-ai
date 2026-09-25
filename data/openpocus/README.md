@@ -79,8 +79,8 @@ about 70 patients. The rest are labeled for 186 to 219.
 - Three zone cells hold code 5, which the key doesn't define: pt220 z4, pt220 z10, ED4 z10.
   The spreadsheet's own totals skip them. Treat them as unknown.
 - The spreadsheet on GitHub (`Database for Github.xlsx`) is older than the one in the Box zip.
-  It calls pt218 to pt221 "ED11" to "ED14", which matches no folder. The script uses the Box
-  copy and drops the GitHub one.
+  It calls pt218 to pt221 "ED11" to "ED14", which matches no folder. `labels.csv` is built
+  from the Box copy (`raw/labels.xlsx`).
 - Excel stored IDs like `31.20` as the number 31.2, so `ai_id` has lost the trailing zero.
   With a decimal-comma locale it also shows up as `31,2`. Use `patient` to find the folder.
 - The spreadsheet's per-frame tab ("Frame Level Data") repeats the per-patient table. There

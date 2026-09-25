@@ -76,7 +76,7 @@ Branch-based work will be used when multiple people are developing in parallel.
 
 ## Datasets
 
-Each dataset folder under `data/` holds its download script. Only the script is committed; everything it creates is excluded from Git.
+Each dataset folder under `data/` holds its download script, a README and any small label files. The downloaded data goes into that folder's `raw/`, which is excluded from Git.
 
 **OpenPOCUS** (lung-ultrasound video, general classification, no pneumothorax labels) is fetched with:
 
@@ -84,7 +84,7 @@ Each dataset folder under `data/` holds its download script. Only the script is 
 bash data/openpocus/download_openpocus.sh
 ```
 
-This pulls `Lung Database.zip` (~5.3 GB) and the license file into `data/openpocus/`, unpacks the frames into `raw/`, and writes `labels.csv` plus a `README.md` explaining the label codes. The dataset itself is CC BY-NC-SA 4.0 (non-commercial, share-alike); the accompanying paper is CC BY 4.0. Background on the dataset (device breakdown, labeling protocol, interrater reliability) is in `docs/OpenPOCUS_paper_Kumar2026.pdf` and `docs/OpenPOCUS_supplementary_S1.pdf`.
+This downloads `Lung Database.zip` (~5.3 GB) and unpacks the frames into `data/openpocus/raw/`. The labels are committed as `data/openpocus/labels.csv`; `data/openpocus/README.md` explains the label codes and dataset caveats. The dataset itself is CC BY-NC-SA 4.0 (non-commercial, share-alike); the accompanying paper is CC BY 4.0. Background on the dataset (device breakdown, labeling protocol, interrater reliability) is in `docs/OpenPOCUS_paper_Kumar2026.pdf` and `docs/OpenPOCUS_supplementary_S1.pdf`.
 
 ## Reproducibility
 
