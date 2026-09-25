@@ -1,6 +1,6 @@
 # Current Phase
 
-F001, F001b, and F001c are completed pilot feasibility studies. The leading scenario is now provisionally prehospital/ambulance POCUS; exact task, dataset fit, and architecture are not locked. The OpenPOCUS lung dataset is downloaded and labeled locally (T001, PR #16 in review); the T002 audit is mostly covered by `data/openpocus/README.md`.
+F001, F001b, and F001c are completed pilot feasibility studies. The leading scenario is now provisionally prehospital/ambulance POCUS; exact task, dataset fit, and architecture are not locked. The OpenPOCUS lung dataset is downloaded and labeled locally (T001, PR #16 in review).
 
 ## Leading hypothesis
 
@@ -37,11 +37,11 @@ These DermaMNIST/DeiT experiments remain historical feasibility pilots. They do 
 
 ## Current objective
 
-Get the T001 PR (#16) merged, finish the T002 audit (remaining: frame rate, clip duration, and a written scenario-mismatch note), determine the dataset-supported prediction task, and record Dolly/TA feedback (currently pending) before locking the scenario and evaluation objective. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched; define a pre-specified evaluation protocol for the selected POCUS task.
+Get the T001 PR (#16) merged, run the T002 dataset audit, determine the dataset-supported prediction task, and record Dolly/TA feedback (currently pending) before locking the scenario and evaluation objective. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched; define a pre-specified evaluation protocol for the selected POCUS task.
 
 ## Plan
 
-Integrate (T001, PR #16 in review) and audit (T002, mostly done) the POCUS dataset
+Integrate (T001, PR #16 in review) and audit (T002) the POCUS dataset
 → record feedback and lock the dataset-supported task (T004–T005)
 → specify and run the F002 static baseline (T006–T008)
 → characterize adaptive options and construct shared operating points (T009–T010)
