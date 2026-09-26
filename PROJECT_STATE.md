@@ -1,6 +1,6 @@
 # Current Phase
 
-F001, F001b, and F001c are completed pilot feasibility studies. The leading scenario is now provisionally prehospital/ambulance POCUS; exact task, dataset fit, and architecture are not locked. The OpenPOCUS lung dataset is downloaded and labeled locally (T001, PR #16 in review).
+F001, F001b, and F001c are completed pilot feasibility studies. The leading scenario is now provisionally prehospital/ambulance POCUS; exact task, dataset fit, and architecture are not locked. The OpenPOCUS lung dataset is downloaded and labeled locally (T001 completed; PR #16 merged). The T002 dataset audit (#4) has been executed locally and documented in `docs/openpocus_dataset_audit.md`, pending independent review. T004 task selection remains open.
 
 ## Leading hypothesis
 
@@ -18,9 +18,9 @@ These DermaMNIST/DeiT experiments remain historical feasibility pilots. They do 
 ## Dataset: OpenPOCUS lung ultrasound
 
 - **Source:** Kumar et al. 2026 (`docs/OpenPOCUS_paper_Kumar2026.pdf`), CC BY-NC-SA 4.0. Fetch with `bash data/openpocus/download_openpocus.sh` (~5.3 GB into ignored `data/openpocus/raw/`); labels are committed as `data/openpocus/labels.csv`, rebuilt and checked against the spreadsheet's 94 summary totals by `build_labels.py`.
-- **Contents:** 226 exams (one folder each) of emergency-department patients with respiratory symptoms, 2020–2022; 50% COVID-positive. 12-zone or 8-zone protocol; each zone is one video clip. About 1,871 labeled clips, 325,731 frames, 512×512 JPG.
-- **Labels:** per patient per zone, not per frame: normal, B-lines, consolidation, both, indeterminate. Also per patient: COVID status, abnormal flag, device (5 probe types in use, 59% Butterfly). **No pneumothorax or trauma labels.**
-- **Caveats:** 67% of frames are normal. `Pt146/151/156/157/160 A/B/C` look like repeat exams of one person and must share a split side. Splits must be patient-level; frames within a clip are near-duplicates. Details in `data/openpocus/README.md`.
+- **Contents:** 226 exam folders; paper population includes emergency-department respiratory cases and ED/clinic controls, 2020–2022. The local CSV has 114 COVID-positive exams (50.44%). There are 325,731 readable 512×512 RGB JPEGs (5.84 GB raw logical storage). Of 1,871 defined zone labels, 1,862 have frames; 1,871 exam-zone groups have files, including 3 undefined and 6 unlabeled groups. Zone groups are not verified independent source clips.
+- **Labels:** per exam per zone, not per frame: normal, B-lines, consolidation, both, indeterminate. Also per exam: COVID status, abnormal flag, device (five device codes observed, 59% Butterfly). **No pneumothorax or trauma labels.**
+- **Caveats:** 67.14% of frames inherit normal labels. `Pt146/151/156/157/160 A/B/C` are potential repeat-exam families that must stay together across train/validation/test; biological patient identity remains unverified. The audit found 515 exact duplicate-image groups with conflicting inherited zone labels within ED2/Pt160C, eight frame-count discrepancies, and overlapping Pt45 renditions. FPS/duration are unavailable. No exact duplicates crossed exam folders, but this does not establish patient independence. See `docs/openpocus_dataset_audit.md` for measurements and uncertainties.
 
 ## Not yet decided
 
@@ -37,11 +37,11 @@ These DermaMNIST/DeiT experiments remain historical feasibility pilots. They do 
 
 ## Current objective
 
-Get the T001 PR (#16) merged, run the T002 dataset audit, determine the dataset-supported prediction task, and record Dolly/TA feedback (currently pending) before locking the scenario and evaluation objective. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched; define a pre-specified evaluation protocol for the selected POCUS task.
+Review the T002 dataset audit (#4), use its candidate-task counts and unresolved identity/label issues to inform T004, and record Dolly/TA feedback (currently pending) before locking the scenario and evaluation objective. No task, architecture, split protocol or F002 methodology was selected during the audit. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched.
 
 ## Plan
 
-Integrate (T001, PR #16 in review) and audit (T002) the POCUS dataset
+Integrate (T001, PR #16 merged) and review the completed local audit (T002, issue #4)
 → record feedback and lock the dataset-supported task (T004–T005)
 → specify and run the F002 static baseline (T006–T008)
 → characterize adaptive options and construct shared operating points (T009–T010)

@@ -17,6 +17,7 @@ Course-critical tasks are listed first. Priorities: **P0** = resolve before comm
 - **Priority:** P0
 - **Owner:** Charalampos / Salome
 - **Dependencies:** T001
+- **Audit evidence:** Local inspection completed 2026-09-26; `docs/openpocus_dataset_audit.md` and `data/openpocus/audit_openpocus.py` are ready for independent review. Patient identity and source metadata limitations are documented; T004 and F002 remain undecided. GitHub issue #4 retains the operational review/completion state.
 - **Scope:** Determine labels, patients, clip count, class distribution, video/image format, available resolutions/frame rates, patient identifiers, licensing, disk size, and feasibility of patient-level splits.
 - **Acceptance criteria:** Repository-backed audit records each available property, source/license, missing metadata, and whether leakage-safe patient-level splitting is possible.
 
