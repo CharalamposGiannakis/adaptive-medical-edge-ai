@@ -1,6 +1,6 @@
 # Current Phase
 
-F001, F001b, and F001c are completed pilot feasibility studies. The leading scenario is now provisionally prehospital/ambulance POCUS; exact task, dataset fit, and architecture are not locked. The OpenPOCUS lung dataset is downloaded and labeled locally (T001 completed; PR #16 merged). The T002 dataset audit (#4) has been executed locally and documented in `docs/openpocus_dataset_audit.md`, pending independent review. T004 task selection remains open.
+F001, F001b, and F001c are completed pilot feasibility studies. The leading scenario is now provisionally prehospital/ambulance POCUS; exact task, dataset fit, and architecture are not locked. The OpenPOCUS lung dataset is downloaded and labeled locally (T001 completed; PR #16 merged). The T002 audit has passed independent review and is merged (issue #4 closed). T004 task selection (issue #6) is ready to begin, but no task or architecture has been selected.
 
 ## Leading hypothesis
 
@@ -37,12 +37,12 @@ These DermaMNIST/DeiT experiments remain historical feasibility pilots. They do 
 
 ## Current objective
 
-Review the T002 dataset audit (#4), use its candidate-task counts and unresolved identity/label issues to inform T004, and record Dolly/TA feedback (currently pending) before locking the scenario and evaluation objective. No task, architecture, split protocol or F002 methodology was selected during the audit. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched.
+With T002 complete, the next work is to define the dataset-supported prediction task (T004) and record Dolly/TA feedback (T005; pending) before locking the scenario and evaluation objective. T004 is ready, but no task, architecture, split protocol or F002 methodology has been selected. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched.
 
 ## Plan
 
-Integrate (T001, PR #16 merged) and review the completed local audit (T002, issue #4)
-→ record feedback and lock the dataset-supported task (T004–T005)
+Integrate (T001, PR #16 merged) and complete the independently reviewed audit (T002, issue #4)
+→ define the dataset-supported task and record feedback (T004–T005; T004 is now ready)
 → specify and run the F002 static baseline (T006–T008)
 → characterize adaptive options and construct shared operating points (T009–T010)
 → consider extensions only after core course work
