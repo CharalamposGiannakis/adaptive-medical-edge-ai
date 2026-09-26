@@ -217,6 +217,17 @@ available. Historical decisions are kept even if later superseded.
 
 ---
 
+### D017 — Version `data/openpocus/labels.csv` despite being generated
+
+**Date:** 2026-09-25  
+**Status:** Accepted
+
+- **Decision**: Commit `data/openpocus/labels.csv` to Git, although `build_labels.py` generates it from the OpenPOCUS metadata spreadsheet. This is an intentional exception to the rule that generated artifacts stay untracked.
+- **Rationale**: The file is small (about 9 KB), human-readable metadata rather than the dataset itself. Keeping it in Git lets anyone audit the label mapping, and review changes to it in diffs, without downloading the full OpenPOCUS dataset.
+- **Consequence**: `build_labels.py` remains the reproducible source. If the labeling logic changes, rerun it and commit the regenerated `labels.csv` together with the script change. The raw dataset and temporary download files stay untracked.
+
+---
+
 # Open Decisions
 
 The following are intentionally **not decided yet**:

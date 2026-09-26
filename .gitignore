@@ -1,5 +1,10 @@
 # Experiment-generated data and model outputs
-data/
+data/*
+!data/openpocus/
+data/openpocus/raw/
+data/openpocus/Lung Database.zip
+data/openpocus/Lung Database.zip.aria2
+data/openpocus/.extract/
 checkpoints/
 artifacts/
 
@@ -13,3 +18,12 @@ venv/
 .pytest_cache/
 .mypy_cache/
 *.log
+settings.local.json
+.claude
+CLAUDE.md
+CLAUDE.local.md
+CLAUDE.local.md.bak.*
+.claude-free
+.makery/
+__trash__/
+__stash__
