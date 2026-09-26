@@ -1,6 +1,6 @@
 # OpenPOCUS lung ultrasound
 
-The independently measured T002 audit is in [`docs/openpocus_dataset_audit.md`](../../docs/openpocus_dataset_audit.md). It records image-backed sample counts, missing zones, exact duplicate sequences, patient-identity uncertainty and candidate tasks. No task or split has been selected.
+The independently measured T002 audit is in [`docs/openpocus_dataset_audit.md`](../../docs/openpocus_dataset_audit.md). It records image-backed sample counts, missing zones, exact duplicate sequences, recordings shared across folders, patient-identity uncertainty and candidate tasks. No task or split has been selected.
 
 License is CC BY-NC-SA 4.0 (`LICENSE.md`): non-commercial, share-alike.
 Background on the labeling protocol, devices and interrater agreement is in
@@ -10,6 +10,8 @@ Background on the labeling protocol, devices and interrater agreement is in
 bash data/openpocus/download_openpocus.sh   # ~5.3 GB into raw/
 python3 data/openpocus/build_labels.py      # optional, rebuilds and checks labels.csv
 python data/openpocus/audit_openpocus.py    # read-only audit; outputs under ignored artifacts/
+uv run --no-project --with pillow --with numpy python data/openpocus/find_shared_recordings.py
+                                            # shared recordings across folders, split groups
 ```
 
 ## Layout
@@ -18,9 +20,11 @@ python data/openpocus/audit_openpocus.py    # read-only audit; outputs under ign
 download_openpocus.sh
 build_labels.py
 audit_openpocus.py
+find_shared_recordings.py
 LICENSE.md
 README.md
 labels.csv           the file to use for labels, one row per exam folder
+split_groups.csv     provisional split group per exam folder; keep each group on one side
 raw/                 not in Git
   labels.xlsx        original spreadsheet, as shipped inside the Box zip
   <patient>/*.jpg
@@ -45,6 +49,13 @@ Probably not separate people: `Pt146A/B/C`, `Pt151A/B`, `Pt156A/B`, `Pt157A/B` a
 `Pt160A/B/C`. The paper does not resolve these individual IDs. Every group shares device,
 COVID status and abnormal flag, and `Pt157A` and `Pt157B` differ in only 2 of 12 zones. They
 look like repeat exams of one person. Keep each group together across train/validation/test partitions.
+
+Some folders contain the same recordings under another ID, re-encoded so exact hashes miss
+them: `Pt67`/`Pt81` and `Pt147`/`Pt163` are complete duplicate exams, and `Pt109`/`Pt176`,
+`Pt135`/`Pt173`, `Pt140`/`Pt169`/`Pt177` and `Pt147`/`Pt163`/`Pt178` share individual clips.
+Their labels and device entries sometimes disagree. Keep each of these sets together as well,
+which leaves 212 split groups, listed in `split_groups.csv` (rebuilt by
+`find_shared_recordings.py`); details are in the audit.
 The dotted IDs (`Pt31.20`, `Pt38.4`) are unexplained. Distinct folder IDs do not prove distinct people; an authoritative patient mapping is unavailable.
 
 ## labels.csv
@@ -108,7 +119,7 @@ The zone is the `z01` to `z12` token in the filename (case varies). Naming diffe
 
 ## Using it for machine learning
 
-- Split by patient (and by A/B/C group), never by frame. Neighbouring frames of one clip are
+- Split by the 212 groups above (A/B/C families plus folders that share recordings), never by frame. Neighbouring frames of one clip are
   nearly identical, so a random frame split inflates test scores.
 - There are 1,862 image-backed defined-label zone groups across 225 exams, with unresolved patient identity and some overlapping sequences. All 226 exams have exam-level targets. These counts do not establish the number of independent clinical observations, and frame-sampling effects have not been measured.
 - Frames by zone label: 218,698 normal, 56,200 B-lines, 20,027 both, 14,784 indeterminate,
