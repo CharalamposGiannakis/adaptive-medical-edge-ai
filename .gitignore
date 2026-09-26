@@ -3,6 +3,7 @@ data/*
 !data/openpocus/
 data/openpocus/raw/
 data/openpocus/Lung Database.zip
+data/openpocus/Lung Database.zip.aria2
 data/openpocus/.extract/
 checkpoints/
 artifacts/
