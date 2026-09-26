@@ -1,5 +1,7 @@
 # OpenPOCUS lung ultrasound
 
+The independently measured T002 audit is in [`docs/openpocus_dataset_audit.md`](../../docs/openpocus_dataset_audit.md). It records image-backed sample counts, missing zones, exact duplicate sequences, patient-identity uncertainty and candidate tasks. No task or split has been selected.
+
 License is CC BY-NC-SA 4.0 (`LICENSE.md`): non-commercial, share-alike.
 Background on the labeling protocol, devices and interrater agreement is in
 `docs/OpenPOCUS_paper_Kumar2026.pdf` and `docs/OpenPOCUS_supplementary_S1.pdf`.
@@ -7,6 +9,7 @@ Background on the labeling protocol, devices and interrater agreement is in
 ```bash
 bash data/openpocus/download_openpocus.sh   # ~5.3 GB into raw/
 python3 data/openpocus/build_labels.py      # optional, rebuilds and checks labels.csv
+python data/openpocus/audit_openpocus.py    # read-only audit; outputs under ignored artifacts/
 ```
 
 ## Layout
@@ -14,9 +17,10 @@ python3 data/openpocus/build_labels.py      # optional, rebuilds and checks labe
 ```
 download_openpocus.sh
 build_labels.py
+audit_openpocus.py
 LICENSE.md
 README.md
-labels.csv           the file to use for labels, one row per patient
+labels.csv           the file to use for labels, one row per exam folder
 raw/                 not in Git
   labels.xlsx        original spreadsheet, as shipped inside the Box zip
   <patient>/*.jpg
@@ -27,25 +31,25 @@ spreadsheet's own summary tables.
 
 ## What a folder is
 
-One folder in `raw/` is one lung ultrasound exam of one patient, covering both sides of the
-chest. There are 226 folders and one row in `labels.csv` per folder. The paper counts these as
-226 patients from emergency departments, scanned between March 2020 and April 2022.
+One folder in `raw/` represents an exam with varying zone coverage. There are 226 folders
+and one row in `labels.csv` per folder. The paper reports 226 patients from emergency
+departments and ED/clinic controls, scanned between March 2020 and April 2022. The local
+identifiers do not independently establish 226 distinct people.
 
-Inside a folder, each zone (`z01` to `z12`) is one video clip, cut into frames at the native
-frame rate and letterboxed to 512×512. The 12-zone protocol takes two front, two side and two
+Inside a folder, each zone (`z01` to `z12`) is a putative clip's frame group. The paper reports native-rate extraction and 512×512 letterboxing, but the local audit finds overlapping sequences across some zones; these groups are not verified independent videos. Numerical FPS and durations are unavailable. The 12-zone protocol takes two front, two side and two
 back views per side of the chest. Patients who couldn't turn got an 8-zone scan without the
-back views (156 patients, 69%). Zones 5, 6, 11 and 12 are filled for only about 70 patients,
-so those are most likely the back views. The paper doesn't give the exact zone numbering.
+back views (156 patients, 69%). Zones 5, 6, 11 and 12 are labeled for about 70 exams.
+The exact zone-to-anatomy mapping is not established in the available metadata.
 
 Probably not separate people: `Pt146A/B/C`, `Pt151A/B`, `Pt156A/B`, `Pt157A/B` and
-`Pt160A/B/C`. The paper counts each as its own patient. But every group shares device,
+`Pt160A/B/C`. The paper does not resolve these individual IDs. Every group shares device,
 COVID status and abnormal flag, and `Pt157A` and `Pt157B` differ in only 2 of 12 zones. They
-look like repeat exams of one person. Keep each group on the same side of a train/test split.
-The dotted IDs (`Pt31.20`, `Pt38.4`) are unexplained. Treat them as separate patients.
+look like repeat exams of one person. Keep each group together across train/validation/test partitions.
+The dotted IDs (`Pt31.20`, `Pt38.4`) are unexplained. Distinct folder IDs do not prove distinct people; an authoritative patient mapping is unavailable.
 
 ## labels.csv
 
-Labels are per patient per lung zone. A frame gets the label of its patient's zone.
+Labels are per exam per lung zone. A frame can inherit its zone label, but was not individually adjudicated. The audit found 515 exact duplicate-image groups with conflicting inherited labels across zones within ED2 and Pt160C.
 
 | column | meaning |
 |---|---|
@@ -53,7 +57,7 @@ Labels are per patient per lung zone. A frame gets the label of its patient's zo
 | `ai_id` | ID as stored in the spreadsheet, e.g. `31.2`, `146 A` (see below) |
 | `device` | 0 Butterfly, 1 EchoNous, 2 SonoSite, 3 Lumify, 4 Vave, 5 GE |
 | `covid` | COVID positive: 0 no, 1 yes |
-| `abnormal` | 0 normal, 1 abnormal (any zone) |
+| `abnormal` | supplied exam flag: 0 normal, 1 abnormal; not always reconstructible from definite zone findings |
 | `z1` ... `z12` | zone finding, codes below. Empty means that zone was not scanned or labeled |
 | `frames` | number of frames for the patient, per the spreadsheet |
 
@@ -70,6 +74,7 @@ Zone codes:
 Counts from the spreadsheet: 1233 normal, 338 B-lines, 84 consolidation, 119 both, 97
 indeterminate, 1871 labeled zones in total. Zones 5, 6, 11 and 12 are labeled for only
 about 70 patients. The rest are labeled for 186 to 219.
+Only 1,862 of these defined zone labels have matching frames. Nine labeled zones lack files and six observed zones have blank labels; see the audit for IDs and counts.
 
 ## Things that got lost or are odd
 
@@ -96,9 +101,7 @@ The zone is the `z01` to `z12` token in the filename (case varies). Naming diffe
   also have a `metadata.csv` with image size. It lists `.png` names but the files are `.jpg`.
 - `image_002_z02_frame_000001.jpg` in pt218 to pt221, with no patient ID in the name.
 - `Pt182_Z01_frame_000000.jpg` in folders that were already unpacked.
-- 41 folders have a `<patient>annotations.csv` with one row per frame. Every annotation value
-  is `0`, and none of those frames sit in a B-line or consolidation zone, so `0` may just
-  mean normal. It's undocumented, so use `labels.csv` instead.
+- 41 folders have a `<patient>annotations.csv`: 9,663 entries contain `0`, and 81,102 are blank. All referenced zones have normal labels. The zero entries use filenames preceding the `image_...` renaming. These files have no documented independent frame-label vocabulary; use the zone metadata with its limitations.
 - Pt45 has two frame sets for the same zones (z01, z02, z07, z08): 98 files ending in
   ` 2.jpg`, which matches the spreadsheet's frame count, and 689 from its zip. It's unclear
   which set is intended.
@@ -107,10 +110,7 @@ The zone is the `z01` to `z12` token in the filename (case varies). Naming diffe
 
 - Split by patient (and by A/B/C group), never by frame. Neighbouring frames of one clip are
   nearly identical, so a random frame split inflates test scores.
-- The real sample size is about 1,871 labeled clips from about 220 people, not 325,731
-  frames. Taking a few frames per clip loses little and trains much faster.
+- There are 1,862 image-backed defined-label zone groups across 225 exams, with unresolved patient identity and some overlapping sequences. All 226 exams have exam-level targets. These counts do not establish the number of independent clinical observations, and frame-sampling effects have not been measured.
 - Frames by zone label: 218,698 normal, 56,200 B-lines, 20,027 both, 14,784 indeterminate,
-  13,888 consolidation. Drop the 1,119 frames in code-5 zones and the 1,015 frames in zones
-  with no label.
-- 67% of frames are normal and 59% of patients were scanned with a Butterfly probe, so report
-  macro-F1 or balanced accuracy rather than plain accuracy, and check results per device.
+  13,888 consolidation. There are also 1,119 frames in code-5 zones and 1,015 frames in zones with no label. Their treatment must be specified after the task decision; the audit excludes or changes none.
+- 67% of frames inherit normal labels and 59% of exams used a Butterfly probe. Class imbalance and strong device/COVID association must be considered in later task/evaluation design.
