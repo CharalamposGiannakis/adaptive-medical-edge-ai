@@ -1,6 +1,6 @@
 # OpenPOCUS lung ultrasound
 
-The independently measured T002 audit is in [`docs/openpocus_dataset_audit.md`](../../docs/openpocus_dataset_audit.md). It records image-backed sample counts, missing zones, exact duplicate sequences, patient-identity uncertainty and candidate tasks. No task or split has been selected.
+The independently measured T002 audit is in [`docs/openpocus_dataset_audit.md`](../../docs/openpocus_dataset_audit.md). It records image-backed sample counts, missing zones, exact duplicate sequences, patient-identity uncertainty and the candidates considered before T004. The selected T004 task is defined below and in [decision D018](../../docs/decision_log.md#d018--define-the-openpocus-binary-zone-sequence-task). No split has been selected.
 
 License is CC BY-NC-SA 4.0 (`LICENSE.md`): non-commercial, share-alike.
 Background on the labeling protocol, devices and interrater agreement is in
@@ -10,7 +10,106 @@ Background on the labeling protocol, devices and interrater agreement is in
 bash data/openpocus/download_openpocus.sh   # ~5.3 GB into raw/
 python3 data/openpocus/build_labels.py      # optional, rebuilds and checks labels.csv
 python data/openpocus/audit_openpocus.py    # read-only audit; outputs under ignored artifacts/
+python data/openpocus/build_binary_task.py # T004 derivation; reads labels.csv and raw/ only
 ```
+
+## T004: binary normal versus definite abnormal
+
+The prediction unit is **one exam × lung-zone sequence**: all available ordered
+frame files for one exam folder and one zone. Frames inherit a zone/clip annotation;
+they are not independently adjudicated examples. The supplied exam-level `abnormal`
+flag and `covid` label are not used to derive this target.
+
+| Supplied zone code | Meaning | Derived target | Label eligibility |
+|---|---|---|---|
+| 0 | Normal | 0 (`normal`) | Eligible |
+| 1 | B-lines | 1 (`abnormal`) | Eligible |
+| 2 | Consolidation | 1 (`abnormal`) | Eligible |
+| 3 | B-lines and consolidation | 1 (`abnormal`) | Eligible |
+| 4 | Indeterminate | None | Excluded: `indeterminate` |
+| 5 | Undefined in the supplied zone key | None | Excluded: `undefined_code_5` |
+| Blank/missing | Unavailable label | None | Excluded: `unavailable_label` |
+
+**`abnormal` means B-lines and/or consolidation according to the supplied OpenPOCUS
+zone-level annotation.** It does not mean trauma, pneumothorax, FAST/free fluid,
+urgency, critical illness or need for intervention. This is an annotation-derived
+lung-finding task in the audited ED/clinic dataset. Its fit to the provisional
+prehospital/ambulance scenario remains unresolved.
+
+Primary classification metrics are **accuracy and macro-F1**, at the zone-sequence
+prediction unit. The candidate classes are imbalanced (69.52% normal, 30.48%
+abnormal), so accuracy alone is insufficient. T007 will define the final F002
+evaluation protocol; there are no model measurements yet.
+
+### Reproduce the task manifest
+
+Use the existing project environment (this Windows checkout uses `.venv`):
+
+```powershell
+.\.venv\Scripts\python.exe data/openpocus/build_binary_task.py
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p test_openpocus_binary_task.py -v
+```
+
+The utility uses only the standard library and does not rebuild `labels.csv`.
+It writes `zones.jsonl` and `summary.json` under ignored
+`artifacts/T004_binary_task/`. `--labels` and `--raw` can select another source
+snapshot; `--output` must remain under this repository's `artifacts/` and outside
+the raw input directory. Generated manifests are not committed.
+
+`zones.jsonl` contains every exam × zone slot, including exclusions and missing
+frames. Fields preserve `exam_id` (the original `patient` folder string), `ai_id`,
+`zone_id`, `source_label`, `binary_target`, `target_name`, `label_eligible`,
+`label_exclusion_reason`, `data_availability`, `frame_count`, `frame_paths` and
+`image_backed_candidate`. No patient IDs are merged or normalized. A source-eligible
+zone without files retains its target but is not an image-backed candidate.
+`image_backed_candidate` means only an eligible label plus at least one JPEG;
+it does not assert final data-quality or split eligibility.
+
+Records are sorted by the exact exam ID, then zones 1–12. JPEG paths are relative
+to `raw/` and sorted by numeric filename frame index, then case-sensitive relative
+POSIX path to break ties. All paths, including alternate Pt45 renditions and repeated
+indices, remain present. This is a deterministic enumeration, not a reconstruction
+of acquisition chronology. No preferred rendition or frame sampling is selected.
+The utility inventories `.jpg`/`.jpeg` files without decoding them; T002 provides
+image-readability evidence. Malformed/unmapped JPEG names and unexpected source
+label codes fail explicitly. `summary.json` records the source CSV SHA-256,
+manifest SHA-256, counts and eligible zones without frames. Outputs have no
+timestamps or host-specific absolute paths, allowing byte-for-byte reruns.
+
+### Reconciliation with the audited local snapshot (2026-09-26)
+
+| Population | Normal | Definite abnormal | Total |
+|---|---:|---:|---:|
+| Eligible by source zone label | 1,233 | 541 | 1,774 |
+| Eligible labels without frames | 6 | 3 | 9 |
+| Image-backed candidates, before quality/split decisions | **1,227** | **538** | **1,765** |
+
+All 226 exams × 12 zones produce **2,712 records**. Label exclusions comprise 97
+indeterminate, 3 undefined-code and 838 unavailable-label records (938 total);
+97, 3 and 6 of these respectively have frames. The manifest accounts for all
+325,731 JPEG files; the 1,765 candidates contain 308,813 frame files, not that many
+independent examples. The nine eligible zones without frames are `Pt09.19 z4`,
+`Pt151B z2/z3/z4/z8/z9/z11`, `pt218 z1` and `ED3 z1`.
+
+These counts reconcile exactly with T002. They are measurements of the current
+snapshot, not constants used to force eligibility. The optional local integration
+test compares every label and frame count against T002's `zones.csv`, verifies
+its source CSV hash, and derives expected candidate counts from `audit.json`.
+Without the local raw dataset and those audit outputs that check is explicitly
+skipped; the synthetic mapping, unit, immutability and determinism tests still run.
+
+### Deferred quality and methodology decisions
+
+ED2/Pt160C inherited-label conflicts, Pt45 alternate renditions, A/B/C repeat-exam
+families and unknown biological-patient identity remain unresolved. The reported
+re-encoded cross-ID recordings **Pt67/Pt81 and Pt147/Pt163** are being handled in a
+separate follow-up before the final split. Exact-hash nonoverlap in T002 does not
+rule out those re-encoded duplicates. T004 preserves folder/zone/frame identifiers
+for that work and T006; it applies no deduplication or quality exclusions.
+
+T006 will determine final group-aware split/exclusion rules. Architecture, model
+input processing, frame counts/sampling, F002 methodology/training, adaptivity and
+compression remain open. Later quality exclusions do not change this label mapping.
 
 ## Layout
 
@@ -18,6 +117,7 @@ python data/openpocus/audit_openpocus.py    # read-only audit; outputs under ign
 download_openpocus.sh
 build_labels.py
 audit_openpocus.py
+build_binary_task.py
 LICENSE.md
 README.md
 labels.csv           the file to use for labels, one row per exam folder
@@ -58,7 +158,7 @@ Labels are per exam per lung zone. A frame can inherit its zone label, but was n
 | `device` | 0 Butterfly, 1 EchoNous, 2 SonoSite, 3 Lumify, 4 Vave, 5 GE |
 | `covid` | COVID positive: 0 no, 1 yes |
 | `abnormal` | supplied exam flag: 0 normal, 1 abnormal; not always reconstructible from definite zone findings |
-| `z1` ... `z12` | zone finding, codes below. Empty means that zone was not scanned or labeled |
+| `z1` ... `z12` | zone finding, codes below. Empty means an unavailable label; files may still exist |
 | `frames` | number of frames for the patient, per the spreadsheet |
 
 Zone codes:
@@ -112,5 +212,5 @@ The zone is the `z01` to `z12` token in the filename (case varies). Naming diffe
   nearly identical, so a random frame split inflates test scores.
 - There are 1,862 image-backed defined-label zone groups across 225 exams, with unresolved patient identity and some overlapping sequences. All 226 exams have exam-level targets. These counts do not establish the number of independent clinical observations, and frame-sampling effects have not been measured.
 - Frames by zone label: 218,698 normal, 56,200 B-lines, 20,027 both, 14,784 indeterminate,
-  13,888 consolidation. There are also 1,119 frames in code-5 zones and 1,015 frames in zones with no label. Their treatment must be specified after the task decision; the audit excludes or changes none.
+  13,888 consolidation. There are also 1,119 frames in code-5 zones and 1,015 frames in zones with no label. T004 excludes indeterminate, code-5 and unavailable-label zones from its binary target while retaining their manifest records and source files.
 - 67% of frames inherit normal labels and 59% of exams used a Butterfly probe. Class imbalance and strong device/COVID association must be considered in later task/evaluation design.
