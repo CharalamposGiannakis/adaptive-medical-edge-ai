@@ -1,6 +1,6 @@
 # OpenPOCUS lung ultrasound
 
-The independently measured T002 audit is in [`docs/openpocus_dataset_audit.md`](../../docs/openpocus_dataset_audit.md). It records image-backed sample counts, missing zones, exact duplicate sequences, patient-identity uncertainty and the candidates considered before T004. The selected T004 task is defined below and in [decision D018](../../docs/decision_log.md#d018--define-the-openpocus-binary-zone-sequence-task). No split has been selected.
+The independently measured T002 audit is in [`docs/openpocus_dataset_audit.md`](../../docs/openpocus_dataset_audit.md). It records image-backed sample counts, missing zones, exact duplicate sequences, recordings shared across folders, patient-identity uncertainty and candidate tasks. The selected T004 task is defined below and in [decision D019](../../docs/decision_log.md#d019--define-the-openpocus-binary-zone-sequence-task). No split has been selected.
 
 License is CC BY-NC-SA 4.0 (`LICENSE.md`): non-commercial, share-alike.
 Background on the labeling protocol, devices and interrater agreement is in
@@ -11,6 +11,8 @@ bash data/openpocus/download_openpocus.sh   # ~5.3 GB into raw/
 python3 data/openpocus/build_labels.py      # optional, rebuilds and checks labels.csv
 python data/openpocus/audit_openpocus.py    # read-only audit; outputs under ignored artifacts/
 python data/openpocus/build_binary_task.py # T004 derivation; reads labels.csv and raw/ only
+uv run --no-project --with pillow --with numpy python data/openpocus/find_shared_recordings.py
+                                            # shared recordings across folders, split groups
 ```
 
 ## T004: binary normal versus definite abnormal
@@ -101,11 +103,13 @@ skipped; the synthetic mapping, unit, immutability and determinism tests still r
 ### Deferred quality and methodology decisions
 
 ED2/Pt160C inherited-label conflicts, Pt45 alternate renditions, A/B/C repeat-exam
-families and unknown biological-patient identity remain unresolved. The reported
-re-encoded cross-ID recordings **Pt67/Pt81 and Pt147/Pt163** are being handled in a
-separate follow-up before the final split. Exact-hash nonoverlap in T002 does not
-rule out those re-encoded duplicates. T004 preserves folder/zone/frame identifiers
-for that work and T006; it applies no deduplication or quality exclusions.
+families and unknown biological-patient identity remain unresolved. T002b found
+five linked cross-ID sets sharing re-encoded recordings; see the audit and
+`split_groups.csv` below. Shared recordings can have conflicting zone labels:
+`Pt67`/`Pt81` z8 is code 4 versus code 0, which changes T004 binary eligibility.
+T004 preserves source labels and folder/zone/frame identifiers; it applies no
+deduplication or quality exclusions. T006 must decide how to handle these conflicts
+and keep linked folders together when creating splits.
 
 T006 will determine final group-aware split/exclusion rules. Architecture, model
 input processing, frame counts/sampling, F002 methodology/training, adaptivity and
@@ -118,9 +122,11 @@ download_openpocus.sh
 build_labels.py
 audit_openpocus.py
 build_binary_task.py
+find_shared_recordings.py
 LICENSE.md
 README.md
 labels.csv           the file to use for labels, one row per exam folder
+split_groups.csv     provisional split group per exam folder; keep each group on one side
 raw/                 not in Git
   labels.xlsx        original spreadsheet, as shipped inside the Box zip
   <patient>/*.jpg
@@ -145,6 +151,18 @@ Probably not separate people: `Pt146A/B/C`, `Pt151A/B`, `Pt156A/B`, `Pt157A/B` a
 `Pt160A/B/C`. The paper does not resolve these individual IDs. Every group shares device,
 COVID status and abnormal flag, and `Pt157A` and `Pt157B` differ in only 2 of 12 zones. They
 look like repeat exams of one person. Keep each group together across train/validation/test partitions.
+
+Some folders contain the same recordings under another ID, re-encoded so exact hashes miss
+them. The five linked sets are `{Pt67, Pt81}`, `{Pt109, Pt176}`, `{Pt135, Pt173}`,
+`{Pt140, Pt169, Pt177}` and `{Pt147, Pt163, Pt178}`. Within these sets,
+`Pt67`/`Pt81` and `Pt147`/`Pt163` are complete duplicate exams; other links share clips.
+Their labels and device entries sometimes disagree. Keep each of these sets together as well,
+which leaves 212 split groups, listed in `split_groups.csv` (rebuilt by
+`find_shared_recordings.py`); details are in the audit.
+Before writing either output CSV, the search checks that the raw exam folders match
+`labels.csv` and that every folder contains JPEG frames. A missing, empty or
+unlabelled exam folder stops regeneration rather than silently changing the groups.
+This coverage check does not establish that every zone or frame is complete.
 The dotted IDs (`Pt31.20`, `Pt38.4`) are unexplained. Distinct folder IDs do not prove distinct people; an authoritative patient mapping is unavailable.
 
 ## labels.csv
@@ -208,9 +226,9 @@ The zone is the `z01` to `z12` token in the filename (case varies). Naming diffe
 
 ## Using it for machine learning
 
-- Split by patient (and by A/B/C group), never by frame. Neighbouring frames of one clip are
+- Split by the 212 groups above (A/B/C families plus folders that share recordings), never by frame. Neighbouring frames of one clip are
   nearly identical, so a random frame split inflates test scores.
 - There are 1,862 image-backed defined-label zone groups across 225 exams, with unresolved patient identity and some overlapping sequences. All 226 exams have exam-level targets. These counts do not establish the number of independent clinical observations, and frame-sampling effects have not been measured.
 - Frames by zone label: 218,698 normal, 56,200 B-lines, 20,027 both, 14,784 indeterminate,
   13,888 consolidation. There are also 1,119 frames in code-5 zones and 1,015 frames in zones with no label. T004 excludes indeterminate, code-5 and unavailable-label zones from its binary target while retaining their manifest records and source files.
-- 67% of frames inherit normal labels and 59% of exams used a Butterfly probe. Class imbalance and strong device/COVID association must be considered in later task/evaluation design.
+- 67% of frames inherit normal labels and 59% of exams used a Butterfly probe. Class imbalance and strong device/COVID association must be considered in the later evaluation protocol.

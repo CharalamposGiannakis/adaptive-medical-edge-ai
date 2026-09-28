@@ -228,11 +228,23 @@ available. Historical decisions are kept even if later superseded.
 
 ---
 
-### D018 — Define the OpenPOCUS binary zone-sequence task
+### D018 — Version `data/openpocus/split_groups.csv` despite being generated
+
+**Date:** 2026-09-28
+
+**Status:** Accepted
+
+- **Decision**: Commit `data/openpocus/split_groups.csv`, which `find_shared_recordings.py` generates from the raw frames. It maps each of the 226 exam folders to one of 212 provisional split groups: the A/B/C suffix families plus folders that share re-encoded recordings. This is a second exception to the rule that generated artifacts stay untracked, following D017.
+- **Rationale**: The grouping is what the later split (T006) must respect, so everyone should split on the same groups. The file is small (226 rows) and readable, and regenerating it requires the full raw dataset. Keeping it in Git makes the grouping reviewable in diffs. The match evidence behind it (`matches.csv`) stays in ignored `artifacts/`, since the audit summarizes it.
+- **Consequence**: `find_shared_recordings.py` remains the reproducible source; rerun it and commit the regenerated file together with any change to the search. The grouping is provisional: T006 decides the final split protocol and may add groups if patient identity is resolved.
+
+---
+
+### D019 — Define the OpenPOCUS binary zone-sequence task
 
 **Date:** 2026-09-26
 
-**Status:** Accepted task definition; implementation subject to independent PR review (T004, issue #6)
+**Status:** Accepted (T004, issue #6; independently reviewed in PR #17)
 
 - **Decision**: Classify one **exam × lung-zone sequence** as normal or definite abnormal. A sequence contains all available ordered frame files for one exam folder and zone; the prediction unit is not an individual JPEG. Source zone code 0 maps to target 0 (`normal`); codes 1/2/3 map to target 1 (`abnormal`). Code 4 (indeterminate), code 5 (undefined) and blank/missing labels are explicitly excluded. The source `labels.csv` and raw files remain immutable during task derivation.
 - **Meaning**: `abnormal` means **B-lines and/or consolidation according to the supplied OpenPOCUS zone-level annotation**. It does not mean trauma, pneumothorax, FAST/free fluid, urgency, critical illness or need for intervention. The supplied exam-level abnormal flag is a different target and is not used for this mapping. Frames are not independently adjudicated ground-truth examples.
@@ -240,8 +252,8 @@ available. Historical decisions are kept even if later superseded.
 - **Primary classification metrics**: Accuracy and macro-F1, at the zone-sequence unit. The 1,227 normal versus 538 abnormal image-backed candidates are imbalanced, so accuracy alone is insufficient. Final F002 evaluation methodology remains T007 work.
 - **Measured reconciliation**: The local snapshot yields 2,712 exam × zone records. Of 1,774 source-label-eligible records (1,233 normal, 541 abnormal), nine lack frames. The remaining **1,765 candidates (1,227 normal, 538 abnormal)** agree with T002 before quality/split exclusions. There are 97 indeterminate, 3 undefined-code and 838 unavailable-label records. These are snapshot measurements, not hardcoded eligibility totals.
 - **Implementation**: `data/openpocus/build_binary_task.py` produces deterministic, ignored `artifacts/T004_binary_task/zones.jsonl` and `summary.json`. Every source slot is retained with original exam/zone IDs, label, mapped target, exclusion reason and ordered JPEG paths/count. Source-label eligibility is separate from frame availability and later quality/split eligibility; missing frames do not change a target. Details and runnable checks are in `data/openpocus/README.md`.
-- **Unresolved quality constraints**: ED2/Pt160C inherited-label conflicts, Pt45 alternate renditions, A/B/C repeat-exam structure and biological-patient identity are not repaired. The reported re-encoded cross-ID recordings Pt67/Pt81 and Pt147/Pt163 are a separate follow-up before the final split. Preserved identifiers allow T006 to incorporate that evidence; this mapping neither merges patients nor establishes independent observations.
-- **Consequence**: Target semantics and prediction unit are available for T006/T007. No partition, patient/group assignment, model architecture, frame count/sampling strategy, F002 specification/training, adaptive mechanism or compression technique is selected here. The final scenario and dataset fit remain open.
+- **Unresolved quality constraints**: ED2/Pt160C inherited-label conflicts, Pt45 alternate renditions, A/B/C repeat-exam structure and biological-patient identity are not repaired. T002b found five linked cross-ID sets and conflicting labels on shared recordings (for example Pt67/Pt81 z8 is code 4 versus code 0, changing T004 eligibility). See the dataset audit and D018 for the provisional grouping; T006 must define quality and split rules. This mapping neither merges patients nor establishes independent observations.
+- **Consequence**: Target semantics and prediction unit are available for T006/T007. D018's provisional split groups remain in force, but no partition, final patient grouping, model architecture, frame count/sampling strategy, F002 specification/training, adaptive mechanism or compression technique is selected here. The final scenario and dataset fit remain open.
 
 ---
 
@@ -250,7 +262,7 @@ available. Historical decisions are kept even if later superseded.
 The following are intentionally **not decided yet**:
 
 - Suitability of OpenPOCUS as a technical proxy for the final deployment scenario; T004 defines its annotation-derived prediction task only.
-- Final data-quality exclusions, patient/group mapping and split protocol, including the separate cross-ID duplicate follow-up before splitting.
+- Final data-quality exclusions, any further patient-identity grouping, and split protocol. T002b's D018 groups are provisional and must be respected during T006.
 - Model input processing and frame counts/sampling within the decided exam × zone prediction unit.
 - Final backbone architecture (CNN, ViT, video/temporal architecture, etc.).
 - Primary adaptive dimension.

@@ -17,7 +17,7 @@ Course-critical tasks are listed first. Priorities: **P0** = resolve before comm
 - **Priority:** P0
 - **Owner:** Charalampos / Salome
 - **Dependencies:** T001
-- **Audit evidence:** Independent review and full rerun passed 2026-09-26; see `docs/openpocus_dataset_audit.md` and `data/openpocus/audit_openpocus.py`. Patient identity and source metadata limitations are documented; task definition follows in T004 (D018), while F002 remains unspecified.
+- **Audit evidence:** Independent review and full rerun passed 2026-09-26; see `docs/openpocus_dataset_audit.md` and `data/openpocus/audit_openpocus.py`. T002b later documented shared cross-ID recordings and provisional split groups (D018). Patient identity and source metadata limitations remain; task definition follows in T004 (D019), while F002 remains unspecified.
 - **Scope:** Determine labels, patients, clip count, class distribution, video/image format, available resolutions/frame rates, patient identifiers, licensing, disk size, and feasibility of patient-level splits.
 - **Acceptance criteria:** Repository-backed audit records each available property, source/license, missing metadata, and whether leakage-safe patient-level splitting is possible.
 
@@ -34,7 +34,7 @@ Course-critical tasks are listed first. Priorities: **P0** = resolve before comm
 - **Priority:** P0
 - **Owner:** Charalampos
 - **Dependencies:** T002
-- **Repository evidence:** D018 defines binary normal versus definite abnormal at the exam × lung-zone sequence level, with accuracy and macro-F1 as primary classification metrics. `data/openpocus/build_binary_task.py` implements the mapping and explicit exclusions; tests reconcile 1,227 normal + 538 abnormal candidates with T002. See `data/openpocus/README.md` for reproduction and limitations; GitHub issue #6 carries review status.
+- **Repository evidence:** D019 defines binary normal versus definite abnormal at the exam × lung-zone sequence level, with accuracy and macro-F1 as primary classification metrics. `data/openpocus/build_binary_task.py` implements the mapping and explicit exclusions; tests reconcile 1,227 normal + 538 abnormal candidates with T002. See `data/openpocus/README.md` for reproduction and limitations; GitHub issue #6 carries completion status.
 - **Scope:** Define target, input unit, labels, and evaluation unit only from the audited dataset and documented project goals.
 - **Acceptance criteria:** Prediction task and rationale are documented; task scope is supported by available labels/data and does not overstate ambulance/trauma representativeness.
 
