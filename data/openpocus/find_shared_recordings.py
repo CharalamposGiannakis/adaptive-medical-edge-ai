@@ -57,6 +57,35 @@ def family(folder):
     return re.sub(r"(?<=\d)[A-C]$", "", folder)
 
 
+def inventory_frames(labels, raw):
+    """Require complete exam-folder coverage before deriving or writing groups."""
+    if not raw.is_dir():
+        raise ValueError(f"Raw dataset directory is missing: {raw}")
+    folders = {path.name for path in raw.iterdir() if path.is_dir()}
+    missing = sorted(set(labels) - folders)
+    unlabelled = sorted(folders - set(labels))
+    if missing or unlabelled:
+        raise ValueError(f"Exam-folder mismatch: missing={missing}, unlabelled={unlabelled}")
+
+    files, clips = [], defaultdict(list)
+    for folder in sorted(labels):
+        frame_paths = sorted((raw / folder).glob("*.jpg"))
+        if not frame_paths:
+            raise ValueError(f"No JPEG frames in exam folder: {folder}")
+        for path in frame_paths:
+            zone_match, frame_match = ZONE_RE.search(path.name), FRAME_RE.search(path.name)
+            if not zone_match or not frame_match:
+                raise ValueError(f"Unrecognised JPEG frame name: {path}")
+            zone = int(zone_match[1])
+            if not 1 <= zone <= 12:
+                raise ValueError(f"Out-of-range lung zone in JPEG name: {path}")
+            clips[(folder, zone)].append((int(frame_match[1]), len(files)))
+            files.append(path)
+    for key in clips:
+        clips[key].sort()
+    return files, clips
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--workers", type=int, default=8)
@@ -65,17 +94,13 @@ def main():
     output = args.output.resolve()
     if not output.is_relative_to(ROOT / "artifacts") or args.workers < 1:
         parser.error("Output must be under the ignored artifacts/ directory; workers must be positive")
+    with (DATA / "labels.csv").open(newline="", encoding="utf-8") as stream:
+        label_rows = list(csv.DictReader(stream))
+    if not label_rows or len({row["patient"] for row in label_rows}) != len(label_rows):
+        raise ValueError("labels.csv must contain unique exam folder IDs")
+    labels = {row["patient"]: row for row in label_rows}
+    files, clips = inventory_frames(labels, RAW)
     output.mkdir(parents=True, exist_ok=True)
-
-    labels = {r["patient"]: r for r in csv.DictReader((DATA / "labels.csv").open())}
-    files, clips = [], defaultdict(list)
-    for folder in sorted(labels):
-        for path in sorted((RAW / folder).glob("*.jpg")):
-            zone = int(ZONE_RE.search(path.name)[1])
-            clips[(folder, zone)].append((int(FRAME_RE.search(path.name)[1]), len(files)))
-            files.append(path)
-    for key in clips:
-        clips[key].sort()
     index = {folder: i for i, folder in enumerate(sorted(labels))}
     folder_of = np.array([index[p.parent.name] for p in files])
     where = {i: (folder, zone, frame) for (folder, zone), v in clips.items() for frame, i in v}
@@ -178,8 +203,8 @@ def main():
     groups = defaultdict(list)
     for f in labels:
         groups[root(f)].append(f)
-    with (DATA / "split_groups.csv").open("w", newline="") as stream:
-        writer = csv.writer(stream)
+    with (DATA / "split_groups.csv").open("w", newline="", encoding="utf-8") as stream:
+        writer = csv.writer(stream, lineterminator="\n")
         writer.writerow(["patient", "split_group"])
         writer.writerows(sorted((f, g) for g, members in groups.items() for f in members))
     print(f"\n{len(labels)} folders -> {len(groups)} split groups; groups with more than one folder:")

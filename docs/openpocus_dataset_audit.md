@@ -237,6 +237,12 @@ uv run --no-project --with pillow --with numpy python data/openpocus/find_shared
 
 It writes `data/openpocus/split_groups.csv` (each folder's provisional split group, committed per D018) and, under ignored `artifacts/T002_cross_id_duplicates/`, `matches.csv` (every confirmed query match with folders, zones, frame indices and difference). All numbers in the shared-recording section come from its printed output.
 
+Regeneration first checks one-to-one coverage of labelled exam folders and requires at
+least one JPEG in each. Missing, empty or unlabelled folders cause an error before
+either CSV is written; this does not verify that every frame in a folder is present.
+Run `python -m unittest discover -s tests -p test_openpocus_shared_recordings.py -v`
+with Pillow and numpy available to check these failure cases without the raw dataset.
+
 It independently compares every data row to the workbook, checks the same 94 cached summary controls as `build_labels.py`, decodes every image with Pillow, hashes all raw files and all decoded image pixel arrays, and compares raw path/size/mtime inventories before and after. Input source hashes are also checked again. It never writes the raw files, workbook or committed CSV. It does not recalculate workbook formulas. File hashes test identical encoded bytes; pixel hashes include decoded mode and dimensions. Neither detects all near-duplicates, cropped/re-encoded variants with changed pixels, or different scans of the same person.
 
 The paper text was read in full, and the paper's Tables 1–2 and the complete supplement were also rendered and visually checked. Temporary extraction/render outputs are ignored under the same artifact directory. The existing `build_labels.py` was additionally executed with its CSV write redirected to an in-memory buffer: its 94 checks passed and the generated CSV rows exactly equaled the committed CSV. The committed CSV was not rewritten.

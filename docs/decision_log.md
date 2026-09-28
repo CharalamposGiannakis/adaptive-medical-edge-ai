@@ -230,8 +230,9 @@ available. Historical decisions are kept even if later superseded.
 
 ### D018 — Version `data/openpocus/split_groups.csv` despite being generated
 
-**Date:** 2026-09-26  
-**Status:** Proposed
+**Date:** 2026-09-28
+
+**Status:** Accepted
 
 - **Decision**: Commit `data/openpocus/split_groups.csv`, which `find_shared_recordings.py` generates from the raw frames. It maps each of the 226 exam folders to one of 212 provisional split groups: the A/B/C suffix families plus folders that share re-encoded recordings. This is a second exception to the rule that generated artifacts stay untracked, following D017.
 - **Rationale**: The grouping is what the later split (T006) must respect, so everyone should split on the same groups. The file is small (226 rows) and readable, and regenerating it requires the full raw dataset. Keeping it in Git makes the grouping reviewable in diffs. The match evidence behind it (`matches.csv`) stays in ignored `artifacts/`, since the audit summarizes it.

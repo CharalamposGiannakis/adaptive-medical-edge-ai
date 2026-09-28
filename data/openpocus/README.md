@@ -56,6 +56,10 @@ them: `Pt67`/`Pt81` and `Pt147`/`Pt163` are complete duplicate exams, and `Pt109
 Their labels and device entries sometimes disagree. Keep each of these sets together as well,
 which leaves 212 split groups, listed in `split_groups.csv` (rebuilt by
 `find_shared_recordings.py`); details are in the audit.
+Before writing either output CSV, the search checks that the raw exam folders match
+`labels.csv` and that every folder contains JPEG frames. A missing, empty or
+unlabelled exam folder stops regeneration rather than silently changing the groups.
+This coverage check does not establish that every zone or frame is complete.
 The dotted IDs (`Pt31.20`, `Pt38.4`) are unexplained. Distinct folder IDs do not prove distinct people; an authoritative patient mapping is unavailable.
 
 ## labels.csv
