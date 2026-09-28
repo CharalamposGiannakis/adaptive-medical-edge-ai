@@ -2,12 +2,14 @@
 
 **Audit date:** 2026-09-26. **Scope:** dataset characterization only, for [issue #4](https://github.com/CharalamposGiannakis/adaptive-medical-edge-ai/issues/4). No training, data cleaning, split generation, task selection, architecture choice, or F002 definition was performed.
 
+**Follow-up (2026-09-26):** a search for re-encoded recordings shared across exam folders was added after review; see [Re-encoded recordings shared across folders](#re-encoded-recordings-shared-across-folders). It changes the provisional split grouping from 219 to 212 groups.
+
 ## Summary
 
 | Property | Measured result / qualification |
 |---|---|
 | Exam folders / CSV rows | 226 / 226, one-to-one coverage |
-| Biological patients | Not independently verifiable; paper reports 226; suffix grouping gives 219 provisional groups |
+| Biological patients | Not independently verifiable; paper reports 226; suffix grouping gives 219 provisional groups, 212 after also linking folders that share recordings |
 | Frames | 325,731 JPEG files; all decode as 512×512 RGB |
 | Raw storage | 5,842,855,030 logical bytes: 5.84 GB / 5.44 GiB |
 | Observed exam × zone groups | 1,871; not a verified count of distinct original videos |
@@ -15,8 +17,9 @@
 | Other observed zones | 3 with undefined code 5; 6 with missing labels |
 | Frame label coverage | 323,597 frames have codes 0–4; 1,119 have code 5; 1,015 have no label |
 | Exact duplicate evidence | 1,846 duplicate-image groups within exams; none across exam folders; 515 groups carry conflicting inherited labels |
+| Re-encoded shared recordings | 10 folder pairs (14 folders) share recordings that differ only by re-encoding; Pt67/Pt81 and Pt147/Pt163 are complete duplicate exams; labels and device entries conflict in several |
 | FPS / clip duration | Unavailable from the local files/metadata; neither estimated |
-| Split feasibility | Exam/group-based partitioning is implementable; true patient independence remains unverified |
+| Split feasibility | Exam/group-based partitioning is implementable over 212 provisional groups; true patient independence remains unverified |
 
 **Reading rule:** “measured” refers to this local snapshot; “paper” refers to publication claims; interpretations and unresolved identity questions are identified explicitly. No files or labels were excluded or repaired.
 
@@ -93,7 +96,35 @@ The 28 dotted folder IDs (for example `Pt31.20`, `Pt38.4`) have no documented in
 
 For example, `ED2/image_1332_ED02_z02_frame_000725.jpg` equals `ED2/image_1697_ED02_z03_frame_000000.jpg` byte-for-byte. The 150 Pt160C pairs include z5 frame 226 versus z6 frame 0. This establishes overlapping frame content across nominal zones. It does **not** prove which zone assignment is correct or invalidate a clip-level label merely because an individual frame is shared. It does demonstrate inconsistent inherited supervision if every frame is treated as an independently labeled image.
 
-**Splitting conclusion:** partitioning by whole exams, with each named A/B/C family kept together across **all train/validation/test partitions**, is technically possible and avoids those known family/within-exam leaks. A verified biological-patient-disjoint split cannot be guaranteed from the supplied identifiers. No absence-of-duplication claim is made for near-duplicates or different exams of the same person. No split proportions, assignment, exclusion or final grouping policy was selected. Further provenance on subject identity is an unresolved input to the later split protocol.
+### Re-encoded recordings shared across folders
+
+The exact hashes above cannot detect a recording that was saved again with different JPEG encoding, because every byte and most pixel values change slightly. A separate search, `data/openpocus/find_shared_recordings.py`, looks for such frames across folders (**measured**):
+
+1. **Queries.** Five evenly spaced frames from each of the 1,871 observed exam × zone groups. Frames with fewer than 0.5% of pixels above gray level 30 are treated as blank and skipped, because blank and near-blank frames look alike for every exam. This leaves 9,308 query frames.
+2. **Candidates.** Each query is compared at 32×32 grayscale against every non-blank frame of every other folder. An RMS distance below 3 gray levels is a candidate; the closest candidate per other folder is kept: 2,797 candidates.
+3. **Frame check.** Each candidate is compared at full 512×512 resolution. It is confirmed if both frames are non-blank, the mean absolute difference is below 0.5 gray levels and the correlation is above 0.995. 457 are confirmed; 2,291 fail on difference, 44 on correlation and 5 are blank at full resolution.
+4. **Clip check.** For each confirmed zone pair, up to 30 frames spread along the clip are compared with the same test, frame *n* against frame *n* + the observed frame offset.
+5. **Control.** The 387 rejected candidates with mean absolute difference below 1.0 between folders that are *not* linked were given the same clip check. None has a single identical aligned frame (0 of up to 30 each). The closest of them are near-blank probe-lift frames with reverberation lines (for example Pt15 z4 / Pt48 z10, correlation 0.956), which look alike across exams.
+
+| Folders | Shared zones (first ~ second) | Supplied labels that differ on shared zones | Devices listed |
+|---|---|---|---|
+| Pt67 / Pt81 | all 8 observed zones, same zone numbers, identical frame counts | z3, z4, z9: both vs B-lines; z8: indeterminate vs normal | Butterfly / Butterfly |
+| Pt147 / Pt163 | all 12 zones, same zone numbers | z6: consolidation vs indeterminate; z11, z12: blank in Pt147, B-lines and consolidation in Pt163 | Butterfly / Vave |
+| Pt147 / Pt178, Pt163 / Pt178 | z1, z4, z10; z11 ~ z7 | Pt163 z11 B-lines vs Pt178 z7 both (blank in Pt147) | Butterfly, Vave / Vave |
+| Pt140 / Pt169 | z1 ~ z2, z2 ~ z1, z3, z7, z8, z9 | none | Butterfly / Vave |
+| Pt140 / Pt177 | z2 ~ z1, z4, z7, z10 ~ z8 | z4: B-lines vs consolidation; Pt140 z10 indeterminate vs Pt177 z8 normal | Butterfly / Vave |
+| Pt169 / Pt177 | z1, z4, z7 | none | Vave / Vave |
+| Pt135 / Pt173 | z2 ~ z1, z4, z7 ~ z10, z10 ~ z7 | none | Butterfly / Vave |
+| Pt109 / Pt176 | z2 ~ z1, z4, z10 | none | Vave / Vave |
+| Pt157A / Pt157B | parts of z2, z3, z4, z5, z6, z8, z9, z11, z12, at shifting frame offsets | z6: consolidation vs both | Butterfly / Butterfly |
+
+Every shared zone pair except Pt157A/B has frame offset 0 and equal clip lengths. Most pass the clip check on 28 to 30 of 30 aligned frames; lower counts (7 to 22 of 30) occur where many frames of the clip are near-blank and therefore not counted. Pt157A/B share scattered stretches at drifting offsets, consistent with overlapping but not identical exports.
+
+**What this establishes.** Pt67/Pt81 and Pt147/Pt163 are each one exam stored under two IDs; the other pairs reuse individual clips, sometimes under a different zone number. Supplied labels differ on 9 shared zone pairs across 5 folder pairs, plus 3 where one side is blank. In each of the clusters {Pt140, Pt169, Pt177}, {Pt147, Pt163, Pt178} and {Pt135, Pt173}, the same frames are listed as Butterfly in one folder and Vave in another, so at least one device entry per cluster is wrong. Which labels, zones and devices are correct cannot be determined from the data. No file or label was changed.
+
+**Limits.** Only five query frames per exam × zone group are searched, so a shared stretch that avoids all of them in both folders would be missed. Blank frames are never matched. Recordings that were cropped, flipped or rescaled before re-encoding would not be found.
+
+**Splitting conclusion:** partitioning by whole exams, with each named A/B/C family and each set of folders that share recordings kept together across **all train/validation/test partitions**, is technically possible and avoids those known family, shared-recording and within-exam leaks. The linked sets are {Pt67, Pt81}, {Pt109, Pt176}, {Pt135, Pt173}, {Pt140, Pt169, Pt177} and {Pt147, Pt163, Pt178}; with the five suffix families this gives **212 provisional split groups** from 226 folders, written to the committed `data/openpocus/split_groups.csv` by the search script (decision D018). A verified biological-patient-disjoint split cannot be guaranteed from the supplied identifiers, and different exams of the same person without shared frames remain undetectable. No split proportions, assignment, exclusion or final grouping policy was selected. Further provenance on subject identity is an unresolved input to the later split protocol.
 
 ## Media and data quality
 
@@ -198,6 +229,20 @@ The script writes only under ignored `artifacts/T002_openpocus_audit/` (or an `-
 - `series.csv`: filename families and observed frame indices, without assuming each family is a distinct clinical clip.
 - `file_duplicate_groups.json` and `pixel_duplicate_groups.json`: exact duplicate paths for inspection.
 
+The shared-recording search is a separate script. It needs Pillow and numpy and takes about two minutes:
+
+```bash
+uv run --no-project --with pillow --with numpy python data/openpocus/find_shared_recordings.py
+```
+
+It writes `data/openpocus/split_groups.csv` (each folder's provisional split group, committed per D018) and, under ignored `artifacts/T002_cross_id_duplicates/`, `matches.csv` (every confirmed query match with folders, zones, frame indices and difference). All numbers in the shared-recording section come from its printed output.
+
+Regeneration first checks one-to-one coverage of labelled exam folders and requires at
+least one JPEG in each. Missing, empty or unlabelled folders cause an error before
+either CSV is written; this does not verify that every frame in a folder is present.
+Run `python -m unittest discover -s tests -p test_openpocus_shared_recordings.py -v`
+with Pillow and numpy available to check these failure cases without the raw dataset.
+
 It independently compares every data row to the workbook, checks the same 94 cached summary controls as `build_labels.py`, decodes every image with Pillow, hashes all raw files and all decoded image pixel arrays, and compares raw path/size/mtime inventories before and after. Input source hashes are also checked again. It never writes the raw files, workbook or committed CSV. It does not recalculate workbook formulas. File hashes test identical encoded bytes; pixel hashes include decoded mode and dimensions. Neither detects all near-duplicates, cropped/re-encoded variants with changed pixels, or different scans of the same person.
 
 The paper text was read in full, and the paper's Tables 1–2 and the complete supplement were also rendered and visually checked. Temporary extraction/render outputs are ignored under the same artifact directory. The existing `build_labels.py` was additionally executed with its CSV write redirected to an in-memory buffer: its 94 checks passed and the generated CSV rows exactly equaled the committed CSV. The committed CSV was not rewritten.
@@ -211,7 +256,7 @@ Final validation: the full audit completed, frame totals reconcile across exam-z
 Unresolved inputs for T004 and later methodology:
 
 1. Authoritative patient/visit mapping for A/B/C and dotted IDs; exact-image nonoverlap is insufficient proof of patient independence.
-2. Provenance of absent/misaligned zones, the meaning of code 5, overlapping zone sequences in ED2/Pt160C, and the intended Pt45 rendition.
+2. Provenance of absent/misaligned zones, the meaning of code 5, overlapping zone sequences in ED2/Pt160C, the intended Pt45 rendition, and which labels, zone numbers and devices are correct for recordings shared across folders.
 3. Original source-video identifiers, numerical FPS/durations and an authoritative zone-to-anatomy mapping.
 4. Treatment of indeterminate, unknown, missing and conflicting inherited labels after a task/unit is chosen.
 5. Whether the selected task can support an explicitly limited technical-proxy scenario, and how to address device association and clinical-domain mismatch. No winner is proposed here.
