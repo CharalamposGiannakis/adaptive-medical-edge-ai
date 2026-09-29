@@ -1,6 +1,6 @@
 # Open task queue
 
-Course-critical tasks are listed first. Priorities: **P0** = resolve before committing to the final task/scenario; **P1** = core implementation/evaluation; **P2** = extensions after the core baseline. Owners are coordination assignments, not evidence that work has started. Do not infer completion from discussion; update this queue from repository-backed work.
+Course-critical tasks are listed first. Priorities: **P0** = resolve before committing to the final task/scenario; **P1** = core implementation/evaluation, including compression, policy and final comparison; **P2** = research extensions after the core. Owners are coordination assignments, not evidence that work has started. Do not infer completion from discussion; update this queue from repository-backed work. The conditional technical sequence is in [`design_pathway.md`](design_pathway.md).
 
 ## Course-critical tasks
 
@@ -46,34 +46,36 @@ Course-critical tasks are listed first. Priorities: **P0** = resolve before comm
 - **Status:** Completed (GitHub issue #7). D020 records TA Sudaksh's feedback separately from project decisions; D021 records the normalized simulated resource-budget convention. `PROJECT_STATE.md` summarizes the current design. Thursday's non-blocking clarification is whether throughput means frames/s, completed zone-sequence predictions/s, or both.
 - **Acceptance criteria:** Feedback is recorded faithfully in project documentation, including unresolved assumptions; do not fabricate or paraphrase feedback that has not been received.
 
-### T006 — Implement reproducible POCUS loader and patient-level split pipeline
+### T006 — Build reproducible POCUS cohort and known-group-disjoint split pipeline
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Dependencies:** T002, T004
-- **Acceptance criteria:** Reproducible loader and patient-level split generation with documented configuration and leakage checks; no dataset files committed.
+- **Dependencies:** T002, T004 (complete)
+- **Scope:** Decide quality/exclusion rules before model results, including Pt45 and duplicate-associated label conflicts. Produce one common cohort and known-family/shared-recording-group-disjoint partition foundation for every architecture; no architecture-specific split. Biological-patient independence remains unverified.
+- **Acceptance criteria:** Deterministic manifests/config and source hashes; attrition and class/device/group/sequence-length summaries; connected-group and leakage assertions; immutable source labels/raw data and no dataset files committed. See the T006 gate in `design_pathway.md`.
 
-### T007 — Specify F002 static POCUS baseline methodology before training
+### T007 — Pre-specify F002 architecture qualification and frozen static baseline
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Dependencies:** T002, T004, T005
-- **Acceptance criteria:** Documented research question, splits, model/baseline, metrics, configuration, and evaluation protocol approved before training.
+- **Dependencies:** T002, T004, T005 (complete); planning can run alongside T006, but final data-dependent protocol requires T006 manifests.
+- **Scope:** Specify a common fixed-`K` screen for MobileNetV2, ResNet-18 and DeiT-Tiny; an at-most-two low/mid/high `K` screen; a one-backbone decision rule; and the frozen F002b reference protocol. T007 does not train models.
+- **Acceptance criteria:** Pre-specified data use, sampler/preprocessing, comparable bounded training, checkpoint/threshold selection, predictive metrics, consistent FLOPs with operator checks, latency, both throughput quantities, held-out-test protection and hardware/software record. Exact `K` follows T006 sequence-length evidence; see `design_pathway.md`.
 
 ### T008 — Implement and run F002 static POCUS baseline
 
 - **Priority:** P1
 - **Owner:** Charalampos
 - **Dependencies:** T006, T007
-- **Acceptance criteria:** Reproducible implementation and run; raw results and configuration saved; results distinguish measurement from interpretation.
+- **Acceptance criteria:** Execute T007's approved F002 methodology: conceptual F002a bounded qualification selects one backbone, then F002b saves the frozen static reference. Reproducible configurations, raw results and measurements distinguish evidence from interpretation; exploratory candidate checkpoints are not the final baseline.
 
 ### T009 — Characterize candidate adaptive dimensions
 
 - **Priority:** P1
 - **Owner:** Charalampos
 - **Dependencies:** F002 (T008)
-- **Scope:** Consider depth, temporal window length, frame sampling, and other task-appropriate dimensions without presuming a ViT architecture.
-- **Acceptance criteria:** Candidate dimensions are compared against the locked task and F002 baseline; proposed measurements and trade-offs are documented.
+- **Scope:** Densely or selectively characterize frame count `K` on the selected F002 model as the primary adaptive hypothesis, without mapping resource percentages to `K`.
+- **Acceptance criteria:** Measured predictive/cost response decides whether variable `K` yields useful operating points. If it does not, retain the cheapest adequate `K` and examine one bounded fallback axis, preferably depth/early exits or spatial resolution; do not manufacture four frame-count points.
 
 ### T010 — F003: construct at least three shared adaptive operating points
 
@@ -84,27 +86,27 @@ Course-critical tasks are listed first. Priorities: **P0** = resolve before comm
 
 ### T011 — Integrate one compression technique
 
-- **Priority:** P2
+- **Priority:** P1
 - **Owner:** Charalampos
 - **Dependencies:** To be specified after core operating points are established.
-- **Acceptance criteria:** One selected technique is implemented and evaluated against a documented uncompressed baseline; methodology and results are reproducible.
+- **Acceptance criteria:** One evidence/backend-dependent technique is implemented and evaluated against a documented uncompressed baseline; methodology and results are reproducible. INT8 PTQ is a candidate, structured pruning a fallback, with neither selected yet.
 
 ### T012 — Implement a simple runtime resource-aware policy
 
-- **Priority:** P2
+- **Priority:** P1
 - **Owner:** Charalampos
 - **Dependencies:** Scenario, operating points, and resource signals to be specified from preceding tasks.
-- **Acceptance criteria:** A simple, documented policy uses an agreed resource signal and is compared with fixed/static alternatives under the same protocol.
+- **Acceptance criteria:** A simple lookup policy maps active normalized budget states to measured operating points, defers at `b = 0.00`, and is compared with fixed/static alternatives under the same protocol. Optimization-based or learned control remains research work.
 
 ### T013 — Final static-versus-adaptive Pareto evaluation
 
-- **Priority:** P2
+- **Priority:** P1
 - **Owner:** Charalampos
-- **Dependencies:** T008, T010, T012; final scenario and protocol must be locked first.
-- **Acceptance criteria:** Static and adaptive systems are compared on the pre-specified task, splits, predictive metrics, and resource measures; limitations and uncertainty are reported.
+- **Dependencies:** T008, T010, T011, T012; final scenario and protocol must be locked first.
+- **Acceptance criteria:** Static and adaptive/compressed systems are compared on the pre-specified task, splits, predictive metrics, FLOPs and throughput; limitations and uncertainty are reported.
 
 ## Research backlog (non-course-critical)
 
 - **R001 — Optimization-based controller:** Explore only after the core task, policy, and evaluation are established.
-- **R002 — ViT/transformer architecture:** Research possibility, not a current architecture commitment.
+- **R002 — Broad ViT/transformer exploration:** Research possibility, not a current architecture commitment. DeiT-Tiny's bounded F002a candidacy does not select a transformer.
 - **R003 — Other temporal/window variants:** Explore beyond the primary variable-frame direction after the dataset-supported task and baseline are established.

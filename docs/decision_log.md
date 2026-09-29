@@ -282,6 +282,17 @@ available. Historical decisions are kept even if later superseded.
 
 ---
 
+### D022 — Use a bounded architecture-selection funnel before freezing F002
+
+**Date:** 2026-09-29
+**Status:** Accepted (experimental planning pathway)
+
+- **Decision:** After T006 establishes one common cohort/split and T007 pre-specifies comparable methodology, qualify at most three initial backbone candidates: MobileNetV2, ResNet-18 and DeiT-Tiny. Screen them at one common fixed frame count `K`, retain at most two for a small low/mid/high `K`-response screen, then select exactly one backbone for the frozen F002 static baseline. Downstream adaptive work uses that selected backbone.
+- **Rationale:** A small model should not win by size alone, and a more capable model may justify its cost through learning or a better adaptive frontier. Carrying three architectures through dense characterization, compression, policy and final evaluation would divert effort from the course-critical system. Selection uses pre-specified predictive, compute, runtime and adaptive-potential evidence with Pareto/dominance reasoning, not raw accuracy alone.
+- **Limit:** This decision selects **no architecture or exact `K`**. The pathway is conditional: if T006/F002/T009 evidence invalidates its assumptions, document and decide the change rather than forcing an obsolete plan. The living detail and decision gates are in `docs/design_pathway.md`.
+
+---
+
 # Open Decisions
 
 The following are intentionally **not decided yet**:

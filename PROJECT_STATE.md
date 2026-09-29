@@ -38,7 +38,9 @@ These DermaMNIST/DeiT experiments remain historical feasibility pilots. They do 
 
 ## Current objective
 
-T005 is complete: D020 records Sudaksh's feedback and resulting project decisions; D021 records the project's normalized simulated resource-budget convention. T006 can use the explicit exam/zone IDs, derived labels and T002b split groups while defining quality/exclusion and split rules; no split protocol or F002 methodology has been selected. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched.
+T005 is complete: D020 records Sudaksh's feedback and resulting project decisions; D021 records the project's normalized simulated resource-budget convention. The current living technical plan is [`docs/design_pathway.md`](docs/design_pathway.md), subordinate to accepted decisions (D022). T006's common cohort and known-group-disjoint split and T007's pre-specified methodology are the immediate gates. No split protocol or F002 methodology has been selected. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched.
+
+The intended bounded F002 qualification considers MobileNetV2, ResNet-18 and DeiT-Tiny, then selects one architecture before freezing a static baseline. None is selected now. Exact frame counts remain open; variable-frame adaptivity is the primary hypothesis, to be tested at T009.
 
 ## T005 evaluation and runtime design
 
@@ -59,4 +61,5 @@ Integrate (T001, PR #16 merged) and complete the independently reviewed audit (T
 → use the reviewed task (T004) and recorded feedback (T005; D020–D021)
 → specify and run the F002 static baseline (T006–T008)
 → characterize adaptive options and construct shared operating points (T009–T010)
-→ consider extensions only after core course work
+→ complete compression, resource policy and final evaluation (T011–T013)
+→ consider research extensions only after core course work

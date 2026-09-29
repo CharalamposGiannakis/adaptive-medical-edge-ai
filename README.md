@@ -32,6 +32,8 @@ The current direction is to:
 
 The prehospital/ambulance lung POCUS use-case design and variable-frame direction were accepted in TA Sudaksh's feedback. OpenPOCUS remains a technical experimental proxy; frame counts, architecture and controller mapping remain undecided (see D020–D021 in `docs/decision_log.md`).
 
+The current conditional technical plan is in [`docs/design_pathway.md`](docs/design_pathway.md).
+
 ## Repository structure
 
 ```text
