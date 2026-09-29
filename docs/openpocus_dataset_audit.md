@@ -207,7 +207,7 @@ Counts below are **available labeled exam/zone groups with files**, before any f
 | Provided exam normal/abnormal | Whole exam or aggregation of its zones: **226 exams**, 83 normal / 143 abnormal. | Uses an explicit supplied flag. | Incomplete zone coverage; four flags cannot be reconstructed from definite zone findings; aggregation/unit choice and identity remain unresolved. |
 | COVID status | Whole exam or aggregation of its zones: **226 exams**, 114 positive / 112 negative. | Approximately balanced supplied binary target. | Strong device association; small number of potential subjects; COVID is not trauma triage and is not a frame-level finding. |
 
-Every option needs an explicit later decision on prediction/evaluation unit, exclusions, label uncertainty, duplicate handling and subject grouping. Labels inherited from a clip are weak supervision for individual frames; the frame count is not an independent sample size. T004 must resolve the task, and T005 feedback and T007 methodology remain pending before F002.
+Every option needs an explicit decision on prediction/evaluation unit, exclusions, label uncertainty, duplicate handling and subject grouping. Labels inherited from a clip are weak supervision for individual frames; the frame count is not an independent sample size. T004 defines the binary exam × lung-zone sequence task (D019), and T005 feedback is recorded in D020–D021. T006 quality/split rules and T007 methodology remain pending before F002.
 
 ## Reproduction and validation
 

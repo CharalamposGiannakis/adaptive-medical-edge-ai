@@ -2,7 +2,7 @@
 
 ## Current direction
 
-Investigate resource-aware inference using a shared-weight DeiT-Tiny with selectable transformer depth on DermaMNIST-224. The selected scenario and utility objective are still open.
+Investigate adaptive edge inference for prehospital/ambulance lung POCUS with OpenPOCUS as a technical experimental proxy. Variable frame count per zone-sequence prediction is a supported primary direction; the DermaMNIST-224/DeiT-Tiny depth work remains pilot evidence, not the selected architecture. Exact frame counts, utility and policy mapping remain open (D020–D021).
 
 ## Evidence so far
 
@@ -12,7 +12,7 @@ Investigate resource-aware inference using a shared-weight DeiT-Tiny with select
 
 ## Next research decision
 
-Use the F001c per-sample evidence to discuss whether input-adaptive depth is worth pursuing, then choose the scenario and define utility/constraints with Dolly/TA. Only after those choices should a simple candidate policy be compared with fixed-depth baselines. Reserve the official test set for a final pre-specified evaluation.
+Use F002 to test whether OpenPOCUS supports useful predictive behaviour, then characterize variable-frame configurations before selecting operating points or mapping them to simulated resource states. Compare any later policy with fixed baselines under one pre-specified protocol. Clarify the throughput unit with the teaching team on Thursday. Reserve the official test set for a final pre-specified evaluation.
 
 ## Interpretation guardrails
 

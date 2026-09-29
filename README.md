@@ -1,8 +1,8 @@
 # Adaptive Medical Edge AI
 
-A course project exploring **adaptive inference for Vision Transformers at the edge**, with medical image classification as the current application scenario.
+A course project exploring **adaptive inference at the edge**, with lung ultrasound classification as the current application scenario.
 
-The core idea is to use **one shared transformer backbone with intermediate exits**. Easy inputs may be classified after fewer transformer blocks, while harder inputs continue deeper through the network. The project studies the trade-off between predictive performance, computation, inference latency, adaptive decision policies, and deployment constraints at the edge.
+The current OpenPOCUS direction investigates **variable frame counts per lung-zone sequence prediction** as an adaptive input/workload mechanism. The earlier shared-transformer, intermediate-exit work is a feasibility pilot, not a final architecture choice. The project studies predictive performance, FLOPs, throughput, latency, adaptive policies and deployment constraints at the edge.
 
 ## Current status
 
@@ -24,13 +24,13 @@ These are **validation-only feasibility results**. The official test split is in
 
 The current direction is to:
 
-1. establish useful operating points from a shared transformer;
-2. design an adaptive policy that decides when an input should exit;
-3. evaluate the accuracy–latency–compute trade-off;
+1. train a static OpenPOCUS proof of concept and characterize candidate frame-count operating points;
+2. design an adaptive policy that selects measured input-workload operating points;
+3. evaluate predictive performance, FLOPs and throughput;
 4. study how the system behaves under edge constraints;
 5. keep the design reproducible and deployable rather than treating adaptivity only as an offline model experiment.
 
-The exact final scope is still open and will be refined after discussion with the course staff.
+The prehospital/ambulance lung POCUS use-case design and variable-frame direction were accepted in TA Sudaksh's feedback. OpenPOCUS remains a technical experimental proxy; frame counts, architecture and controller mapping remain undecided (see D020–D021 in `docs/decision_log.md`).
 
 ## Repository structure
 

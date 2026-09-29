@@ -1,10 +1,10 @@
 # Current Phase
 
-F001, F001b, and F001c are completed pilot feasibility studies. The leading scenario is provisionally prehospital/ambulance POCUS; dataset fit and architecture remain open. The OpenPOCUS lung dataset is downloaded and labeled locally (T001 completed; PR #16 merged). The T002 audit has passed independent review and is merged (issue #4 closed); T002b found cross-ID shared recordings and provisional split groups (D018). The T004 decision (issue #6, D019) is binary normal versus definite abnormal at the exam × lung-zone sequence level; its deterministic implementation has passed independent review.
+F001, F001b, and F001c are completed pilot feasibility studies. The project scenario is adaptive edge inference for prehospital/ambulance lung POCUS, with OpenPOCUS as a technical experimental proxy accepted in TA Sudaksh's feedback (T005, D020); actual dataset fit and architecture remain unproven. The OpenPOCUS lung dataset is downloaded and labeled locally (T001 completed; PR #16 merged). The T002 audit has passed independent review and is merged (issue #4 closed); T002b found cross-ID shared recordings and provisional split groups (D018). The T004 decision (issue #6, D019) is binary normal versus definite abnormal at the exam × lung-zone sequence level; its deterministic implementation has passed independent review.
 
 ## Leading hypothesis
 
-Explore resource-aware inference for a provisional prehospital/ambulance POCUS scenario. OpenPOCUS may serve as a technical proxy and does not establish ambulance/trauma representativeness. The annotation-derived task is now defined; scenario fit and architecture remain open. ViTs and optimization-based controllers are research possibilities, not current commitments.
+Explore resource-aware inference for prehospital/ambulance lung POCUS using OpenPOCUS only as a technical proxy; it does not establish ambulance/trauma representativeness or clinical effectiveness. Keep D019's binary zone-sequence task. Variable frame count per prediction is now a supported primary adaptive direction: it changes input work even if the network stays fixed. F002 must test whether the dataset's size, bias and sample properties permit useful predictive behaviour; later characterization must test adaptive operating points. ViTs and optimization-based controllers remain research possibilities, not current commitments.
 
 ## Feasibility experiments
 
@@ -25,20 +25,25 @@ These DermaMNIST/DeiT experiments remain historical feasibility pilots. They do 
 ## Not yet decided
 
 - Final data-quality exclusions and train/validation/test split protocol (T006), including how to handle T002b's five linked cross-ID sets, their conflicting labels and the provisional 212 split groups
-- Model input processing, frame counts and sampling strategy within each zone sequence
-- Whether and how OpenPOCUS can serve as a technical proxy for prehospital/ambulance use; its patients are emergency-department respiratory/COVID cases with no pneumothorax or trauma labels
-- Final medical scenario and scenario-specific utility/constraints
+- Model input processing, exact frame counts and sampling strategy within each zone sequence; F002/T009 must characterize useful candidate configurations
+- Whether OpenPOCUS's size, bias and sample properties support useful prediction/adaptivity; its patients are emergency-department respiratory/COVID cases with no pneumothorax or trauma labels
+- Scenario-specific utility/constraints
 - Model architecture (a ViT is a research possibility, not a commitment)
 - Compression technique
 - Runtime adaptivity signal and deployable policy/controller
 - Whether to pursue an optimization-based controller (research possibility, not a commitment)
-- Target device, latency/energy budgets, and evaluation protocol
+- Target device, latency/energy budgets, final evaluation protocol and throughput unit (frames/s, completed zone-sequence predictions/s, or both; Thursday clarification)
 - Whether input-dependent exits outperform a fixed externally selected depth under the chosen scenario
 - Pre-specified use of the reserved official test set
 
 ## Current objective
 
-Record Dolly/TA feedback (T005; pending). T006 can use the explicit exam/zone IDs, derived labels and T002b split groups while defining quality/exclusion and split rules; no split protocol or F002 methodology has been selected. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched.
+T005 is complete: D020 records Sudaksh's feedback and resulting project decisions; D021 records the project's normalized simulated resource-budget convention. T006 can use the explicit exam/zone IDs, derived labels and T002b split groups while defining quality/exclusion and split rules; no split protocol or F002 methodology has been selected. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched.
+
+## T005 evaluation and runtime design
+
+- **Evaluation:** Accuracy and macro-F1 remain predictive metrics. Use one consistent FLOPs methodology for the required Pareto evaluation; throughput is a required supporting metric for this variable-frame design. Its exact unit awaits Thursday clarification. No energy, battery or thermal measurements are claimed.
+- **Simulated budgets:** Normalized `b ∈ [0, 1]` has active states `0.25`, `0.50`, `0.75`, `1.00`; `b = 0.00` means unavailable / defer / no inference and is not an accuracy/FLOPs operating point. A later policy maps active states to measured frame-count operating points. No frame counts, architecture or mapping are selected yet.
 
 ## Decided task: T004
 
@@ -51,7 +56,7 @@ Record Dolly/TA feedback (T005; pending). T006 can use the explicit exam/zone ID
 ## Plan
 
 Integrate (T001, PR #16 merged) and complete the independently reviewed audit (T002, issue #4)
-→ use the reviewed task (T004) and record feedback (T005; pending)
+→ use the reviewed task (T004) and recorded feedback (T005; D020–D021)
 → specify and run the F002 static baseline (T006–T008)
 → characterize adaptive options and construct shared operating points (T009–T010)
 → consider extensions only after core course work

@@ -38,12 +38,12 @@ Course-critical tasks are listed first. Priorities: **P0** = resolve before comm
 - **Scope:** Define target, input unit, labels, and evaluation unit only from the audited dataset and documented project goals.
 - **Acceptance criteria:** Prediction task and rationale are documented; task scope is supported by available labels/data and does not overstate ambulance/trauma representativeness.
 
-### T005 — Record Dolly/TA feedback and resolve project assumptions
+### T005 — Record teaching-team feedback and resolve project assumptions
 
 - **Priority:** P0
 - **Owner:** Charalampos
 - **Dependencies:** None
-- **Status:** Pending; no Dolly/TA feedback is recorded in the repository yet.
+- **Status:** Completed (GitHub issue #7). D020 records TA Sudaksh's feedback separately from project decisions; D021 records the normalized simulated resource-budget convention. `PROJECT_STATE.md` summarizes the current design. Thursday's non-blocking clarification is whether throughput means frames/s, completed zone-sequence predictions/s, or both.
 - **Acceptance criteria:** Feedback is recorded faithfully in project documentation, including unresolved assumptions; do not fabricate or paraphrase feedback that has not been received.
 
 ### T006 — Implement reproducible POCUS loader and patient-level split pipeline
@@ -107,4 +107,4 @@ Course-critical tasks are listed first. Priorities: **P0** = resolve before comm
 
 - **R001 — Optimization-based controller:** Explore only after the core task, policy, and evaluation are established.
 - **R002 — ViT/transformer architecture:** Research possibility, not a current architecture commitment.
-- **R003 — Temporal/window-length adaptivity:** Explore as a research dimension after the dataset-supported task and baseline are established.
+- **R003 — Other temporal/window variants:** Explore beyond the primary variable-frame direction after the dataset-supported task and baseline are established.

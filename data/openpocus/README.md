@@ -35,8 +35,10 @@ flag and `covid` label are not used to derive this target.
 **`abnormal` means B-lines and/or consolidation according to the supplied OpenPOCUS
 zone-level annotation.** It does not mean trauma, pneumothorax, FAST/free fluid,
 urgency, critical illness or need for intervention. This is an annotation-derived
-lung-finding task in the audited ED/clinic dataset. Its fit to the provisional
-prehospital/ambulance scenario remains unresolved.
+lung-finding task in the audited ED/clinic dataset. TA Sudaksh considered the
+prehospital/ambulance use-case design appropriate, with OpenPOCUS as a technical
+experimental proxy; whether dataset bias and sample properties support useful
+prediction/adaptivity remains to be tested (D020).
 
 Primary classification metrics are **accuracy and macro-F1**, at the zone-sequence
 prediction unit. The candidate classes are imbalanced (69.52% normal, 30.48%

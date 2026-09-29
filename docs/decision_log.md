@@ -257,22 +257,47 @@ available. Historical decisions are kept even if later superseded.
 
 ---
 
+### D020 — Record TA feedback and investigate variable-frame adaptive inference
+
+**Date:** 2026-09-29
+**Status:** Accepted (T005, issue #7)
+**Source:** Email feedback from TA Sudaksh; no feedback from Dolly is recorded here.
+
+- **Sudaksh explicitly confirmed:** The dataset may differ from the target deployment scenario; the adaptive pipeline matters more. Dataset size or strong bias might prevent useful model or adaptive behaviour, which can only be established after training a proof of concept. He considered the proposed use-case design appropriate. Adaptivity along input difficulty/complexity is valid and actively researched, so variable-frame input can be pursued. Since the model may stay fixed while input work changes, throughput is especially important; for this design, the teaching team would expect a Pareto-style evaluation including throughput alongside the assignment-required FLOPs evaluation. Simulated resource, budget and input-fluctuation scenarios are acceptable; on-device evaluation is not expected.
+- **Project decision:** Continue studying adaptive edge inference for prehospital/ambulance lung POCUS, with OpenPOCUS explicitly a **technical experimental proxy**. Keep D019's binary normal versus definite abnormal exam × lung-zone sequence task. Results will not claim trauma, pneumothorax, FAST/free-fluid or clinical deployment effectiveness. Investigate variable frame count per zone-sequence prediction as a primary adaptive input/workload complexity direction; the neural network need not shrink. F002 must test whether dataset bias and sample properties permit useful model behaviour and provide evidence for later adaptivity; characterization (T009) must determine useful frame-count operating points. No exact frame counts or architecture are selected.
+- **Evaluation decision:** Retain zone-sequence accuracy and macro-F1; preserve the required FLOPs Pareto evaluation with one consistent FLOPs methodology. Add throughput as a required supporting metric for this design. Do not imply energy, battery or thermal measurements have been made.
+- **Open Thursday lab clarification:** Whether throughput should be reported as frames per second, completed zone-sequence predictions per second, or both. This does not block F002 planning.
+
+---
+
+### D021 — Use normalized simulated resource-budget states for later control
+
+**Date:** 2026-09-29
+**Status:** Accepted (T005, issue #7)
+**Source:** Project design decision following TA Sudaksh's confirmation that simulated runtime scenarios are acceptable; these numerical states were selected by the project, not prescribed by the TA.
+
+- **Decision:** Represent the simulated resource budget as normalized `b ∈ [0, 1]`. Active runtime states are `b = 0.25`, `0.50`, `0.75` and `1.00`; `b = 0.00` means unavailable / defer / no inference.
+- **Meaning:** The 0% state is not an ML operating point and has no model accuracy or FLOPs point. A later controller/policy will map an active resource state to a measured frame-count operating point, then produce one zone-sequence prediction.
+- **Deferred:** Do not map the four active states to frame counts now. F002 and T009 must characterize candidate frame configurations first; there may be more measured candidate configurations than controller states. T009/T012 will determine the useful operating points and policy mapping from measured evidence.
+
+---
+
 # Open Decisions
 
 The following are intentionally **not decided yet**:
 
-- Suitability of OpenPOCUS as a technical proxy for the final deployment scenario; T004 defines its annotation-derived prediction task only.
+- Whether OpenPOCUS's size, bias and sample properties permit useful model/adaptive behaviour, to be tested with a proof-of-concept baseline; it remains a technical proxy rather than clinical deployment evidence.
 - Final data-quality exclusions, any further patient-identity grouping, and split protocol. T002b's D018 groups are provisional and must be respected during T006.
 - Model input processing and frame counts/sampling within the decided exam × zone prediction unit.
 - Final backbone architecture (CNN, ViT, video/temporal architecture, etc.).
-- Primary adaptive dimension.
-- Final set of operating points.
+- Whether variable-frame input yields useful adaptive behaviour, and whether other adaptive dimensions also help.
+- Exact frame counts, final measured operating points and mapping from active resource states to those points.
 - Compression technique.
-- Whether resource conditions are simulated, measured, or both.
+- Whether resource conditions beyond the accepted simulated budget states will also be measured.
 - Whether input uncertainty becomes part of the runtime policy.
 - Whether an optimization-based controller is worth implementing.
 - Final scenario-specific utility / global performance measure.
 - Exact latency, battery, thermal, and network assumptions.
 - Final held-out test protocol.
 - Whether restricted FAST/pneumothorax data become available.
-- Dolly/TA feedback that materially changes the design.
+- Thursday clarification of throughput units: frames/s, completed zone-sequence predictions/s, or both.
