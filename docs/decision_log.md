@@ -296,7 +296,7 @@ available. Historical decisions are kept even if later superseded.
 ### D023 — Define the T006 cohort quality and known-group split policy
 
 **Date:** 2026-10-01
-**Status:** Accepted for T006 implementation; independent review pending (issue #8)
+**Status:** Accepted; independently reviewed and merged in PR #20 (issue #8 closed)
 
 - **Decision:** Keep the standardized/masked `image_...` Pt45 rendition for the primary cohort and omit the overlapping files ending ` 2.jpg` from model input, without changing raw files. Within a verified shared-recording component, missing/unavailable source labels provide no competing semantic annotation and remain T004-excluded. Compare the remaining annotations: exclude affected aliases only for opposite binary targets or definite-versus-indeterminate/undefined eligibility disagreement. Do not copy labels, relabel sources or remove whole exams automatically. Keep same-target shared aliases without deduplication, in their common dependency group.
 - **Within-exam finding codes:** ED2 z2/z3 source codes 2/3 and Pt160C z5/z6 source codes 1/2 differ at the finding-code level but all map to T004 binary `abnormal`. As each pair is within one exam, neither creates cross-partition leakage. Keep the source annotations untouched; no additional T006 exclusion or canonicalization applies.
@@ -311,7 +311,7 @@ available. Historical decisions are kept even if later superseded.
 The following are intentionally **not decided yet**:
 
 - Whether OpenPOCUS's size, bias and sample properties permit useful model/adaptive behaviour, to be tested with a proof-of-concept baseline; it remains a technical proxy rather than clinical deployment evidence.
-- Final data-quality exclusions, any further patient-identity grouping, and split protocol. T002b's D018 groups are provisional and must be respected during T006.
+- Any additional biological-patient identity mapping if new provenance becomes available; D023 fixes the current T006 quality exclusions and known-group split protocol.
 - Model input processing and frame counts/sampling within the decided exam × zone prediction unit.
 - Final backbone architecture (CNN, ViT, video/temporal architecture, etc.).
 - Whether variable-frame input yields useful adaptive behaviour, and whether other adaptive dimensions also help.

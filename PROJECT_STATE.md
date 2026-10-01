@@ -38,7 +38,7 @@ These DermaMNIST/DeiT experiments remain historical feasibility pilots. They do 
 
 ## Current objective
 
-T005 is complete: D020 records Sudaksh's feedback and resulting project decisions; D021 records the project's normalized simulated resource-budget convention. The current living technical plan is [`docs/design_pathway.md`](docs/design_pathway.md), subordinate to accepted decisions (D022). T006's common cohort and known-group-disjoint split have been implemented on the task branch and await independent review (D023, issue #8). T007 must pre-specify F002 methodology before model training. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched.
+T005 is complete: D020 records Sudaksh's feedback and resulting project decisions; D021 records the project's normalized simulated resource-budget convention. The current living technical plan is [`docs/design_pathway.md`](docs/design_pathway.md), subordinate to accepted decisions (D022). T006's common cohort and known-group-disjoint split passed independent review and were merged in PR #20 (D023; issue #8 closed). T007 is ready to pre-specify F002 methodology before model training. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched.
 
 The intended bounded F002 qualification considers MobileNetV2, ResNet-18 and DeiT-Tiny, then selects one architecture before freezing a static baseline. None is selected now. Exact frame counts remain open; variable-frame adaptivity is the primary hypothesis, to be tested at T009.
 
