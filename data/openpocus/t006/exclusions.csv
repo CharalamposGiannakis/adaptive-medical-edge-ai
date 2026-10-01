@@ -171,8 +171,8 @@ Pt146C,z6,,,Pt146,train,0,0,t004:unavailable_label,
 Pt146C,z12,,,Pt146,train,0,0,t004:unavailable_label,
 Pt147,z4,4,,Pt147,validation,120,120,t004:indeterminate,known_shared_recording_same_target
 Pt147,z6,2,1,Pt147,validation,120,120,t006:shared_recording_conflicting_t004_semantics,known_shared_recording_conflict
-Pt147,z11,,,Pt147,validation,120,120,t004:unavailable_label,
-Pt147,z12,,,Pt147,validation,120,120,t004:unavailable_label,
+Pt147,z11,,,Pt147,validation,120,120,t004:unavailable_label,known_shared_recording_unlabelled_alias
+Pt147,z12,,,Pt147,validation,120,120,t004:unavailable_label,known_shared_recording_unlabelled_alias
 Pt148,z3,,,Pt148,validation,0,0,t004:unavailable_label,
 Pt148,z9,,,Pt148,validation,0,0,t004:unavailable_label,
 Pt149,z2,,,Pt149,train,0,0,t004:unavailable_label,

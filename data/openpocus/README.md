@@ -193,6 +193,8 @@ architecture or model-specific batching is imposed by T006.
 - **Conflicting shared recordings:** Compare the T004 mapped target/eligibility
   across connected verified zone edges, ignoring aliases whose source label is
   missing/unavailable. Those aliases remain T004-excluded and are never relabeled.
+  Their exclusion rows carry `known_shared_recording_unlabelled_alias` as
+  non-semantic provenance when they occur in a verified shared component.
   Three components have genuine opposite-target or definite-versus-indeterminate/
   undefined disagreement. Exclude their three image-backed aliases; leave the
   rest of their exams and groups available. Source labels are not reconciled.

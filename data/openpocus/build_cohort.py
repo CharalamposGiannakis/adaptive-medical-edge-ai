@@ -139,11 +139,13 @@ def shared_components(edges: Path, records: list[dict], group_of: dict[str, str]
     components = defaultdict(list)
     for node in parent:
         components[find(node)].append(node)
-    conflict_nodes, same_nodes, conflicts = set(), set(), []
+    conflict_nodes, same_nodes, unlabelled_nodes, conflicts = set(), set(), set(), []
     for nodes in components.values():
         nodes = sorted(nodes)
         # Missing annotations abstain; code 4/5 remains an observed ineligible
         # semantic, represented by a None target against definite 0/1 targets.
+        unlabelled_nodes.update(node for node in nodes if by_key[node]["label_exclusion_reason"] ==
+                                "unavailable_label")
         annotated = [node for node in nodes if by_key[node]["label_exclusion_reason"] !=
                      "unavailable_label"]
         targets = {by_key[node]["binary_target"] for node in annotated}
@@ -155,11 +157,12 @@ def shared_components(edges: Path, records: list[dict], group_of: dict[str, str]
                               for exam, zone in nodes])
         else:
             same_nodes.update(annotated)
-    return conflict_nodes, same_nodes, sorted(conflicts, key=lambda c: (c[0]["exam_id"], c[0]["zone_id"])), len(components)
+    return (conflict_nodes, same_nodes, unlabelled_nodes,
+            sorted(conflicts, key=lambda c: (c[0]["exam_id"], c[0]["zone_id"])), len(components))
 
 
 def make_cohort(records: list[dict], metadata: dict, group_of: dict,
-                conflict_nodes: set, same_nodes: set):
+                conflict_nodes: set, same_nodes: set, unlabelled_nodes: set):
     retained, excluded = [], []
     pt45_removed, pt45_zones = 0, set()
     for record in records:
@@ -180,6 +183,8 @@ def make_cohort(records: list[dict], metadata: dict, group_of: dict,
             flags.append("known_shared_recording_conflict")
         elif node in same_nodes:
             flags.append("known_shared_recording_same_target")
+        elif node in unlabelled_nodes:
+            flags.append("known_shared_recording_unlabelled_alias")
         flag_text = ";".join(flags)
         if not record["label_eligible"]:
             reason = "t004:" + record["label_exclusion_reason"]
@@ -323,8 +328,9 @@ def build(labels: Path, raw: Path, groups: Path, edges: Path, config_path: Path,
     if labels_digest != fingerprints["labels_csv"]:
         raise ValueError("T004 label fingerprint mismatch")
     metadata, group_of = read_metadata(labels, groups, records, config["expected_source_group_count"])
-    conflict, same, conflict_components, component_count = shared_components(edges, records, group_of)
-    retained, excluded, pt45 = make_cohort(records, metadata, group_of, conflict, same)
+    conflict, same, unlabelled, conflict_components, component_count = shared_components(
+        edges, records, group_of)
+    retained, excluded, pt45 = make_cohort(records, metadata, group_of, conflict, same, unlabelled)
     allocation = allocate_groups(retained, config["partition_percentages"], config["seed"])
     assign_empty_groups(allocation, set(group_of.values()), config["partition_percentages"],
                         config["seed"])

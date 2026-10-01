@@ -16,6 +16,14 @@ import build_cohort as cohort
 import cohort_loader as loader
 
 
+FROZEN_SPLIT_SHA256 = {
+    "train.csv": "bf738e011c1fd9f60314aa2a0a423dadf5decada50d79e3b63f1809bc9b8040c",
+    "validation.csv": "6caec3e7c4ce3809e3859a291a8f7d75c4c756b6030da0be1ddeaf2c965960e2",
+    "test.csv": "439315130efb419032d1a686c1a871f0b60443e635a0845e03ebf4325db55c38",
+    "group_assignments.csv": "7d2a731cea3d848efb32cc06c4d4f5707ca3c6c50e1e605011715b50607993db",
+}
+
+
 def record(exam, zone, label, target, paths):
     reason = {"": "unavailable_label", "4": "indeterminate",
               "5": "undefined_code_5"}.get(label)
@@ -57,14 +65,17 @@ class CohortPolicyTests(unittest.TestCase):
 
     def test_missing_alias_abstains_and_remains_t004_excluded_with_pt45_rule(self):
         records, groups, edges = self.fixture()
-        conflict, same, components, count = cohort.shared_components(edges, records, groups)
+        conflict, same, unlabelled, components, count = cohort.shared_components(
+            edges, records, groups)
         self.assertEqual(count, 2)
         self.assertEqual(conflict, set())
         self.assertEqual(same, {("Pt163", "z11"), ("Pt178", "z7"),
                                 ("Pt2", "z1"), ("Pt3", "z1")})
+        self.assertEqual(unlabelled, {("Pt147", "z11")})
         self.assertEqual(components, [])
         metadata = {exam: {"device": "0"} for exam in groups}
-        retained, excluded, pt45 = cohort.make_cohort(records, metadata, groups, conflict, same)
+        retained, excluded, pt45 = cohort.make_cohort(
+            records, metadata, groups, conflict, same, unlabelled)
         self.assertEqual({r["exam_id"] for r in retained},
                          {"Pt2", "Pt3", "Pt45", "Pt163", "Pt178"})
         self.assertEqual(pt45["alternate_frames_omitted"], 1)
@@ -74,8 +85,9 @@ class CohortPolicyTests(unittest.TestCase):
         self.assertEqual(masked["frame_paths_sha256"], cohort.path_digest(
             ["Pt45/image_001_Pt45_z01_frame_2.jpg"]))
         self.assertFalse(any(r["exclusion_reason"].startswith("t006:") for r in excluded))
-        self.assertEqual(next(r for r in excluded if r["exam_id"] == "Pt147")["exclusion_reason"],
-                         "t004:unavailable_label")
+        missing = next(r for r in excluded if r["exam_id"] == "Pt147")
+        self.assertEqual(missing["exclusion_reason"], "t004:unavailable_label")
+        self.assertEqual(missing["quality_flags"], "known_shared_recording_unlabelled_alias")
 
     def test_available_semantics_conflict_for_definite_vs_ineligible_or_opposite_target(self):
         pairs = [("Pt01", "4", None, "Pt02", "1", 1),
@@ -93,9 +105,11 @@ class CohortPolicyTests(unittest.TestCase):
             writer.writerows({"exam_a": left, "zone_a": "z1", "exam_b": right,
                               "zone_b": "z1", "verified_frames": 2, "sampled_frames": 2}
                              for left, _, _, right, _, _ in pairs)
-        conflict, same, components, count = cohort.shared_components(edges, records, groups)
+        conflict, same, unlabelled, components, count = cohort.shared_components(
+            edges, records, groups)
         self.assertEqual(count, 3)
         self.assertEqual(same, set())
+        self.assertEqual(unlabelled, set())
         self.assertEqual(conflict, {(r["exam_id"], r["zone_id"]) for r in records})
         self.assertEqual(len(components), 3)
         # Ineligible aliases keep their own T004 reason; the eligible copies
@@ -105,7 +119,8 @@ class CohortPolicyTests(unittest.TestCase):
                                "Pt45/image_001_Pt45_z01_frame_0.jpg"]))
         groups["Pt45"] = "Pt45"
         metadata = {exam: {"device": "0"} for exam in groups}
-        retained, excluded, _ = cohort.make_cohort(records, metadata, groups, conflict, same)
+        retained, excluded, _ = cohort.make_cohort(
+            records, metadata, groups, conflict, same, unlabelled)
         self.assertEqual({r["exam_id"] for r in retained}, {"Pt45"})
         reasons = {r["exam_id"]: r["exclusion_reason"] for r in excluded}
         self.assertEqual(reasons["Pt01"], "t004:indeterminate")
@@ -210,6 +225,17 @@ class CohortPolicyTests(unittest.TestCase):
         for name in ("train.csv", "validation.csv", "test.csv", "exclusions.csv",
                      "group_assignments.csv", "summary.json"):
             self.assertEqual((output / name).read_bytes(), (DATA / "t006" / name).read_bytes(), name)
+        for name, digest in FROZEN_SPLIT_SHA256.items():
+            self.assertEqual(cohort.sha256(output / name), digest, name)
+        exclusions = {(r["exam_id"], r["zone_id"]): r for r in
+                      cohort.read_csv(output / "exclusions.csv", cohort.EXCLUSION_FIELDS)}
+        for zone in ("z11", "z12"):
+            missing = exclusions["Pt147", zone]
+            self.assertEqual(missing["exclusion_reason"], "t004:unavailable_label")
+            self.assertIn("known_shared_recording_unlabelled_alias",
+                          missing["quality_flags"].split(";"))
+        self.assertEqual({key for key, row in exclusions.items() if row["exclusion_reason"].startswith("t006:")},
+                         {("Pt147", "z6"), ("Pt177", "z8"), ("Pt81", "z8")})
         group_sides = {r["split_group"]: r["partition"] for r in
                        cohort.read_csv(output / "group_assignments.csv", cohort.GROUP_FIELDS)}
         exam_group = {r["patient"]: r["split_group"] for r in
@@ -237,6 +263,8 @@ class CohortPolicyTests(unittest.TestCase):
                 if item["exam_id"] == "Pt45":
                     self.assertFalse(any(path.name.endswith(" 2.jpg") for path in item["frames"]))
         self.assertEqual(len(all_keys), 1762)
+        self.assertTrue({("Pt163", "z11"), ("Pt163", "z12"), ("Pt178", "z7")}.issubset(
+            all_keys))
         for component in summary["conflicting_shared_recording_components"]:
             for alias in component:
                 self.assertNotIn((alias["exam_id"], alias["zone_id"]), all_keys)
