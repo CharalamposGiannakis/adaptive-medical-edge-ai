@@ -51,6 +51,7 @@ Course-critical tasks are listed first. Priorities: **P0** = resolve before comm
 - **Priority:** P1
 - **Owner:** Charalampos
 - **Dependencies:** T002, T004 (complete)
+- **Status:** Implemented on the T006 task branch; awaiting independent review in GitHub issue #8. D023 records the quality/split policy. `data/openpocus/t006/` holds the small tracked shared foundation; `data/openpocus/README.md` gives reproduction and measured diagnostics.
 - **Scope:** Decide quality/exclusion rules before model results, including Pt45 and duplicate-associated label conflicts. Produce one common cohort and known-family/shared-recording-group-disjoint partition foundation for every architecture; no architecture-specific split. Biological-patient independence remains unverified.
 - **Acceptance criteria:** Deterministic manifests/config and source hashes; attrition and class/device/group/sequence-length summaries; connected-group and leakage assertions; immutable source labels/raw data and no dataset files committed. See the T006 gate in `design_pathway.md`.
 

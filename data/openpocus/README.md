@@ -1,6 +1,6 @@
 # OpenPOCUS lung ultrasound
 
-The independently measured T002 audit is in [`docs/openpocus_dataset_audit.md`](../../docs/openpocus_dataset_audit.md). It records image-backed sample counts, missing zones, exact duplicate sequences, recordings shared across folders, patient-identity uncertainty and candidate tasks. The selected T004 task is defined below and in [decision D019](../../docs/decision_log.md#d019--define-the-openpocus-binary-zone-sequence-task). No split has been selected.
+The independently measured T002 audit is in [`docs/openpocus_dataset_audit.md`](../../docs/openpocus_dataset_audit.md). It records image-backed sample counts, missing zones, exact duplicate sequences, recordings shared across folders, patient-identity uncertainty and candidate tasks. The selected T004 task is defined below and in [decision D019](../../docs/decision_log.md#d019--define-the-openpocus-binary-zone-sequence-task). T006's derived cohort and known-group-disjoint split are described below and in D023; independent review is pending.
 
 License is CC BY-NC-SA 4.0 (`LICENSE.md`): non-commercial, share-alike.
 Background on the labeling protocol, devices and interrater agreement is in
@@ -102,7 +102,7 @@ its source CSV hash, and derives expected candidate counts from `audit.json`.
 Without the local raw dataset and those audit outputs that check is explicitly
 skipped; the synthetic mapping, unit, immutability and determinism tests still run.
 
-### Deferred quality and methodology decisions
+### T004 quality handoff
 
 ED2/Pt160C inherited-label conflicts, Pt45 alternate renditions, A/B/C repeat-exam
 families and unknown biological-patient identity remain unresolved. T002b found
@@ -110,12 +110,130 @@ five linked cross-ID sets sharing re-encoded recordings; see the audit and
 `split_groups.csv` below. Shared recordings can have conflicting zone labels:
 `Pt67`/`Pt81` z8 is code 4 versus code 0, which changes T004 binary eligibility.
 T004 preserves source labels and folder/zone/frame identifiers; it applies no
-deduplication or quality exclusions. T006 must decide how to handle these conflicts
-and keep linked folders together when creating splits.
+deduplication or quality exclusions. T006's derived-data treatment of these
+conflicts and linked-folder partitioning is documented below.
 
-T006 will determine final group-aware split/exclusion rules. Architecture, model
-input processing, frame counts/sampling, F002 methodology/training, adaptivity and
-compression remain open. Later quality exclusions do not change this label mapping.
+T006 applies the derived-data quality and group-split rules described below.
+Architecture, model input processing, frame counts/sampling, F002 methodology/training,
+adaptivity and compression remain open. T006 does not change this T004 label mapping.
+
+## T006: shared OpenPOCUS cohort and known-group-disjoint partitions
+
+T006 uses **one exam × lung-zone sequence** and the unchanged D019 binary target.
+Its small tracked metadata is in `data/openpocus/t006/`. Every later F002 candidate
+must use the same manifests. This is a **known-family/shared-recording-group-disjoint**
+split, not a verified biological-patient-disjoint split.
+
+### Reproduce and verify
+
+Use the existing project Python environment (this checkout has `.venv`):
+
+```powershell
+.\.venv\Scripts\python.exe data/openpocus/build_binary_task.py
+.\.venv\Scripts\python.exe data/openpocus/verify_known_shared_recordings.py --check
+.\.venv\Scripts\python.exe data/openpocus/build_cohort.py
+.\.venv\Scripts\python.exe -m unittest discover -s tests -p test_openpocus_t006.py -v
+```
+
+`build_cohort.py` uses only the standard library. The optional raw-image edge
+verification needs the existing NumPy/Pillow dependencies and checks the small
+tracked `shared_recording_edges.csv` against the local frames. It searches only
+within committed dependency groups, checks up to 30 aligned offset-zero frame
+pairs with T002b's thumbnail and full-resolution criteria, and found 48 zone
+edges. The audited Pt157A/B partial shared stretches drift in offset and are
+not represented as offset-zero edges; their family remains in one split group,
+and their audited shared zones agree under the T004 binary target. This check
+is not a new global search for unknown shared recordings.
+
+The builder reads `labels.csv`, `split_groups.csv`, the edge table and raw frame
+filenames. `config.json` locks the reviewed source hashes, seed 42 and target
+percentages. A changed source fingerprint or group count fails before output.
+The T004 manifest hash is recomputed from its deterministic source records;
+neither labels nor raw images are written. All CSVs use stable row order and LF,
+and the summary records their SHA-256 hashes without timestamps or host paths.
+The tracked `.gitattributes` preserves the source `labels.csv` bytes and LF for
+the group/T006 metadata on every checkout. The group CSV fingerprint is computed
+after CRLF-to-LF normalization, matching its committed form; the label fingerprint
+uses its original bytes, as in T004.
+`--output` can regenerate metadata elsewhere for a byte-for-byte comparison.
+
+| Tracked file in `t006/` | Purpose |
+|---|---|
+| `config.json` | Source fingerprints, seed, target proportions and split sanity limits |
+| `shared_recording_edges.csv` | Verified, zone-level known shared-recording evidence |
+| `train.csv`, `validation.csv`, `test.csv` | One sequence per row, shared by all F002 candidates |
+| `group_assignments.csv` | All 212 source groups, including zero-retained ED4, assigned once |
+| `exclusions.csv` | Every non-retained T004 slot and its explicit reason/quality flags |
+| `summary.json` | Attrition, split diagnostics and source/output fingerprints |
+
+The partition CSVs store exam/zone IDs, source label and D019 target, group,
+partition, source device, retained frame count, quality flags and a hash of the
+ordered retained relative frame paths. They do not duplicate hundreds of
+thousands of paths. The loader re-enumerates each sequence in T004's numeric
+frame-index/path order, applies the Pt45 rule and verifies the count and path
+hash. It exposes paths by default; T007/T008 can inject a sampler and transform:
+
+```python
+import sys
+sys.path.insert(0, "data/openpocus")
+from cohort_loader import SequenceDataset
+
+dataset = SequenceDataset("train")
+sample = dataset[0]  # metadata and an ordered tuple of retained raw frame paths
+```
+
+No fixed frame count `K`, resize, ImageNet normalization, augmentation, model
+architecture or model-specific batching is imposed by T006.
+
+### Derived quality policy and measured attrition
+
+- **Pt45:** Retain the standardized/masked `image_...` files; omit the 98 overlapping
+  files ending ` 2.jpg` from the four affected zones. All four sequences remain.
+  No raw file is deleted. The alternate rendition is not counted as another clip.
+- **Conflicting shared recordings:** Compare the T004 mapped target/eligibility
+  across connected verified zone edges. Five components disagree. Exclude their
+  affected aliases, including six formerly image-backed candidates; leave the
+  rest of their exams and groups available. Source labels are not reconciled.
+- **Same-target shared recordings:** Keep both aliases and their flags within
+  the same dependency group; no silent deduplication or weighting change.
+- **Other exclusions:** T004 indeterminate/undefined/missing-label exclusions
+  and eligible zones without files remain explicit in `exclusions.csv`.
+
+| Stage | Sequences | Normal | Abnormal |
+|---|---:|---:|---:|
+| T004 image-backed candidates | 1,765 | 1,227 | 538 |
+| T006 conflicting shared-recording exclusions | 6 | 2 | 4 |
+| T006 retained | **1,759** | **1,225** | **534** |
+
+These snapshot counts are derived and checked, not hardcoded by the builder.
+ED4 contributes no retained sequence, leaving 211 retained groups from the 212
+source groups. Its source group still has a deterministic assignment. The six
+candidate exclusions are `Pt177 z8`, `Pt147 z6`, `Pt163 z11/z12`, `Pt178 z7`
+and `Pt81 z8`; the ineligible aliases remain separately marked with their T004
+reasons. `summary.json` lists each affected connected component.
+
+### Deterministic split diagnostics
+
+The complete dependency group is the assignment unit. The fixed seed is **42**;
+groups are ordered by retained sequence count with a seed-hash tie-break, then
+assigned to reduce cumulative sequence and normal/abnormal target deviations.
+No model result or seed search is used. Configured fail-fast checks require at
+least 20 sequences of each class per partition, no more than 5 percentage
+points of total-sequence-share deviation, and no more than 10 points of
+abnormal-share deviation from the cohort. Device is reported, not optimized.
+
+| Partition | Sequences | Share | Normal | Abnormal | Retained groups | Exams | Frame count min / Q1 / median / Q3 / max / mean |
+|---|---:|---:|---:|---:|---:|---:|---|
+| Train | 1,230 | 69.93% | 857 | 373 | 146 | 156 | 17 / 112 / 143 / 209.75 / 680 / 174.70 |
+| Validation | 264 | 15.01% | 184 | 80 | 33 | 36 | 55 / 107 / 122.5 / 168 / 488 / 158.28 |
+| Test | 265 | 15.07% | 184 | 81 | 32 | 33 | 35 / 121 / 143 / 254 / 1,090 / 193.88 |
+
+Device-code sequence counts (0 Butterfly, 1 EchoNous, 2 SonoSite, 4 Vave,
+5 GE) are train `753/166/0/279/32`, validation `200/12/0/41/11`, test
+`129/59/7/56/14`. The seven SonoSite sequences are one exam/group (`Pt110`)
+and appear only in test; this is a visible source/device limitation, not a
+post-hoc model result. Some linked source exams disagree on device metadata.
+Sequence length means retained frame files, not FPS or duration.
 
 ## Layout
 
@@ -125,6 +243,10 @@ build_labels.py
 audit_openpocus.py
 build_binary_task.py
 find_shared_recordings.py
+verify_known_shared_recordings.py
+build_cohort.py
+cohort_loader.py
+t006/                tracked configuration, evidence, manifests and summary
 LICENSE.md
 README.md
 labels.csv           the file to use for labels, one row per exam folder

@@ -293,6 +293,18 @@ available. Historical decisions are kept even if later superseded.
 
 ---
 
+### D023 — Define the T006 cohort quality and known-group split policy
+
+**Date:** 2026-10-01
+**Status:** Accepted for T006 implementation; independent review pending (issue #8)
+
+- **Decision:** Keep the standardized/masked `image_...` Pt45 rendition for the primary cohort and omit the overlapping files ending ` 2.jpg` from model input, without changing raw files. For a verified shared-recording component whose aliases disagree on T004 binary target or eligibility, exclude the affected recording aliases from the primary cohort; do not relabel any source or remove the whole exam automatically. Keep same-target shared aliases without deduplication, in their common dependency group.
+- **Partition:** Use one fixed seed (42) and a deterministic approximately 70/15/15 train/validation/test allocation of complete known-family/shared-recording groups. Balance on sequence-level normal and abnormal counts, not a group-majority label. The same cohort and manifests serve every F002 architecture candidate. Report device distribution rather than optimizing the split against model results or device matching.
+- **Measured local snapshot:** T004's 1,765 image-backed candidates yield 1,759 retained T006 sequences (1,225 normal, 534 abnormal). Five conflicting recording components remove six T004 candidates; Pt45 omits 98 alternate frames across four sequences without removing those sequences. Of 212 source dependency groups, 211 contain retained sequences; ED4 has none. The derived partition has 1,230/264/265 sequences (train/validation/test). These are measured outputs, not hardcoded cohort totals.
+- **Reproducibility and limit:** Version the small T006 configuration, verified zone-edge table, sequence-level partition and exclusion manifests, group assignment table and summary; their generator and hashes remain the reproducible source. Raw images, caches and full per-frame inventories remain ignored. The split protects against **known** family and shared-recording dependence but cannot certify distinct biological patients. No architecture, frame count `K`, image preprocessing or model-specific split is selected. See `data/openpocus/README.md` for commands and diagnostics.
+
+---
+
 # Open Decisions
 
 The following are intentionally **not decided yet**:
