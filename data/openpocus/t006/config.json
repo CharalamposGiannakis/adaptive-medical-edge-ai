@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "task": "T006_known_family_shared_recording_group_disjoint_cohort",
+  "seed": 42,
+  "partition_percentages": {"train": 70, "validation": 15, "test": 15},
+  "split_sanity_limits": {
+    "minimum_sequences_per_class_per_partition": 20,
+    "maximum_sequence_share_deviation_percentage_points": 5,
+    "maximum_abnormal_share_deviation_percentage_points": 10
+  },
+  "expected_source_group_count": 212,
+  "expected_sha256": {
+    "labels_csv": "697aec2ca75438b9352ebee5bbf36323886f577fa03773fa0698e795cece37d5",
+    "split_groups_csv": "9524d510808f52faf3895f4c22f97bfb7630410f9c6b452bcea21f7d4386408e",
+    "shared_recording_edges_csv": "c456c6766b32a96aac10fd04b062a4a4d00c7f1c1700f968cda39fbb0fe43e51",
+    "t004_manifest": "8aee09b348ed11dfde3080e2261e42ca2ed1154aba11cae1b4eac3f72176efb6"
+  },
+  "quality_policy": {
+    "pt45": "retain standardized image_ rendition; omit alternate names ending in  2.jpg",
+    "conflicting_shared_recording": "exclude all aliases in an affected connected recording component",
+    "same_target_shared_recording": "retain aliases together in one split group without deduplication"
+  }
+}

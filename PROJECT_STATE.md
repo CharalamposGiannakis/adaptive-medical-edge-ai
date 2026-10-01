@@ -24,7 +24,7 @@ These DermaMNIST/DeiT experiments remain historical feasibility pilots. They do 
 
 ## Not yet decided
 
-- Final data-quality exclusions and train/validation/test split protocol (T006), including how to handle T002b's five linked cross-ID sets, their conflicting labels and the provisional 212 split groups
+- Whether later provenance changes T006's known-group/quality assumptions; biological-patient identity remains unverified
 - Model input processing, exact frame counts and sampling strategy within each zone sequence; F002/T009 must characterize useful candidate configurations
 - Whether OpenPOCUS's size, bias and sample properties support useful prediction/adaptivity; its patients are emergency-department respiratory/COVID cases with no pneumothorax or trauma labels
 - Scenario-specific utility/constraints
@@ -38,9 +38,11 @@ These DermaMNIST/DeiT experiments remain historical feasibility pilots. They do 
 
 ## Current objective
 
-T005 is complete: D020 records Sudaksh's feedback and resulting project decisions; D021 records the project's normalized simulated resource-budget convention. The current living technical plan is [`docs/design_pathway.md`](docs/design_pathway.md), subordinate to accepted decisions (D022). T006's common cohort and known-group-disjoint split and T007's pre-specified methodology are the immediate gates. No split protocol or F002 methodology has been selected. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched.
+T005 is complete: D020 records Sudaksh's feedback and resulting project decisions; D021 records the project's normalized simulated resource-budget convention. The current living technical plan is [`docs/design_pathway.md`](docs/design_pathway.md), subordinate to accepted decisions (D022). T006's common cohort and known-group-disjoint split have been implemented on the task branch and await independent review (D023, issue #8). T007 must pre-specify F002 methodology before model training. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched.
 
 The intended bounded F002 qualification considers MobileNetV2, ResNet-18 and DeiT-Tiny, then selects one architecture before freezing a static baseline. None is selected now. Exact frame counts remain open; variable-frame adaptivity is the primary hypothesis, to be tested at T009.
+
+T006's local snapshot retains **1,762** of 1,765 T004 image-backed candidates (1,225 normal, 537 abnormal) after excluding three aliases of genuinely conflicting shared recordings; missing-label aliases remain T004-excluded without creating semantic conflicts. It omits 98 Pt45 alternate frames without losing a sequence. The corrected seed-42 group allocation gives train/validation/test sequence counts **1,232/265/265** from 211 retained dependency groups; ED4 is the one zero-retained source group. The tracked manifests, diagnostics and reproduction commands are in `data/openpocus/README.md`. This establishes no verified biological-patient independence.
 
 ## T005 evaluation and runtime design
 
