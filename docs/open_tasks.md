@@ -61,6 +61,7 @@ Course-critical tasks are listed first. Priorities: **P0** = resolve before comm
 - **Owner:** Charalampos
 - **Dependencies:** T002, T004, T005 (complete); planning can run alongside T006, but final data-dependent protocol requires T006 manifests.
 - **Scope:** Specify a common fixed-`K` screen for MobileNetV2, ResNet-18 and DeiT-Tiny; an at-most-two low/mid/high `K` screen; a one-backbone decision rule; and the frozen F002b reference protocol. T007 does not train models.
+- **T006 handoff:** Known same-target shared recordings remain separate retained rows inside one dependency group. Group-disjoint partitions prevent train/test leakage, but duplicate rows can overweight a recording in validation/test metrics or checkpoint/threshold selection. Pre-specify duplicate-aware evaluation and selection handling in T007; T006 chooses no weighting or canonicalization method.
 - **Acceptance criteria:** Pre-specified data use, sampler/preprocessing, comparable bounded training, checkpoint/threshold selection, predictive metrics, consistent FLOPs with operator checks, latency, both throughput quantities, held-out-test protection and hardware/software record. Exact `K` follows T006 sequence-length evidence; see `design_pathway.md`.
 
 ### T008 — Implement and run F002 static POCUS baseline

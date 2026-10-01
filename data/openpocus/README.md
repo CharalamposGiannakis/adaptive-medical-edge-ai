@@ -104,8 +104,8 @@ skipped; the synthetic mapping, unit, immutability and determinism tests still r
 
 ### T004 quality handoff
 
-ED2/Pt160C inherited-label conflicts, Pt45 alternate renditions, A/B/C repeat-exam
-families and unknown biological-patient identity remain unresolved. T002b found
+ED2/Pt160C inherited-label differences, Pt45 alternate renditions, A/B/C repeat-exam
+families and unknown biological-patient identity require explicit treatment. T002b found
 five linked cross-ID sets sharing re-encoded recordings; see the audit and
 `split_groups.csv` below. Shared recordings can have conflicting zone labels:
 `Pt67`/`Pt81` z8 is code 4 versus code 0, which changes T004 binary eligibility.
@@ -191,26 +191,37 @@ architecture or model-specific batching is imposed by T006.
   files ending ` 2.jpg` from the four affected zones. All four sequences remain.
   No raw file is deleted. The alternate rendition is not counted as another clip.
 - **Conflicting shared recordings:** Compare the T004 mapped target/eligibility
-  across connected verified zone edges. Five components disagree. Exclude their
-  affected aliases, including six formerly image-backed candidates; leave the
+  across connected verified zone edges, ignoring aliases whose source label is
+  missing/unavailable. Those aliases remain T004-excluded and are never relabeled.
+  Three components have genuine opposite-target or definite-versus-indeterminate/
+  undefined disagreement. Exclude their three image-backed aliases; leave the
   rest of their exams and groups available. Source labels are not reconciled.
 - **Same-target shared recordings:** Keep both aliases and their flags within
-  the same dependency group; no silent deduplication or weighting change.
+  the same dependency group; no silent deduplication or weighting change. These
+  separate rows can overweight one recording in validation/test metrics or
+  checkpoint/threshold selection. T007 must pre-specify duplicate-aware
+  evaluation and selection handling; T006 chooses no method.
+- **Within-exam finding-code differences:** ED2 z2/z3 source codes 2/3 and
+  Pt160C z5/z6 source codes 1/2 all map to T004 binary `abnormal`. They do not
+  disagree on this task's target, and each pair is within one exam, so neither
+  causes cross-partition leakage. No additional T006 exclusion or canonicalization
+  applies; source annotations remain untouched.
 - **Other exclusions:** T004 indeterminate/undefined/missing-label exclusions
   and eligible zones without files remain explicit in `exclusions.csv`.
 
 | Stage | Sequences | Normal | Abnormal |
 |---|---:|---:|---:|
 | T004 image-backed candidates | 1,765 | 1,227 | 538 |
-| T006 conflicting shared-recording exclusions | 6 | 2 | 4 |
-| T006 retained | **1,759** | **1,225** | **534** |
+| T006 conflicting shared-recording exclusions | 3 | 2 | 1 |
+| T006 retained | **1,762** | **1,225** | **537** |
 
 These snapshot counts are derived and checked, not hardcoded by the builder.
 ED4 contributes no retained sequence, leaving 211 retained groups from the 212
-source groups. Its source group still has a deterministic assignment. The six
-candidate exclusions are `Pt177 z8`, `Pt147 z6`, `Pt163 z11/z12`, `Pt178 z7`
-and `Pt81 z8`; the ineligible aliases remain separately marked with their T004
-reasons. `summary.json` lists each affected connected component.
+source groups. Its source group still has a deterministic assignment. The three
+candidate exclusions are `Pt147 z6`, `Pt177 z8` and `Pt81 z8`. `Pt163 z11/z12`
+and `Pt178 z7` remain eligible because the Pt147 copies are missing labels,
+not contradictory annotations. Missing and indeterminate aliases remain marked
+with their own T004 reasons. `summary.json` lists each conflicting component.
 
 ### Deterministic split diagnostics
 
@@ -224,15 +235,17 @@ abnormal-share deviation from the cohort. Device is reported, not optimized.
 
 | Partition | Sequences | Share | Normal | Abnormal | Retained groups | Exams | Frame count min / Q1 / median / Q3 / max / mean |
 |---|---:|---:|---:|---:|---:|---:|---|
-| Train | 1,230 | 69.93% | 857 | 373 | 146 | 156 | 17 / 112 / 143 / 209.75 / 680 / 174.70 |
-| Validation | 264 | 15.01% | 184 | 80 | 33 | 36 | 55 / 107 / 122.5 / 168 / 488 / 158.28 |
-| Test | 265 | 15.07% | 184 | 81 | 32 | 33 | 35 / 121 / 143 / 254 / 1,090 / 193.88 |
+| Train | 1,232 | 69.92% | 857 | 375 | 147 | 157 | 17 / 110 / 143 / 196.25 / 1,090 / 170.49 |
+| Validation | 265 | 15.04% | 184 | 81 | 32 | 35 | 60 / 120 / 143 / 244 / 572 / 186.81 |
+| Test | 265 | 15.04% | 184 | 81 | 32 | 33 | 35 / 112 / 143 / 241 / 612 / 184.34 |
 
 Device-code sequence counts (0 Butterfly, 1 EchoNous, 2 SonoSite, 4 Vave,
-5 GE) are train `753/166/0/279/32`, validation `200/12/0/41/11`, test
-`129/59/7/56/14`. The seven SonoSite sequences are one exam/group (`Pt110`)
-and appear only in test; this is a visible source/device limitation, not a
+5 GE) are train `757/166/7/257/45`, validation `140/36/0/84/5`, test
+`185/35/0/38/7`. The seven SonoSite sequences are one exam/group (`Pt110`)
+and now appear only in train; this is a visible source/device limitation, not a
 post-hoc model result. Some linked source exams disagree on device metadata.
+The corrected cohort changes 83 of 212 source-group assignments relative to the
+first PR snapshot under the same seed-42 algorithm; no model trained on that split.
 Sequence length means retained frame files, not FPS or duration.
 
 ## Layout

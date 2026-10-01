@@ -42,7 +42,7 @@ T005 is complete: D020 records Sudaksh's feedback and resulting project decision
 
 The intended bounded F002 qualification considers MobileNetV2, ResNet-18 and DeiT-Tiny, then selects one architecture before freezing a static baseline. None is selected now. Exact frame counts remain open; variable-frame adaptivity is the primary hypothesis, to be tested at T009.
 
-T006's local snapshot retains **1,759** of 1,765 T004 image-backed candidates (1,225 normal, 534 abnormal) after excluding six aliases of conflicting shared recordings. It omits 98 Pt45 alternate frames without losing a sequence. Seed-42 group allocation gives train/validation/test sequence counts **1,230/264/265** from 211 retained dependency groups; ED4 is the one zero-retained source group. The tracked manifests, diagnostics and reproduction commands are in `data/openpocus/README.md`. This establishes no verified biological-patient independence.
+T006's local snapshot retains **1,762** of 1,765 T004 image-backed candidates (1,225 normal, 537 abnormal) after excluding three aliases of genuinely conflicting shared recordings; missing-label aliases remain T004-excluded without creating semantic conflicts. It omits 98 Pt45 alternate frames without losing a sequence. The corrected seed-42 group allocation gives train/validation/test sequence counts **1,232/265/265** from 211 retained dependency groups; ED4 is the one zero-retained source group. The tracked manifests, diagnostics and reproduction commands are in `data/openpocus/README.md`. This establishes no verified biological-patient independence.
 
 ## T005 evaluation and runtime design
 

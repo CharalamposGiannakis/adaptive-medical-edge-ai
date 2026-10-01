@@ -142,15 +142,19 @@ def shared_components(edges: Path, records: list[dict], group_of: dict[str, str]
     conflict_nodes, same_nodes, conflicts = set(), set(), []
     for nodes in components.values():
         nodes = sorted(nodes)
-        targets = {by_key[node]["binary_target"] for node in nodes}
+        # Missing annotations abstain; code 4/5 remains an observed ineligible
+        # semantic, represented by a None target against definite 0/1 targets.
+        annotated = [node for node in nodes if by_key[node]["label_exclusion_reason"] !=
+                     "unavailable_label"]
+        targets = {by_key[node]["binary_target"] for node in annotated}
         if len(targets) > 1:
-            conflict_nodes.update(nodes)
+            conflict_nodes.update(annotated)
             conflicts.append([{"exam_id": exam, "zone_id": zone,
                                "source_label": by_key[exam, zone]["source_label"],
                                "binary_target": by_key[exam, zone]["binary_target"]}
                               for exam, zone in nodes])
         else:
-            same_nodes.update(nodes)
+            same_nodes.update(annotated)
     return conflict_nodes, same_nodes, sorted(conflicts, key=lambda c: (c[0]["exam_id"], c[0]["zone_id"])), len(components)
 
 
