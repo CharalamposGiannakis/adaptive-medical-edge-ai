@@ -60,17 +60,18 @@ Course-critical tasks are listed first. Priorities: **P0** = resolve before comm
 - **Priority:** P1
 - **Owner:** Charalampos
 - **Dependencies:** T002, T004, T005 and T006 (complete).
-- **Status:** Ready for methodology specification using the merged T006 manifests; no F002 model training has begun.
-- **Scope:** Specify a common fixed-`K` screen for MobileNetV2, ResNet-18 and DeiT-Tiny; an at-most-two low/mid/high `K` screen; a one-backbone decision rule; and the frozen F002b reference protocol. T007 does not train models.
+- **Status:** Completed after independent review; PR #22 merged and issue #9 closed (D024 accepted). No F002 model training has begun. The authoritative contract is [`f002_methodology.md`](f002_methodology.md).
+- **Scope:** Common K16 screen for MobileNetV2, ResNet-18 and DeiT-Tiny; at-most-two K4/8/16 same-checkpoint screen; one-backbone decision gate; fresh frozen F002b reference. T007 does not train models.
 - **T006 handoff:** Known same-target shared recordings remain separate retained rows inside one dependency group. Group-disjoint partitions prevent train/test leakage, but duplicate rows can overweight a recording in validation/test metrics or checkpoint/threshold selection. Pre-specify duplicate-aware evaluation and selection handling in T007; T006 chooses no weighting or canonicalization method.
 - **Acceptance criteria:** Pre-specified data use, sampler/preprocessing, comparable bounded training, checkpoint/threshold selection, predictive metrics, consistent FLOPs with operator checks, latency, both throughput quantities, held-out-test protection and hardware/software record. Exact `K` follows T006 sequence-length evidence; see `design_pathway.md`.
 
 ### T008 — Implement and run F002 static POCUS baseline
 
 - **Priority:** P1
-- **Owner:** Charalampos
-- **Dependencies:** T006, T007
-- **Acceptance criteria:** Execute T007's approved F002 methodology: conceptual F002a bounded qualification selects one backbone, then F002b saves the frozen static reference. Reproducible configurations, raw results and measurements distinguish evidence from interpretation; exploratory candidate checkpoints are not the final baseline.
+- **Owner:** Salom (intended implementer)
+- **Dependencies:** T006 and independently reviewed/merged T007 protocol (D024; complete).
+- **Status:** Ready to implement and run F002a/F002b under the accepted methodology and strict FLOPs coverage gate.
+- **Acceptance criteria:** Execute [`f002_methodology.md`](f002_methodology.md) and its ordered handoff: F002a bounded qualification selects one recorded backbone, then F002b saves the fresh frozen static reference. Preserve reproducible configurations, raw results, per-input predictions and measurements; distinguish evidence from interpretation. Exploratory candidate checkpoints are not the final baseline; T006 test inference remains deferred.
 
 ### T009 — Characterize candidate adaptive dimensions
 

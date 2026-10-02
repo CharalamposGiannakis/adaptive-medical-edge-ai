@@ -1,5 +1,8 @@
 # Preserve the committed CRLF label snapshot used by T002/T004 source hashes.
 data/openpocus/labels.csv -text
+
+# Preserve exact CRLF course-note bytes, including source formatting, for T007.
+docs/adaptivity_project_notes.md -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
 # Keep reproducible small metadata identical across checkout platforms.
 data/openpocus/split_groups.csv text eol=lf
 data/openpocus/t006/*.csv text eol=lf

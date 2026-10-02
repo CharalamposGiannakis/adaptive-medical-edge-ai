@@ -1,0 +1,223 @@
+{
+  "schema_version": 1,
+  "experiment": "F002",
+  "status": "proposed_pending_independent_review",
+  "course_notes_sha256": "c13a5c8a2d5e003a638ab3ee2eab3e5af006005307a07e948b5929c22dc90079",
+  "t006_dir": "data/openpocus/t006",
+  "t006_expected": {
+    "retained": 1762,
+    "normal": 1225,
+    "abnormal": 537,
+    "train": 1232,
+    "validation": 265,
+    "test": 265,
+    "retained_groups": 211,
+    "split_seed": 42,
+    "minimum_frames": 17,
+    "t004_manifest_fingerprint": "8aee09b348ed11dfde3080e2261e42ca2ed1154aba11cae1b4eac3f72176efb6"
+  },
+  "t006_sha256": {
+    "config.json": "61b4da46f2da40eda19643e87b9e3eb330bc5c201f9d0012acbf4b22031d7488",
+    "labels.csv": "697aec2ca75438b9352ebee5bbf36323886f577fa03773fa0698e795cece37d5",
+    "split_groups.csv": "9524d510808f52faf3895f4c22f97bfb7630410f9c6b452bcea21f7d4386408e",
+    "shared_recording_edges.csv": "c456c6766b32a96aac10fd04b062a4a4d00c7f1c1700f968cda39fbb0fe43e51",
+    "train.csv": "bf738e011c1fd9f60314aa2a0a423dadf5decada50d79e3b63f1809bc9b8040c",
+    "validation.csv": "6caec3e7c4ce3809e3859a291a8f7d75c4c756b6030da0be1ddeaf2c965960e2",
+    "test.csv": "439315130efb419032d1a686c1a871f0b60443e635a0845e03ebf4325db55c38",
+    "group_assignments.csv": "7d2a731cea3d848efb32cc06c4d4f5707ca3c6c50e1e605011715b50607993db",
+    "exclusions.csv": "487e94c555ddd6960778e189315002d5190286be9c94668d4e15de40ac6de53e",
+    "summary.json": "a8b618eb152fdd8508f558136ec31eb5651ab63e86c0bddac1f5ab701ec5b9db"
+  },
+  "runtime_versions": {
+    "python": "3.14.3",
+    "torch": "2.14.0+cu126",
+    "torchvision": "0.29.0+cu126",
+    "timm": "1.0.30",
+    "fvcore": "0.1.5.post20221221",
+    "pillow": "12.3.0",
+    "numpy": "2.5.3",
+    "scikit_learn": "1.9.1"
+  },
+  "candidates": {
+    "mobilenet_v2": {
+      "package": "torchvision",
+      "model": "torchvision.models.mobilenet_v2",
+      "weights": "MobileNet_V2_Weights.IMAGENET1K_V2",
+      "feature": "forward before classifier; 1280-dimensional global-average-pooled vector"
+    },
+    "resnet18": {
+      "package": "torchvision",
+      "model": "torchvision.models.resnet18",
+      "weights": "ResNet18_Weights.IMAGENET1K_V1",
+      "feature": "forward before fc; 512-dimensional global-average-pooled vector"
+    },
+    "deit_tiny": {
+      "package": "timm",
+      "model": "deit_tiny_patch16_224.fb_in1k",
+      "weights": "deit_tiny_patch16_224.fb_in1k",
+      "feature": "num_classes=0 forward final normalized CLS vector; 192 dimensions",
+      "fused_attn": false
+    }
+  },
+  "model": {
+    "frame_encoder_trainable": true,
+    "temporal_pool": "arithmetic_mean_of_frame_features",
+    "sequence_head": "one_randomly_initialized_linear_binary_logit",
+    "head_bias": true,
+    "binary_threshold": 0.5,
+    "prediction_rule": "abnormal_iff_probability_greater_than_or_equal_to_0.5",
+    "mobilenet_original_classifier_and_dropout_removed": true
+  },
+  "preprocessing": {
+    "decode": "PIL.Image.open.convert_RGB",
+    "source_size": [512, 512],
+    "target_size": [224, 224],
+    "resize": "PIL.Image.Resampling.BILINEAR_full_square_no_crop",
+    "tensor": "torchvision.transforms.functional.to_tensor_float32_0_to_1",
+    "mean": [0.485, 0.456, 0.406],
+    "std": [0.229, 0.224, 0.225],
+    "stochastic_augmentation": false
+  },
+  "sampling": {
+    "initial_k": 16,
+    "response_k": [4, 8, 16],
+    "method": "four_integer_thirds_anchors_then_bisect_widest_gap_leftmost_tie_lower_midpoint",
+    "index_base": 0,
+    "padding_or_repetition": false
+  },
+  "duplicates": {
+    "edge_source": "data/openpocus/t006/shared_recording_edges.csv",
+    "unit": "connected_verified_shared_recording_component_of_retained_same_target_aliases_else_singleton",
+    "train_weight": "one_over_retained_alias_count_within_partition",
+    "optimization_loss": "sum_effective_batch_weight_times_per_sequence_BCE_divided_by_fixed_8_including_last_partial_window",
+    "reported_epoch_train_loss": "sum_epoch_weight_times_per_sequence_BCE_divided_by_sum_epoch_weights",
+    "rescue_uses_reported_epoch_train_loss": true,
+    "validation_probability": "arithmetic_mean_alias_probability",
+    "validation_loss": "mean_BCE_of_aggregated_component_probabilities",
+    "validation_metrics": "one_component_one_vote",
+    "row_level_diagnostics": true
+  },
+  "training": {
+    "initialization": "specified_pretrained_weights_plus_random_binary_head",
+    "seed": 42,
+    "optimizer": "AdamW",
+    "learning_rate": 0.0001,
+    "weight_decay": 0.0001,
+    "adamw_betas": [0.9, 0.999],
+    "adamw_eps": 1e-8,
+    "scheduler": "none",
+    "epochs_max": 12,
+    "early_stop_patience_completed_epochs": 3,
+    "microbatch_sequences": 2,
+    "gradient_accumulation_steps": 4,
+    "effective_batch_sequences": 8,
+    "loss": "BCEWithLogitsLoss_reduction_none",
+    "class_weighting": "none",
+    "gradient_clipping": "none",
+    "batchnorm_training": "normal_train_mode_update_running_statistics",
+    "batchnorm_validation_inference": "eval_mode",
+    "checkpoint_metric": "duplicate_aware_validation_macro_f1",
+    "checkpoint_tiebreak": ["lower_duplicate_aware_validation_loss", "earlier_epoch"],
+    "determinism": "seed_python_numpy_torch_cuda_workers0_cudnn_deterministic_benchmark_false_tf32_false_use_deterministic_algorithms_true_cublas_workspace_config_4096_8",
+    "cuda_amp_training": "float16_autocast_and_GradScaler_for_all_candidates_on_CUDA; disabled_on_CPU",
+    "evaluation_precision": "float32",
+    "rescue": {
+      "maximum_reruns": 1,
+      "learning_rate": 0.00001,
+      "trigger": "nonfinite_loss_or_no_at_least_1_percent_training_loss_decrease_by_epoch_4_vs_epoch_1",
+      "poor_validation_alone_triggers": false
+    }
+  },
+  "references": {
+    "all_normal": "validation_all_units_predict_normal",
+    "metadata": {
+      "features": ["device_code", "zone_id"],
+      "encoder": "OneHotEncoder(handle_unknown='ignore') fitted_on_train_only",
+      "estimator": "sklearn.linear_model.LogisticRegression",
+      "C": 1.0,
+      "max_iter": 1000,
+      "solver": "lbfgs",
+      "penalty": "l2",
+      "fit_intercept": true,
+      "class_weight": null,
+      "random_state": 42,
+      "sample_weight": "duplicate_training_weights"
+    }
+  },
+  "selection": {
+    "validity": "duplicate_aware_macro_f1_strictly_above_all_normal_and_both_class_recalls_positive",
+    "reduction": "src.f002_protocol.reduce_k16_candidates",
+    "initial_pairwise_removal": "A_F1_ge_B_and_A_FLOPs_le_B_and_one_strict_and_B_has_no_material_model_only_runtime_advantage",
+    "material_runtime_advantage": "B_latency_lt_0.90_times_A_latency_or_B_sequence_throughput_gt_1.10_times_A_sequence_throughput",
+    "first_slot_tiebreak": ["highest_macro_f1", "lower_flops", "lower_model_only_median_latency", "candidate_id"],
+    "second_slot_provisional_tiebreak": ["lowest_flops", "higher_macro_f1", "lower_model_only_median_latency", "candidate_id"],
+    "second_slot_runtime_challenger_tiebreak": ["lower_model_only_median_latency", "higher_model_only_sequence_throughput", "lower_flops", "higher_macro_f1", "candidate_id"],
+    "final_dominance": "same_k_macro_f1_no_worse_and_flops_no_higher_at_every_k_with_one_strict_and_no_opponent_material_runtime_advantage",
+    "confirm_seed": 43,
+    "confirm_trigger": "two_finalists_and_k16_macro_f1_absolute_difference_below_0.02_and_no_clear_dominance",
+    "confirm_role": "robustness_evidence_only; both_finalists_complete_K16_training_validity_rescue_and_K4_K8_K16_response; retain_both_seeds_separately; no_seed_average_or_automatic_winner; failed_seed43_validity_to_human_gate_no_substitute_seed",
+    "human_decision_if_ambiguous": true
+  },
+  "f002b": {
+    "seed": 2026,
+    "k": 16,
+    "fresh_training": true,
+    "checkpoint_rule": "same_duplicate_aware_validation_macro_f1_rule",
+    "rescue_and_validity_gate": "same_as_F002a",
+    "failure": "stop_and_require_project_level_methodology_decision; no_seed42_checkpoint; no_new_seed; no_other_backbone_substitution",
+    "threshold": 0.5,
+    "test_inference_during_t008": false
+  },
+  "flops": {
+    "framework": "fvcore.nn.FlopCountAnalysis",
+    "convention": "one_fused_multiply_add_is_one_flop; elementwise_including_relu_and_clamp_one_per_output; softmax_five_per_output; max_pool_comparisons; mean_one_per_input",
+    "path": "batch_one_complete_sequence_K_frame_encodes_mean_pool_binary_head",
+    "unsupported_ops_allowed": false,
+    "unapproved_ignored_ops_allowed": false,
+    "bookkeeping_allowlist": ["aten::Int", "aten::cat", "aten::dropout", "aten::expand", "aten::flatten", "aten::permute", "aten::reshape", "aten::select", "aten::size", "aten::slice", "aten::squeeze", "aten::transpose", "aten::unbind", "prim::Constant", "prim::ListConstruct", "prim::ListUnpack", "prim::NumToTensor"],
+    "transformer_fused_attention": false,
+    "binary_head_module_count_required": true
+  },
+  "benchmark": {
+    "primary_platform": "DAS-5_CUDA_GPU_same_model_and_node_class_per_comparison_gate_no_CPU_fallback",
+    "gpu_model_lock": "first_accepted_runtime_measurement_fixes_GPU_model_for_all_candidates_at_that_gate",
+    "model_only_primary_gate": true,
+    "execution": "model.eval_and_torch.inference_mode_FP32_one_sequence_request_K_frames_internal_batch",
+    "flags": {
+      "torch.use_deterministic_algorithms": false,
+      "torch.backends.cudnn.deterministic": false,
+      "torch.backends.cudnn.benchmark": true,
+      "torch.backends.cuda.matmul.allow_tf32": false,
+      "torch.backends.cudnn.allow_tf32": false
+    },
+    "request_source": "first_200_T006_validation_rows_in_manifest_order",
+    "warmup_source": "first_50_of_timed_requests",
+    "practical_pipeline_cache_prep": "one_untimed_full_decode_read_pass_over_200_requests_before_warmup",
+    "request_batch_sequences": 1,
+    "internal_frame_batch": "K",
+    "warmup_requests": 50,
+    "timed_requests_per_repeat": 200,
+    "repeats": 5,
+    "cuda_synchronize": true,
+    "latency_statistics": ["median", "p95"],
+    "throughput": ["wall_clock_completed_sequences_per_second", "wall_clock_processed_frames_per_second"],
+    "paths": ["model_only", "jpeg_decode_preprocess_transfer_model"],
+    "deit_runtime": {
+      "primary_attention_path": "fused_attn_true_supported_optimized_timm",
+      "secondary_attention_path": "fused_attn_false_canonical",
+      "same_checkpoint_weights": true,
+      "equivalence_max_abs_logit_difference": 1e-5,
+      "equivalence_requests": "all_200_fixed_benchmark_validation_requests_each_K",
+      "equivalence_failure": "mark_fused_runtime_invalid_report_and_document_deviation_before_unfused_only_timing"
+    },
+    "automatic_gate_inputs": ["primary_model_only_median_latency", "primary_model_only_sequence_throughput"],
+    "supporting_outputs": ["model_only_p95_latency", "model_only_frame_throughput", "practical_pipeline_latency_and_both_throughputs"],
+    "platform_provenance": ["hostname", "node_class", "GPU_model", "GPU_driver", "CUDA_version", "PyTorch_version", "benchmark_flags", "precision", "CPU_threads"]
+  },
+  "artifacts_required_additions": [
+    "all_normal_validation_reference", "metadata_only_validation_diagnostic",
+    "fixed_benchmark_request_ids", "deit_fused_unfused_equivalence_by_K",
+    "deit_fused_primary_and_unfused_secondary_runtime", "benchmark_flags_and_platform_provenance"
+  ],
+  "validation_interpretation": "development_selection_evidence_not_unbiased_generalization"
+}
