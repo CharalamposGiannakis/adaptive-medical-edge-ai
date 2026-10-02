@@ -306,16 +306,26 @@ available. Historical decisions are kept even if later superseded.
 
 ---
 
+### D024 — Preregister F002 architecture qualification and frozen baseline
+
+**Date:** 2026-10-02
+**Status:** Proposed; pending independent review (T007, issue #9)
+
+- **Decision proposed:** Use the frozen T006 cohort/seed-42 manifests. Compare only MobileNetV2, ResNet-18 and DeiT-Tiny as pretrained per-frame encoders with mean feature pooling and one binary sequence head. Use common full-square 224×224 bilinear RGB preprocessing and ImageNet normalization; train initially at `K=16`, then evaluate at most two selected checkpoints without retraining at nested deterministic `K={4,8,16}`. Keep duplicate aliases as T006 rows but weight each retained shared recording to total training weight 1 and aggregate validation probabilities to one component vote. Use fixed threshold 0.5, a common bounded fine-tuning recipe, duplicate-aware checkpoint and reduction gates, and no T006 test inference during T008. After one backbone is chosen and recorded, train a fresh seed-2026 F002b static reference and freeze it for T009.
+- **Measurement proposed:** Count the complete sequence path with one strict fvcore convention including transformer attention and all traced operators; measure actual sequence latency, sequence throughput and frame throughput on one comparison platform, plus model footprint. No distillation, LoRA/adapters, NAS or adaptive controller enters F002 qualification.
+- **Rationale and implementation:** This fixes scientific choices before F002 training while preserving T006 source semantics and allowing a bounded evidence-based backbone decision. Full values, stopping rules, artifact contract and T008 checklist are in [`f002_methodology.md`](f002_methodology.md) and `configs/f002_protocol.json`; small sampler, duplicate and FLOPs helpers have no training code. Course notes in `adaptivity_project_notes.md` are advisory. This entry becomes accepted only after independent review/merge.
+
+---
+
 # Open Decisions
 
 The following are intentionally **not decided yet**:
 
 - Whether OpenPOCUS's size, bias and sample properties permit useful model/adaptive behaviour, to be tested with a proof-of-concept baseline; it remains a technical proxy rather than clinical deployment evidence.
 - Any additional biological-patient identity mapping if new provenance becomes available; D023 fixes the current T006 quality exclusions and known-group split protocol.
-- Model input processing and frame counts/sampling within the decided exam × zone prediction unit.
-- Final backbone architecture (CNN, ViT, video/temporal architecture, etc.).
+- Final backbone selection after the bounded F002a comparison; D024 proposes the candidate input processing and K screen, but no winner.
 - Whether variable-frame input yields useful adaptive behaviour, and whether other adaptive dimensions also help.
-- Exact frame counts, final measured operating points and mapping from active resource states to those points.
+- Final measured operating points beyond the proposed F002 K screen and mapping from active resource states to those points.
 - Compression technique.
 - Whether resource conditions beyond the accepted simulated budget states will also be measured.
 - Whether input uncertainty becomes part of the runtime policy.
@@ -324,4 +334,4 @@ The following are intentionally **not decided yet**:
 - Exact latency, battery, thermal, and network assumptions.
 - Final held-out test protocol.
 - Whether restricted FAST/pneumothorax data become available.
-- Thursday clarification of throughput units: frames/s, completed zone-sequence predictions/s, or both.
+- Any later teaching-team clarification of throughput presentation; D024 proposes reporting both frames/s and completed zone-sequence predictions/s.

@@ -8,7 +8,7 @@ This file describes the current evidence-driven experimental pathway. It is a li
 
 - **Dataset and scenario (D010, D020):** OpenPOCUS is the selected public technical experimental proxy for resource-aware prehospital/ambulance lung POCUS. Its ED/clinic data do not establish ambulance or trauma representativeness or clinical deployment effectiveness.
 - **Prediction task (D019):** One exam × lung-zone sequence is classified as normal (source code 0) or definite abnormal (codes 1/2/3). Codes 4/5 and missing labels are excluded. `abnormal` means supplied B-lines and/or consolidation annotations, not trauma, pneumothorax, FAST/free fluid, urgency or intervention. Source labels and raw data remain immutable.
-- **Known leakage constraints (D018, D019):** Keep each known A/B/C family and cross-ID shared/re-encoded recording connected group in one partition. The provisional `data/openpocus/split_groups.csv` captures 212 groups; T006 decides the final cohort and split. Released identifiers cannot certify biological-patient independence.
+- **Known leakage constraints (D018, D019, D023):** Keep each known A/B/C family and cross-ID shared/re-encoded recording connected group in one partition. T006 has frozen the cohort/split from 212 source groups to 211 retained groups. Released identifiers cannot certify biological-patient independence.
 - **Order and evaluation (D013, D020):** Establish a reproducible static baseline before the final adaptive system. Variable-frame/input-work adaptivity is a valid direction to investigate, not a proven benefit. Accuracy and macro-F1 are predictive metrics; the assignment's FLOPs Pareto evaluation remains required with one consistent method, and throughput is required supporting evidence for this design. Simulated resource scenarios are acceptable; on-device evaluation is not expected.
 - **Resource convention (D021):** Normalized `b ∈ [0, 1]` has active states `0.25`, `0.50`, `0.75`, `1.00`. `b = 0.00` means defer/no inference, never an accuracy or FLOPs model point. No state maps to a frame count yet.
 
@@ -52,12 +52,14 @@ T006 does not select or favor an architecture, and its outcomes are not conditio
 
 T007 is specification only, before any candidate trains on the final T006 split. It fixes the following for the common F002a screen and F002b reference:
 
+The concrete proposed contract is [`f002_methodology.md`](f002_methodology.md) with machine values in `configs/f002_protocol.json` (D024, pending independent review). This living pathway does not override that reviewed contract.
+
 - **Data and model protocol:** T006 manifests; sequence prediction unit and target; one fixed initial `K`; deterministic frame sampler; input resolution and preprocessing; pretrained-weight identifiers; a comparable sequence-aggregation concept where technically reasonable; binary sequence head; loss, class weighting if any, optimizer/schedule and one bounded comparable training/fine-tuning budget; seeds and hardware/software record.
 - **Selection protocol:** Checkpoint-selection metric, tie-break, classification-threshold policy, partition use and held-out-test protection; pre-specified learnability/validity criterion; dominance/reduction rule; low/mid/high `K` choices made only after T006 sequence-length statistics; final one-backbone decision rule. Exploratory candidates are not final static baselines.
 - **Measurement protocol:** Zone-sequence accuracy and macro-F1, abnormal recall and normal recall/specificity where useful; FLOPs convention and operator-coverage checks; model-only latency and feasible practical pipeline latency; completed zone-sequence predictions/s and processed frames/s; parameter/artifact size where useful; justified device/source-label diagnostic slices. Record hardware/software conditions. The teaching team's preferred throughput presentation remains a non-blocking Thursday clarification.
 - **Frozen baseline protocol:** What F002b will hold fixed: architecture, preprocessing, static `K`, sampler, training recipe, checkpoint rule and evaluation protocol. Later adaptive results must not silently replace this reference.
 
-No exact `K`, split proportion, architecture, threshold or training recipe is selected by this pathway document; T006/T007 must specify them at their gates.
+This pathway document itself does not set these values. T006 has fixed the split; T007 proposes exact K, threshold and training values in the linked protocol. No backbone winner or final adaptive operating point has been selected.
 
 ## F002a: bounded architecture qualification and backbone gate
 
@@ -97,6 +99,6 @@ After F002b, characterize evidence-driven candidate `K` values densely or where 
 
 ## Deliberately undecided and scope control
 
-No winning architecture, exact `K`, train/validation/test proportions, final cohort exclusions, compression method, resource-to-`K` mapping, learned controller or ViT final architecture has been selected. The core stays bounded to three initial backbones, at most two in the small `K` screen, one final architecture, one primary adaptive axis, one compression method and one simple policy. Decisions follow measured evidence and accepted decision-log entries.
+No winning architecture, final adaptive operating points, compression method, resource-to-`K` mapping, learned controller or ViT final architecture has been selected. T006 fixes the cohort and split; T007 proposes exact initial/screen K in its preregistration. The core stays bounded to three initial backbones, at most two in the small `K` screen, one final architecture, one primary adaptive axis, one compression method and one simple policy. Decisions follow measured evidence and accepted decision-log entries.
 
 **RESEARCH BACKLOG:** Marginal-benefit routing, learned frame selection, attention pooling, frame × depth combinations, queue-aware optimization, learned controllers and broad transformer searches wait until the course-critical core is established. DeiT-Tiny's bounded qualification is not a commitment to broad ViT work.

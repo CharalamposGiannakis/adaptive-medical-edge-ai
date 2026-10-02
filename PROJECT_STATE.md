@@ -25,29 +25,29 @@ These DermaMNIST/DeiT experiments remain historical feasibility pilots. They do 
 ## Not yet decided
 
 - Whether later provenance changes T006's known-group/quality assumptions; biological-patient identity remains unverified
-- Model input processing, exact frame counts and sampling strategy within each zone sequence; F002/T009 must characterize useful candidate configurations
+- Final useful frame-count operating points beyond T007's proposed K16 and K4/8/16 qualification screen; T009 must characterize them
 - Whether OpenPOCUS's size, bias and sample properties support useful prediction/adaptivity; its patients are emergency-department respiratory/COVID cases with no pneumothorax or trauma labels
 - Scenario-specific utility/constraints
 - Model architecture (a ViT is a research possibility, not a commitment)
 - Compression technique
 - Runtime adaptivity signal and deployable policy/controller
 - Whether to pursue an optimization-based controller (research possibility, not a commitment)
-- Target device, latency/energy budgets, final evaluation protocol and throughput unit (frames/s, completed zone-sequence predictions/s, or both; Thursday clarification)
+- Target device, latency/energy budgets and final held-out evaluation protocol; T007 proposes both sequence and frame throughput reporting for F002
 - Whether input-dependent exits outperform a fixed externally selected depth under the chosen scenario
 - Pre-specified use of the reserved official test set
 
 ## Current objective
 
-T005 is complete: D020 records Sudaksh's feedback and resulting project decisions; D021 records the project's normalized simulated resource-budget convention. The current living technical plan is [`docs/design_pathway.md`](docs/design_pathway.md), subordinate to accepted decisions (D022). T006's common cohort and known-group-disjoint split passed independent review and were merged in PR #20 (D023; issue #8 closed). T007 is ready to pre-specify F002 methodology before model training. Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched.
+T005 is complete: D020 records Sudaksh's feedback and resulting project decisions; D021 records the project's normalized simulated resource-budget convention. The current living technical plan is [`docs/design_pathway.md`](docs/design_pathway.md), subordinate to accepted decisions (D022). T006's common cohort and known-group-disjoint split passed independent review and were merged in PR #20 (D023; issue #8 closed). T007's [`docs/f002_methodology.md`](docs/f002_methodology.md) and D024 now propose the complete F002 qualification/static-baseline contract for independent review. **No F002 model has trained yet.** Keep F001/F001b/F001c as pilot evidence and the DermaMNIST official test set untouched.
 
-The intended bounded F002 qualification considers MobileNetV2, ResNet-18 and DeiT-Tiny, then selects one architecture before freezing a static baseline. None is selected now. Exact frame counts remain open; variable-frame adaptivity is the primary hypothesis, to be tested at T009.
+The proposed bounded F002 qualification considers MobileNetV2, ResNet-18 and DeiT-Tiny at common K16, then at most two at K4/8/16 using the same checkpoints, before selecting one architecture and training a fresh frozen baseline. None is selected now. Final adaptive frame counts remain open; variable-frame adaptivity is the primary hypothesis, to be tested at T009. The copied [`docs/adaptivity_project_notes.md`](docs/adaptivity_project_notes.md) is course-derived advisory input, not a project decision.
 
 T006's local snapshot retains **1,762** of 1,765 T004 image-backed candidates (1,225 normal, 537 abnormal) after excluding three aliases of genuinely conflicting shared recordings; missing-label aliases remain T004-excluded without creating semantic conflicts. It omits 98 Pt45 alternate frames without losing a sequence. The corrected seed-42 group allocation gives train/validation/test sequence counts **1,232/265/265** from 211 retained dependency groups; ED4 is the one zero-retained source group. The tracked manifests, diagnostics and reproduction commands are in `data/openpocus/README.md`. This establishes no verified biological-patient independence.
 
 ## T005 evaluation and runtime design
 
-- **Evaluation:** Accuracy and macro-F1 remain predictive metrics. Use one consistent FLOPs methodology for the required Pareto evaluation; throughput is a required supporting metric for this variable-frame design. Its exact unit awaits Thursday clarification. No energy, battery or thermal measurements are claimed.
-- **Simulated budgets:** Normalized `b ∈ [0, 1]` has active states `0.25`, `0.50`, `0.75`, `1.00`; `b = 0.00` means unavailable / defer / no inference and is not an accuracy/FLOPs operating point. A later policy maps active states to measured frame-count operating points. No frame counts, architecture or mapping are selected yet.
+- **Evaluation:** Accuracy and macro-F1 remain predictive metrics. T007 proposes one strict complete-sequence fvcore method and measures both completed sequence predictions/s and processed frames/s, along with actual response latency. No energy, battery or thermal measurements are claimed.
+- **Simulated budgets:** Normalized `b ∈ [0, 1]` has active states `0.25`, `0.50`, `0.75`, `1.00`; `b = 0.00` means unavailable / defer / no inference and is not an accuracy/FLOPs operating point. A later policy maps active states to measured frame-count operating points. T007's proposed K values are qualification settings, not selected adaptive operating points or a budget mapping; no backbone winner exists yet.
 
 ## Decided task: T004
 
