@@ -49,9 +49,12 @@ torchvision 0.29.0+cu126; timm 1.0.30; fvcore
 0.1.5.post20221221; Pillow 12.3.0; NumPy 2.5.3; scikit-learn 1.9.1.
 Record the exact wheel/build, platform, CUDA driver and hardware for T008 runs.
 An equivalent platform wheel must preserve these model/weight identities and
-pass the protocol checks. DeiT's `fused_attn=False` is fixed for all training,
-validation and benchmarking; this exposes the same attention math to strict
-FLOPs tracing. If a pinned implementation/weight/preprocessing contract is
+pass the protocol checks. DeiT uses `fused_attn=False` for canonical training,
+validation/selection predictions and strict FLOPs tracing, exposing QK,
+softmax and attention-value matmuls. The same checkpoint uses the supported
+optimized `fused_attn=True` path for **primary runtime timing only after** the
+equivalence gate in §9; unfused timing remains a secondary diagnostic. If a
+pinned implementation/weight/preprocessing contract is
 unavailable, stop before training and amend the method.
 
 For each K-frame zone sequence, apply **the same pretrained frame encoder** to
@@ -60,7 +63,9 @@ mean the K feature vectors, and apply one new `Linear(feature_dim, 1)` head
 with bias. Its output is one binary logit; sigmoid yields the sequence
 probability. Fine-tune encoder and head together. No temporal transformer,
 LSTM, attention/gated pooling, early exit, token pruning, or model-specific
-adaptive module enters F002.
+adaptive module enters F002. Replacing MobileNetV2's entire original
+`classifier` also removes its `Dropout(0.2)`; all three use only the common new
+linear binary sequence head.
 
 ## 3. Input processing and deterministic frame selection
 
@@ -98,12 +103,20 @@ the latter count is metadata only, with no test predictions.
 
 Keep every retained row for training. For each retained component of `n`
 aliases in train, weight each row `1/n`; singleton rows weigh 1. Use
-`BCEWithLogitsLoss(reduction='none')` and optimize
-`sum_i(weight_i * loss_i) / sum_i(weight_i)` over each effective batch. For
-gradient accumulation, normalize by the sum of weights in the **whole**
-effective batch, including the last partial batch. This keeps one recording's
-total weight at 1 without deleting aliases. Do not add class weights by
-default.
+`BCEWithLogitsLoss(reduction='none')`. For **each optimizer step**, including
+the final partial accumulation window, backpropagate
+`sum_effective_batch(weight_i * BCE_i) / 8` with the fixed effective-batch
+denominator **8**. With microbatch 2 / accumulation 4, backpropagate
+`sum_micro(weight_i * BCE_i) / 8` from each microbatch, then step after the
+window. Never divide a step by that batch's weight sum: doing so changes a
+row's gradient coefficient according to which other aliases were shuffled
+beside it. The component weights still sum to 1 over the epoch. Separately,
+report the interpretable **global epoch weighted mean**
+`sum_epoch(weight_i * BCE_i) / sum_epoch(weight_i)`; the rescue check uses this
+reported epoch loss, never the fixed-denominator optimization scalar. Keep
+all retained aliases and use no class weights by default. The tested helper
+`optimization_loss` fixes the denominator; `reported_weighted_train_loss`
+implements the separate epoch statistic.
 
 On validation, save every row's logit/probability and metadata. Average alias
 **probabilities** within each retained same-recording component; each such
@@ -111,10 +124,15 @@ component contributes one vote. Assert target agreement. Compute duplicate
 aware accuracy and macro-F1 (primary), normal and abnormal recall, confusion
 counts, and mean binary cross-entropy of the aggregated probabilities. Also
 report equivalent raw row-level metrics as diagnostics. The fixed probability
-threshold is **0.5** for all validation metrics, checkpoint selection,
-architecture screens and F002b. There is no model-specific threshold tuning.
+threshold is **0.5: predict abnormal iff probability >= 0.5** for all
+validation metrics, checkpoint selection, architecture screens and F002b.
+There is no model-specific threshold tuning.
 These metrics measure OpenPOCUS annotation agreement, not clinical diagnostic
-performance.
+performance. The same validation partition is reused for checkpoint
+selection, architecture qualification and F002b checkpoint selection. Its
+performance is therefore development/selection evidence and may be optimistic;
+final generalization claims require later evaluation on the untouched test
+partition under a separate approved protocol.
 
 Report an all-normal validation reference at the same component units. Also
 fit one cheap metadata-only shortcut diagnostic on train: `OneHotEncoder`
@@ -134,7 +152,10 @@ epsilon 1e-8), learning rate
 sequence microbatch **2**, gradient accumulation **4**, effective batch **8**.
 Flatten `B×K` frames internally for the encoder, then restore B/K for mean
 pooling. The same physical/effective batch applies to all candidates, avoiding
-architecture-specific BatchNorm exposure. Shuffle train deterministically
+architecture-specific BatchNorm exposure. During full fine-tuning, BatchNorm
+layers stay in normal train mode and update running statistics; validation and
+inference use eval mode. Use **no gradient clipping**. Shuffle train
+deterministically
 using one generator seeded by run seed; use zero data-loader workers. Seed
 Python, NumPy, PyTorch and CUDA; set cuDNN deterministic true, benchmark false,
 `torch.use_deterministic_algorithms(True)`, and
@@ -153,9 +174,10 @@ without a checkpoint improvement by this ordered rule. Keep all epoch history.
 No architecture-specific sweep is permitted.
 
 One optimization-failure rescue is allowed: if any nonfinite loss occurs, or
-by completion of epoch 4 the best train loss in epochs 2–4 has not fallen at
-least 1% below epoch-1 train loss, rerun that candidate once at **1e-5** with
-all other settings unchanged. Record trigger and rescue. Poor validation
+by completion of epoch 4 the best **reported global weighted epoch train loss**
+in epochs 2–4 has not fallen at least 1% below the reported epoch-1 loss,
+rerun that candidate once at **1e-5** with all other settings unchanged.
+Record trigger and rescue. Poor validation
 performance alone never triggers rescue. If the rescue also fails, mark the
 candidate invalid; no second rescue. If memory truly makes the common batch
 impossible, stop before continuing comparisons and amend the protocol for
@@ -166,14 +188,27 @@ impossible, stop before continuing comparisons and amend the protocol for
 At K16 a candidate is valid only if its duplicate-aware validation macro-F1
 is **strictly above** the all-normal reference and both class recalls are
 positive. If all three fail, stop F002 for review; do not add a fourth model.
-Remove invalid candidates. Among the rest, remove a candidate if another has
-no lower K16 macro-F1 and no higher complete-sequence FLOPs, with at least one
-strict advantage. If more than two remain, retain the highest macro-F1 and
-the lowest-FLOPs **remaining** candidate. Resolve an exact F1 tie by lower
-FLOPs, then alphabetical candidate ID; resolve an exact FLOPs tie by higher
-F1, then ID. If both picks coincide, take the next-highest F1 candidate. Save
-the complete gate table, including latency, size and training stability, but
-use no invented weighted score.
+Remove invalid candidates. The initial reduction uses the **primary model-only
+CUDA** K16 benchmark from §9. Candidate A may eliminate B only when A's K16
+macro-F1 is at least B's, A's sequence FLOPs are at most B's, at least one of
+those comparisons is strict, **and B has no material runtime advantage over
+A**. B has such an advantage if its model-only median latency is
+`< 0.90 × A latency` **or** its model-only sequence throughput is
+`> 1.10 × A throughput`. Practical JPEG pipeline measurements support
+interpretation but do not trigger automatic elimination.
+
+If more than two valid, non-eliminated candidates remain, fill two slots
+deterministically. First choose highest macro-F1, breaking ties by lower FLOPs,
+then lower model-only median latency, then candidate ID. Among remaining
+candidates, provisionally choose lowest FLOPs, breaking ties by higher F1,
+then lower latency, then ID. If any other remaining candidate has the defined
+`>10%` runtime advantage over that provisional second choice, use a runtime
+challenger instead. With multiple challengers choose lower model-only median
+latency, then higher model-only sequence throughput, lower FLOPs, higher F1,
+then ID. `reduce_k16_candidates` implements this exact cap of two. Save the
+complete gate table, including size and training stability; its helper also
+rejects CPU, mismatched GPU models/node classes or benchmark flags. Use no weighted
+score.
 
 Evaluate the at-most-two retained selected **K16 checkpoints** on validation
 at K4/8/16 with the nested sampler. Preserve row and component predictions,
@@ -182,21 +217,33 @@ If only one candidate is valid after the gate, it is selected after its K
 response is recorded. For two candidates, select one automatically only when
 it has macro-F1 no worse and FLOPs no higher at **each corresponding K**, at
 least one strict advantage, and no material runtime contradiction. A runtime
-contradiction means its median response latency is >10% higher **or** sequence
-throughput >10% lower at any K under the same benchmark platform/protocol.
+contradiction means the other candidate has the same defined >10% model-only
+runtime advantage at any K under the same benchmark platform/protocol.
 Otherwise present the complete prespecified evidence table to Charalampos
 and Salom: K16 macro-F1/accuracy and both recalls; K4→8→16 change; FLOPs;
-median/p95 latency; both throughput units; checkpoint size; training
-stability; and implementation/deployment complexity. They record one-backbone
+model-only median/p95 latency; model-only sequence/frame throughput;
+checkpoint size; training stability; and implementation/deployment complexity.
+They record one-backbone
 choice and reasoning in the decision log before F002b. No score composed from
 new weights/metrics may be invented after results.
 
 If exactly two finalists remain ambiguous after the K response, their K16
 macro-F1 differs by **<0.02**, and neither has clear dominance under the rule
-above, run exactly one confirmatory seed **43** for each finalist under this
-same method. Reapply the evidence gate; a persisting tradeoff goes to the
-recorded human decision. Do not spend seed 43 when a backbone is already
-clear. No extra seeds or K-specific retraining.
+above, run exactly one confirmatory seed **43** for **both** finalists under
+the complete same K16 training, rescue, validity and selected-checkpoint
+K4/8/16 response, FLOPs/runtime and artifact protocol. Seed 43 is **robustness
+confirmation**: retain
+seed-42 and seed-43 evidence separately and present both side-by-side at the
+existing Charalampos-and-Salom human evidence gate. Do **not** average seeds
+into a new winner score or run another automatic tournament. The human gate
+may use only the prespecified dimensions listed above: macro-F1/accuracy,
+both recalls, K response, FLOPs, model-only latency, both throughput units,
+size, training stability and implementation/deployment complexity. Record the
+one-backbone decision and rationale before F002b. If either seed-43 run fails
+validity even after its single allowed rescue, record the failure and send the
+complete evidence to the human gate; never substitute another seed. Do not
+spend seed 43 when a backbone is already clear. No extra seeds or K-specific
+retraining.
 
 ## 7. F002b frozen static reference
 
@@ -208,6 +255,13 @@ The exploratory F002a checkpoint never becomes the static reference by
 convenience. Save immutable checkpoint, weights/config/protocol hashes and
 validation evidence under ignored `artifacts/F002/`; T009 consumes this
 reference unchanged. T008 generates **no test-set model inference**.
+Apply the same optimization-failure rescue and basic all-normal/both-recalls
+validity gate to seed 2026. If optimization fails, permit only the one
+preregistered 1e-5 rescue. If it still fails, or its selected checkpoint fails
+the validity gate, **stop F002b** and document the failure. Do not substitute
+the seed-42 exploratory checkpoint, invent seed 2027/another seed, or silently
+choose a second architecture. A project-level methodology decision is needed
+before proceeding.
 
 ## 8. Complete-sequence FLOPs convention and coverage gate
 
@@ -215,31 +269,68 @@ Use **only** `fvcore.nn.FlopCountAnalysis` on the actual batch-one
 `[1,K,3,224,224]` sequence wrapper: K frame encodes + mean feature pool +
 binary head. Following fvcore, one fused multiply-add is **one reported
 FLOP** (not two). The custom handlers count elementwise add/multiply/HardTanh/
-GELU as one per output element, softmax as five per output element, mean as
+GELU/**ReLU/clamp** as one per output element, softmax as five per output
+element, mean as
 one per input element, and max pooling as output elements × (kernel area−1)
 comparisons. These are fixed analytical conventions, not measured energy or
 latency. Shape/identity operations (reshape, view, transpose) are bookkeeping.
 Use the same handlers across all three models and every K; never mix published
 per-image counts or a separate manual estimator.
 
-`src/f002_flops.py` fails if **any** operator is unsupported. DeiT fused
-attention is disabled so attention QK and attention-value matmuls are visible;
+`src/f002_flops.py` fails if **any** operator is unsupported or if fvcore would
+silently ignore an operator outside the explicit reviewed bookkeeping
+allowlist. The exact qualified names currently allowed are `aten::Int`,
+`aten::cat`, `aten::dropout` (identity in eval), `aten::expand`,
+`aten::flatten`, `aten::permute`, `aten::reshape`, `aten::select`,
+`aten::size`, `aten::slice`, `aten::squeeze`, `aten::transpose`,
+`aten::unbind`, `prim::Constant`, `prim::ListConstruct`,
+`prim::ListUnpack`, and `prim::NumToTensor`. A new traced ignored operation
+must be reviewed and counted if arithmetic; it cannot silently inherit
+fvcore's broad ignored set. ReLU, ReLU_, clamp and clamp_ have explicit
+elementwise handlers. DeiT fused attention is disabled so attention QK and
+attention-value matmuls are visible;
 the checker additionally requires positive matmul and softmax counts for the
-transformer, plus mean pool and binary head for every candidate. The
-no-training test traces all three at K4, K8 and K16 with zero unsupported
-operators in the pinned local environment. T008 reruns this gate in its actual
+transformer, plus mean pool and a **module-specific positive binary-head
+count** for every candidate. The no-training test traces all three at K4,
+K8 and K16 with zero unsupported
+and zero unapproved ignored operators, positive ResNet ReLU, and the expected
+head contribution in the pinned local environment. T008 reruns this gate in
+its actual
 environment **before training** and saves total and by-operator counts. If
 coverage becomes incomplete, stop rather than reporting understated FLOPs.
 Older F001 fvcore transformer numbers are historical and not substituted into
-this F002 comparison.
+this F002 comparison. FLOPs are an explicit analytical arithmetic convention;
+runtime is measured with a supported optimized backend. The two quantities
+must not be conflated.
 
 ## 9. Runtime, throughput, footprint
 
-Benchmark one zone-sequence request at a time, with the K frames batched
-inside the encoder. Run candidates on the **same hardware, software, backend,
-precision and thread settings** for a given table, with CUDA synchronization
-around each request. Use model eval and FP32. For each candidate/K/path,
-perform **50 warm-up requests**, then **200 timed requests**, for **5 repeats**.
+The **primary comparison platform is a CUDA GPU on DAS-5**. Every candidate/K
+point in one comparison gate/table must run on the same GPU model and node
+class. The first accepted runtime measurement fixes that GPU model for the
+gate; record exact hostname/node, GPU model, driver, CUDA/PyTorch versions,
+and relevant CPU threads. Do not fall back to CPU without a methodology
+amendment. Use the same software, precision and flags across candidates.
+
+The **primary automatic runtime gate** is model-only CUDA inference, one
+zone-sequence request at a time with K frames batched inside the encoder.
+Use `model.eval()`, `torch.inference_mode()`, FP32, optimized normal
+PyTorch/cuDNN kernels and CUDA synchronization around each request. Set
+`torch.use_deterministic_algorithms(False)`,
+`torch.backends.cudnn.deterministic=False`,
+`torch.backends.cudnn.benchmark=True`,
+`torch.backends.cuda.matmul.allow_tf32=False`, and
+`torch.backends.cudnn.allow_tf32=False` **for benchmarking only**. Training
+and validation retain §5's deterministic flags. Warm-up precedes timing so
+cuDNN/kernel-selection work is excluded. Do not force CNNs away from normal
+optimized kernels.
+
+Fix request IDs from the T006 validation manifest: the **first 200 retained
+validation rows in manifest order** form the timed list; its first 50 rows
+form the warm-up list. Use the same IDs and order for every candidate, repeat
+and equivalent K comparison. `benchmark_request_ids` implements this. For
+each candidate/K/path, run those **50 warm-up requests**, then the **200
+timed requests**, for **5 repeats**.
 Preserve every request latency and each repeat wall-clock total. Report median
 of the five repeat medians and median of the five repeat p95 values, with raw
 timings retained. Compute sequence predictions/s as 200 divided by the
@@ -249,14 +340,29 @@ latency. If these counts prove infeasible, amend the protocol once for all
 candidates before comparison and record why.
 
 Separate (a) model-only inference on already prepared tensors from (b)
-practical JPEG decode + common preprocessing + transfer + model path. Use
-the same deterministic validation request list and order across candidates;
-do not time disk-cache differences as model gains. Record CPU/GPU model,
-execution device, memory, OS, Python/PyTorch/CUDA/driver versions, threads,
-precision, batch semantics, transfer boundary and timing API. This machine
-is a comparison platform, not a claimed ambulance device. Report parameter
+**required supporting** practical JPEG decode + common preprocessing +
+transfer + model path. Before the practical benchmark warm-up, make one
+complete **untimed** read/decode pass over the 200 request list to avoid
+measuring mainly cold filesystem cache. This is a warm-cache pipeline result,
+not storage cold-start performance. Practical pipeline measurements, p95
+latency and frames/s support interpretation but do not independently trigger
+automatic architecture elimination. Record CPU/GPU model, execution device,
+memory, OS, Python/PyTorch/CUDA/driver versions, hostname/node class,
+benchmark flags, threads, precision, batch semantics, transfer boundary and
+timing API. This machine is a comparison platform, not a claimed ambulance
+device. Report parameter
 count and actual serialized **FP32** checkpoint/model size. Peak inference
 memory is optional if reliable. FLOPs do not imply latency or energy.
+
+For DeiT, keep canonical `fused_attn=False` for training, selection predictions
+and FLOPs. The **primary DeiT runtime** uses normal supported timm
+`fused_attn=True` on the **identical checkpoint weights**. Before timing, on
+all 200 fixed requests **separately at each benchmarked K4/K8/K16**, compare
+fused and unfused FP32 logits; require
+`max_abs_logit_difference <= 1e-5`. Preserve the result and both paths'
+summaries, with unfused timing secondary. If equivalence fails, mark fused
+runtime invalid, report the deviation, and use unfused timing only after
+documenting its methodology consequence. Never silently accept fused results.
 
 ## 10. T008 artifact contract and stop conditions
 
@@ -268,7 +374,10 @@ final row logits/probabilities and aggregated component probabilities;
 exam/zone, target, dependency group, component ID, device, K and sampled
 indices/path identities; optimizer/rescue status; complete FLOPs totals and
 operator breakdown; raw latency/throughput and both pipeline summaries;
-parameter count/FP32 serialized size; hardware/software provenance. Keep
+parameter count/FP32 serialized size; all-normal and metadata-only reference
+outputs; fixed benchmark request IDs/order; per-K DeiT fused/unfused
+equivalence maxima and primary fused plus secondary unfused runtime summaries;
+benchmark flags and DAS-5 node/GPU/driver/software provenance. Keep
 checkpoint and result files ignored; track experiment README/config and a
 measured-versus-interpretation account in the experiment log. Do not infer
 clinical effectiveness from annotation agreement.
@@ -295,16 +404,22 @@ resource optimizer. Operating modes are measured before a later controller.
    assert no conflicting T006 component enters retained units.
 3. Build the common preprocessing and sequence wrapper with exact pretrained
    identifiers. Run strict FLOPs coverage for all candidates/K **without
-   training**; stop on any unsupported operation.
+   training**; stop on any unsupported or unapproved ignored operation.
 4. Run the all-normal and train-fitted metadata-only validation diagnostics.
 5. Train MobileNetV2, ResNet-18 and DeiT-Tiny at K16/seed42 under the same
    recipe; save every run artifact, including any bounded rescue.
-6. Apply the validity and deterministic reduction gates; stop if all fail.
+6. Benchmark the fixed 200 validation requests on the locked DAS-5 CUDA
+   platform, with the required DeiT equivalence gate and practical path.
+   Apply the validity and deterministic runtime-aware reduction gates; stop
+   if all fail.
 7. Evaluate at most two selected checkpoints at K4/8/16 without retraining;
    save component and row predictions plus cost/runtime evidence.
-8. Apply the final dominance/runtime gate; run both seed43 confirmations only
-   if its exact ambiguity trigger holds.
+8. Apply the final dominance/runtime gate. If its exact ambiguity trigger
+   holds, run both seed43 confirmations and K responses; take **both seeds**
+   to the human evidence gate without averaging or automatic reselection.
 9. Present the prespecified table to Charalampos and Salom when needed; record
    the selected backbone and why alternatives were rejected before F002b.
-10. Train a fresh seed2026 K16 F002b instance, freeze its checkpoint/config/
-    hashes, and hand it to T009. Generate no test-set predictions in T008.
+10. Train a fresh seed2026 K16 F002b instance with the same rescue/validity
+    rules. Stop for a project-level decision if it fails. Otherwise freeze its
+    checkpoint/config/hashes and hand it to T009. Generate no test-set
+    predictions in T008.

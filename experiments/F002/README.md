@@ -15,6 +15,11 @@ equivalent pinned package versions from `requirements.txt`, then rerun the
 strict model/FLOPs tests and record the actual wheel/build/hardware. Never
 download weights merely to run the T007 tests.
 
+The proposed primary runtime comparison is specified for a matched **DAS-5
+CUDA GPU model/node class**, with optimized FP32 benchmark flags and a fixed
+200-row validation request list. The local T007 tests build untrained models
+only; they do not substitute local laptop timing for that comparison.
+
 From the repository root, check the methodology-support code with the active
 project Python (the current checkout's existing `.venv` was used for T007):
 

@@ -10,6 +10,13 @@ from pathlib import Path
 
 
 Key = tuple[str, str]
+PRIMARY_BENCHMARK_FLAGS = {
+    "torch.use_deterministic_algorithms": False,
+    "torch.backends.cudnn.deterministic": False,
+    "torch.backends.cudnn.benchmark": True,
+    "torch.backends.cuda.matmul.allow_tf32": False,
+    "torch.backends.cudnn.allow_tf32": False,
+}
 
 
 def nested_frame_indices(frame_count: int, k: int) -> tuple[int, ...]:
@@ -74,8 +81,8 @@ def verify_t006(protocol_path: Path, t006_dir: Path) -> dict[str, list[dict[str,
     all_rows = [row for rows in partitions.values() for row in rows]
     if len(all_rows) != protocol["t006_expected"]["retained"] or len({key(row) for row in all_rows}) != len(all_rows):
         raise ValueError("T006 retained cohort count/uniqueness changed")
-    if min(int(row["frame_count"]) for row in all_rows) < protocol["sampling"]["initial_k"]:
-        raise ValueError("K=16 cannot be applied to every retained sequence")
+    if min(int(row["frame_count"]) for row in all_rows) != protocol["t006_expected"]["minimum_frames"]:
+        raise ValueError("T006 pinned minimum retained frame count changed")
     targets = [int(row["binary_target"]) for row in all_rows]
     if (targets.count(0) != protocol["t006_expected"]["normal"] or
             targets.count(1) != protocol["t006_expected"]["abnormal"]):
@@ -151,6 +158,110 @@ def training_weights(rows: list[dict], unit_of: dict[Key, str]) -> dict[Key, flo
     for row in rows:
         sizes[unit_of[key(row)]] += 1
     return {key(row): 1.0 / sizes[unit_of[key(row)]] for row in rows}
+
+
+def optimization_loss(losses, weights, effective_batch_sequences: int = 8):
+    """Fixed-denominator step contribution; accepts differentiable losses.
+
+    Call once for an effective batch or once per accumulation microbatch and
+    sum gradients before the optimizer step. Never divide by batch weight sum,
+    including for the final partial accumulation window.
+    """
+    if len(losses) != len(weights) or len(losses) == 0 or effective_batch_sequences != 8:
+        raise ValueError("Expected aligned nonempty losses/weights and effective batch 8")
+    return sum(weight * loss for loss, weight in zip(losses, weights)) / effective_batch_sequences
+
+
+def reported_weighted_train_loss(epoch_losses, epoch_weights) -> float:
+    """Global epoch weighted mean for reporting and the rescue criterion."""
+    if len(epoch_losses) != len(epoch_weights) or len(epoch_losses) == 0:
+        raise ValueError("Expected aligned nonempty epoch losses/weights")
+    denominator = sum(epoch_weights)
+    if denominator <= 0:
+        raise ValueError("Epoch weight sum must be positive")
+    return sum(weight * loss for loss, weight in zip(epoch_losses, epoch_weights)) / denominator
+
+
+def benchmark_request_ids(validation_rows: list[dict]) -> dict[str, tuple[Key, ...]]:
+    """Freeze model-only and practical timing requests from T006 manifest order."""
+    if len(validation_rows) < 200 or any(row["partition"] != "validation"
+                                         for row in validation_rows):
+        raise ValueError("Expected at least 200 ordered T006 validation rows")
+    timed = tuple(key(row) for row in validation_rows[:200])
+    if len(set(timed)) != 200:
+        raise ValueError("Duplicate benchmark request ID")
+    return {"timed": timed, "warmup": timed[:50]}
+
+
+def _runtime_advantage(challenger: dict, reference: dict) -> bool:
+    """Strict >10% model-only advantage under the locked CUDA protocol."""
+    return (challenger["model_only_median_latency_ms"] <
+            0.90 * reference["model_only_median_latency_ms"] or
+            challenger["model_only_sequence_throughput_s"] >
+            1.10 * reference["model_only_sequence_throughput_s"])
+
+
+def reduce_k16_candidates(candidates: list[dict], all_normal_macro_f1: float) -> dict:
+    """Deterministic three-to-at-most-two gate using F1, FLOPs and runtime.
+
+    Each candidate provides id, duplicate-aware K16 macro-F1 and class recalls,
+    sequence FLOPs, and primary model-only CUDA median latency/throughput.
+    """
+    numeric = {"macro_f1", "normal_recall", "abnormal_recall", "flops",
+               "model_only_median_latency_ms", "model_only_sequence_throughput_s"}
+    required = {"id", "benchmark_platform", "execution_device", "gpu_model",
+                "node_class", "hostname", "benchmark_flags"} | numeric
+    if not candidates or len(candidates) > 3 or len({row["id"] for row in candidates}) != len(candidates):
+        raise ValueError("Candidate IDs must be nonempty and unique")
+    if not math.isfinite(all_normal_macro_f1):
+        raise ValueError("Invalid all-normal reference")
+    for row in candidates:
+        if not required.issubset(row) or any(not math.isfinite(row[field]) for field in
+                numeric) or any(row[field] <= 0 for field in
+                ("flops", "model_only_median_latency_ms", "model_only_sequence_throughput_s")):
+            raise ValueError("Invalid K16 candidate evidence")
+        if (row["benchmark_platform"] != "DAS-5" or
+                not row["execution_device"].startswith("cuda") or
+                not row["gpu_model"] or not row["node_class"] or not row["hostname"] or
+                row["benchmark_flags"] != PRIMARY_BENCHMARK_FLAGS):
+            raise ValueError("K16 runtime gate requires pinned DAS-5 CUDA benchmark")
+    if len({(row["gpu_model"], row["node_class"]) for row in candidates}) != 1:
+        raise ValueError("K16 candidates require one GPU model/node class")
+    valid = [row for row in candidates if row["macro_f1"] > all_normal_macro_f1 and
+             row["normal_recall"] > 0 and row["abnormal_recall"] > 0]
+    invalid_ids = sorted(row["id"] for row in candidates if row not in valid)
+    def can_eliminate(a, b):
+        return (a["macro_f1"] >= b["macro_f1"] and a["flops"] <= b["flops"] and
+                (a["macro_f1"] > b["macro_f1"] or a["flops"] < b["flops"]) and
+                not _runtime_advantage(b, a))
+    survivors = [b for b in valid if not any(can_eliminate(a, b) for a in valid if a is not b)]
+    eliminated_ids = sorted(row["id"] for row in valid if row not in survivors)
+    if len(survivors) <= 2:
+        selected = sorted(survivors, key=lambda row: row["id"])
+    else:
+        first = min(survivors, key=lambda row: (-row["macro_f1"], row["flops"],
+                                                row["model_only_median_latency_ms"], row["id"]))
+        remaining = [row for row in survivors if row is not first]
+        provisional = min(remaining, key=lambda row: (row["flops"], -row["macro_f1"],
+                                                      row["model_only_median_latency_ms"], row["id"]))
+        challengers = [row for row in remaining if row is not provisional and
+                       _runtime_advantage(row, provisional)]
+        second = min(challengers, key=lambda row: (row["model_only_median_latency_ms"],
+                                                   -row["model_only_sequence_throughput_s"],
+                                                   row["flops"], -row["macro_f1"], row["id"])) if challengers else provisional
+        selected = [first, second]
+    return {"retained": [row["id"] for row in selected],
+            "invalid": invalid_ids, "dominated": eliminated_ids}
+
+
+def seed43_confirmation_required(finalists: list[dict],
+                                 automatic_backbone: str | None) -> bool:
+    """Seed 43 is a two-finalist robustness check, never an auto-reselection."""
+    if len(finalists) != 2 or automatic_backbone is not None:
+        return False
+    if any("macro_f1" not in row for row in finalists):
+        raise ValueError("Missing K16 duplicate-aware macro-F1")
+    return abs(finalists[0]["macro_f1"] - finalists[1]["macro_f1"]) < 0.02
 
 
 def binary_metrics(targets: list[int], probabilities: list[float],
