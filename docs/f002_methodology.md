@@ -1,7 +1,7 @@
 # F002 methodology — T007 preregistration
 
-**Status:** proposed for independent review in T007/issue #9. This is the
-pre-registered experimental contract for F002a architecture qualification and
+**Status:** accepted after independent review and PR #22 merge (T007 complete;
+issue #9 closed). This is the pre-registered experimental contract for F002a architecture qualification and
 F002b frozen static baseline. `configs/f002_protocol.json` fixes the values;
 `src/f002_protocol.py` and `src/f002_flops.py` implement the critical rules.
 The merged T006 manifests are frozen inputs. F002 training must not silently

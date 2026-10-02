@@ -30,10 +30,10 @@ The current direction is to:
 4. study how the system behaves under edge constraints;
 5. keep the design reproducible and deployable rather than treating adaptivity only as an offline model experiment.
 
-The prehospital/ambulance lung POCUS use-case design and variable-frame direction were accepted in TA Sudaksh's feedback. OpenPOCUS remains a technical experimental proxy; T007 proposes bounded F002 frame counts, while the winning architecture, final adaptive operating points and controller mapping remain undecided (see D020–D024 in `docs/decision_log.md`).
+The prehospital/ambulance lung POCUS use-case design and variable-frame direction were accepted in TA Sudaksh's feedback. OpenPOCUS remains a technical experimental proxy; T007 fixes bounded F002 qualification frame counts, while the winning architecture, final adaptive operating points and controller mapping remain undecided (see D020–D024 in `docs/decision_log.md`).
 
 The current conditional technical plan is in [`docs/design_pathway.md`](docs/design_pathway.md).
-The proposed, preregistered F002 qualification and static-baseline contract is
+The independently reviewed F002 qualification and static-baseline contract is
 in [`docs/f002_methodology.md`](docs/f002_methodology.md), with exact values in
 [`configs/f002_protocol.json`](configs/f002_protocol.json). The copied
 [`docs/adaptivity_project_notes.md`](docs/adaptivity_project_notes.md) contains

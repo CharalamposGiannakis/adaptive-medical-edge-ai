@@ -1,11 +1,12 @@
 # F002 — OpenPOCUS architecture qualification and static reference
 
-**Status:** T007 methodology proposed for independent review; no F002 model
-has been trained, evaluated or selected. T008 implements F002a/F002b only
-after T007 merges. The authoritative scientific contract and ordered T008
-handoff are [`docs/f002_methodology.md`](../../docs/f002_methodology.md) and
+**Status:** T007 methodology accepted after independent review and PR #22
+merge; no F002 model has been trained, evaluated or selected. T008 implements
+F002a/F002b under the accepted D024 contract. The authoritative scientific
+contract and ordered T008 handoff are
+[`docs/f002_methodology.md`](../../docs/f002_methodology.md) and
 [`configs/f002_protocol.json`](../../configs/f002_protocol.json). D024 records
-the proposed decision. This folder pins the dependency API versions; it does
+the accepted decision. This folder pins the dependency API versions; it does
 not contain a run script or result yet.
 
 Use the existing project environment on Charalampos's machine; do not create
@@ -15,7 +16,7 @@ equivalent pinned package versions from `requirements.txt`, then rerun the
 strict model/FLOPs tests and record the actual wheel/build/hardware. Never
 download weights merely to run the T007 tests.
 
-The proposed primary runtime comparison is specified for a matched **DAS-5
+The primary runtime comparison uses a matched **DAS-5
 CUDA GPU model/node class**, with optimized FP32 benchmark flags and a fixed
 200-row validation request list. The local T007 tests build untrained models
 only; they do not substitute local laptop timing for that comparison.
