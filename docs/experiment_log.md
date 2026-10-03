@@ -22,7 +22,7 @@ Key measurements:
 
 Reproduce using the existing `.venv` with `python experiments/F001c_per_input_depth_utility/run_analysis.py`. Source and interpretation are in `experiments/F001c_per_input_depth_utility/`; generated tables/plots are ignored under `artifacts/F001c_per_input_depth_utility/`. The official test set remains untouched.
 
-## F002a — OpenPOCUS architecture qualification (T008, in progress)
+## F002a — OpenPOCUS architecture qualification (T008)
 
 Research question: which of MobileNetV2, ResNet-18 and DeiT-Tiny, under the D024 protocol, should become the single F002b static backbone? Ran on DAS-5 (GTX 1080 Ti, node201/node205) on 2026-10-03 with seed 42, train gradients only on T006 train and selection only on validation. No test-partition inference. Commands, environment deviations (Python 3.12.14 instead of the pinned 3.14.3; all other packages exact) and full tables are in `experiments/F002/README.md`. Outputs are in ignored `artifacts/F002/`.
 
@@ -33,6 +33,19 @@ Measured, duplicate-aware validation (254 units):
 - Strict fvcore K16 sequence FLOPs: 5.11 G, 29.17 G and 20.29 G. Model-only median latency on one 1080 Ti: 11.35, 7.53 and 12.74 ms (DeiT fused; fused vs unfused max logit difference 9.5e-7).
 - The K16 gate retained MobileNetV2 and ResNet-18 and eliminated DeiT-Tiny.
 - The same checkpoints at K4/8/16: MobileNetV2 0.813/0.858/0.867, ResNet-18 0.750/0.775/0.782. MobileNetV2 has the higher F1 and lower FLOPs at every K, and ResNet-18 the >10% faster model-only runtime at every K.
-- The final gate gave no automatic backbone. The K16 gap is 0.086, so seed 43 was not triggered. Next is the human evidence gate.
+- The final gate gave no automatic backbone. The K16 gap is 0.086, so seed 43 was not triggered. At the human evidence gate, Charalampos and Salo selected MobileNetV2 (D025).
 
 Interpretation: MobileNetV2 is ahead on predictive quality and arithmetic cost. ResNet-18's advantage is GPU latency only, and the JPEG-decode pipeline (21 to 87 ms per request) shrinks it to 3 to 5 ms. F1 rises from K4 to K16 for both, which gives T009 a first hint that variable K is usable. These are single-seed validation numbers that also drove selection, so they are development evidence, not generalization or clinical performance.
+
+## F002b — Frozen MobileNetV2 static reference (T008)
+
+Research question: does a fresh MobileNetV2, trained under the unchanged D024 recipe with seed 2026, pass the validity gate so it can serve as the frozen static baseline for T009 onwards? Ran on DAS-5 node201 (GTX 1080 Ti) on 2026-10-03, same code (source hashes match commit `ee4aaa4`), train gradients on T006 train, checkpoint selection on validation, no test-partition inference.
+
+Measured, duplicate-aware validation (254 units):
+
+- Valid on the first attempt (lr 1e-4, no rescue). Best epoch 8; early stopping after epoch 11; 38.2 min of training.
+- Macro-F1 0.859, accuracy 0.886, normal recall 0.944, abnormal recall 0.750, loss 0.354. All-normal reference 0.412.
+- K16 cost: 5.11 GFLOPs; model-only 11.40 ms median, 87.7 seq/s, 1403 frames/s; JPEG pipeline 89.17 ms, 11.2 seq/s.
+- Frozen checkpoint `artifacts/F002/f002b/mobilenet_v2_seed2026/lr1e-4/checkpoint.pt`, SHA-256 `5bad132633fd6188c0e449a75f73294612479bb1f0dc1820d8e6c459f7bdb823`, read-only locally and on DAS-5.
+
+Interpretation: seed 2026 lands close to F002a's seed-42 MobileNetV2 (0.859 vs 0.867; both find 57 of 76 abnormal units, 53 of them the same), which suggests the backbone choice was not a lucky seed. It is still one validation split that also chose the checkpoint, so it is development evidence, not a generalization estimate.

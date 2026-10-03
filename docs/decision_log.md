@@ -320,7 +320,9 @@ available. Historical decisions are kept even if later superseded.
 ### D025 — Select MobileNetV2 as the F002b static backbone
 
 **Date:** 2026-10-03
-**Status:** Proposed by Salo; needs Charalampos's agreement before F002b trains
+**Status:** Accepted by Salo and Charalampos on 2026-10-03 (§6 human evidence gate), before F002b training
+
+- **Charalampos's reasoning on acceptance:** The deciding evidence is not only the higher K16 F1. MobileNetV2's K4/K8 operating points already beat ResNet-18 K16 on predictive quality with much less compute, and beat its model-only latency across K. ResNet-18's same-K GTX 1080 Ti speed advantage is real and stays documented, but it does not outweigh the predictive, FLOPs, size and K-frontier evidence.
 
 - **Decision:** Train the F002b static reference (seed 2026, K16) on MobileNetV2. ResNet-18 and DeiT-Tiny are not carried forward.
 - **Evidence (F002a, seed 42, duplicate-aware validation; `experiments/F002/README.md`):** The final §6 gate kept MobileNetV2 and ResNet-18 with no automatic winner. MobileNetV2 has the higher macro-F1 and lower FLOPs at every K (K4/8/16: 0.813/0.858/0.867 vs 0.750/0.775/0.782; 1.28/2.55/5.11 vs 7.29/14.59/29.17 GFLOPs). ResNet-18 has the >10% model-only runtime advantage on the GTX 1080 Ti at every K (K16: 7.53 vs 11.35 ms). Seed 43 was not triggered (K16 gap 0.086).
@@ -339,7 +341,6 @@ The following are intentionally **not decided yet**:
 
 - Whether OpenPOCUS's size, bias and sample properties permit useful model/adaptive behaviour, to be tested with a proof-of-concept baseline; it remains a technical proxy rather than clinical deployment evidence.
 - Any additional biological-patient identity mapping if new provenance becomes available; D023 fixes the current T006 quality exclusions and known-group split protocol.
-- Final backbone selection after the bounded F002a comparison; D024 fixes the candidate input processing and K screen, but no winner.
 - Whether variable-frame input yields useful adaptive behaviour, and whether other adaptive dimensions also help.
 - Final measured operating points beyond the specified F002 qualification K screen and mapping from active resource states to those points.
 - Compression technique.

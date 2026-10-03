@@ -1,11 +1,13 @@
 # F002 — OpenPOCUS architecture qualification and static reference
 
-**Status:** T008 in progress. F002a ran on DAS-5 (2026-10-03) through §11 step 8
-of [`docs/f002_methodology.md`](../../docs/f002_methodology.md). The
-deterministic gates left two finalists with no automatic winner and no seed-43
-trigger, so the one-backbone choice now goes to the human evidence gate
-(Charalampos and Salo, §6). F002b (seed 2026) has not been trained. No model
-has seen the T006 test partition.
+**Status:** T008 complete pending PR review. Every step of the
+[`docs/f002_methodology.md`](../../docs/f002_methodology.md) §11 handoff ran
+on DAS-5 on 2026-10-03. F002a's deterministic gates left two finalists with no
+automatic winner and no seed-43 trigger. Charalampos and Salo then chose
+MobileNetV2 at the §6 human gate (D025). F002b, a fresh MobileNetV2 trained
+with seed 2026, passed the validity gate and is the frozen static reference
+for T009 (see [F002b](#f002b-frozen-static-reference)). No model has seen the
+T006 test partition.
 
 The scientific contract is D024, `docs/f002_methodology.md` and
 [`configs/f002_protocol.json`](../../configs/f002_protocol.json). This folder
@@ -45,10 +47,14 @@ done
 python experiments/F002/run_f002.py gate-final --seed 42
 ```
 
-After the backbone decision is in the decision log, F002b is
-`train --candidate <choice> --seed 2026 --stage f002b --decision D0xx`, then
-`benchmark --stage f002b ... --k 16`. `train` refuses to overwrite a finished
-run.
+After D025 was accepted, F002b ran as:
+
+```bash
+sbatch experiments/F002/das5_f002.sbatch train --candidate mobilenet_v2 --seed 2026 --stage f002b --decision D025
+sbatch -w node201 --exclusive experiments/F002/das5_f002.sbatch benchmark --candidate mobilenet_v2 --seed 2026 --stage f002b --k 16
+```
+
+`train` refuses to overwrite a finished run.
 
 ## Environment and implementation choices
 
@@ -71,7 +77,14 @@ run.
   successful preflight to the last benchmark, took about 47 min of wall-clock
   time and about 1.3 GPU-hours. Setup before that was copying the 6.1 GB of
   OpenPOCUS frames to `/var/scratch`, adding timm, fvcore and scikit-learn to
-  the existing `myenv`, and pre-downloading the pretrained weights.
+  the existing `myenv`, and pre-downloading the pretrained weights. F002b
+  took another 38.2 min of training (11 epochs of about 208 s on node201) plus
+  about 3 min of benchmarking.
+- **Recorded git commit.** The `git_head` field in every artifact says
+  `32bb08d` (the T007 merge), because the DAS-5 copy was synced before the T008
+  code was committed. The code that ran is identified by `source_sha256`
+  instead. Those hashes equal the files committed in `ee4aaa4`, which haven't
+  changed since.
 - **Python deviation.** The protocol pins Python 3.14.3. The reused `myenv`
   has Python 3.12.14. torch 2.14.0+cu126, torchvision 0.29.0+cu126, timm
   1.0.30, fvcore 0.1.5.post20221221, Pillow 12.3.0, NumPy 2.5.3 and
@@ -136,7 +149,52 @@ every K. ResNet-18 has a >10% model-only runtime advantage at every K, which
 §6 counts as a runtime contradiction. Result: no automatic backbone, seed 43
 not triggered (K16 F1 gap 0.086 ≥ 0.02), and the human gate is required.
 
+## F002b frozen static reference
+
+MobileNetV2 (D025), fresh ImageNet initialisation, seed 2026, K16, same
+recipe, sampler, weighting, checkpoint rule and threshold as F002a. Trained on
+node201, valid on the first attempt (lr 1e-4, no rescue). Early stopping ended
+it after epoch 11, with the best checkpoint at epoch 8. Five AMP-skipped steps,
+all in epoch 1.
+
+| Duplicate-aware validation (254 units) | Value |
+|---|---|
+| Macro-F1 | 0.859 |
+| Accuracy | 0.886 |
+| Normal recall | 0.944 (168/178) |
+| Abnormal recall | 0.750 (57/76) |
+| BCE of aggregated probabilities | 0.354 |
+| Row-level macro-F1 / accuracy (265 rows) | 0.862 / 0.887 |
+
+Validation macro-F1 by epoch was 0.731, 0.810, 0.785, 0.814, 0.849, 0.823,
+0.810, **0.859**, 0.824, 0.803, 0.824.
+
+| Cost at K16 (node201, GTX 1080 Ti) | Value |
+|---|---|
+| fvcore sequence FLOPs | 5.11 G |
+| Model-only median / p95 latency | 11.40 / 11.41 ms |
+| Model-only throughput | 87.7 seq/s, 1403 frames/s |
+| JPEG pipeline median / p95 latency | 89.17 / 91.26 ms |
+| JPEG pipeline throughput | 11.2 seq/s, 180 frames/s |
+| Parameters / FP32 checkpoint | 2,225,153 / 9,150,411 bytes |
+
+**Frozen reference for T009.** Use it unchanged:
+
+- checkpoint: `artifacts/F002/f002b/mobilenet_v2_seed2026/lr1e-4/checkpoint.pt`
+  (read-only, also on DAS-5 under `/var/scratch/bde2621/amea/`)
+- checkpoint SHA-256:
+  `5bad132633fd6188c0e449a75f73294612479bb1f0dc1820d8e6c459f7bdb823`
+- protocol: `configs/f002_protocol.json`, SHA-256 recorded in `run.json`
+- `pipe.load_checkpoint()` refuses to load it if the hash differs.
+
 ## Interpretation (not measured claims)
+
+- F002b (seed 2026) reached macro-F1 0.859 and F002a's MobileNetV2 (seed 42)
+  0.867. Both find 57 of 76 abnormal units, 53 of them the same. Both runs used the same
+  recipe and differ only in seed, so the 0.008 gap is a rough feel for seed
+  variance, not a measurement of it. Both runs also show the same
+  epoch-to-epoch swings (up to 0.08 here, 0.05 after epoch 2), and both were selected on the same
+  validation units, so 0.859 is still optimistic as a generalisation estimate.
 
 - MobileNetV2 leads on every predictive metric and needs 5.7× fewer FLOPs than
   ResNet-18, yet runs slower on this GPU. MobileNetV2 at K4 and K8 costs about
@@ -172,5 +230,8 @@ not triggered (K16 F1 gap 0.086 ≥ 0.02), and the human gate is required.
   The two finalists add `k_response/` and `k_response.json`. Every timed K has
   a `benchmark_k*.json` with all raw request latencies, repeat wall-clock
   times, both paths and the DeiT equivalence result.
+- `f002b/mobilenet_v2_seed2026/`: the frozen reference. Same layout as F002a:
+  `run.json` (with `backbone_decision: D025`), `lr1e-4/` and
+  `benchmark_k16.json`.
 - `gates/`: `k16_seed42.json` (gate table) and `final_seed42.json`.
 - `logs/`: SLURM output for every job.

@@ -70,7 +70,7 @@ Course-critical tasks are listed first. Priorities: **P0** = resolve before comm
 - **Priority:** P1
 - **Owner:** Salom (intended implementer)
 - **Dependencies:** T006 and independently reviewed/merged T007 protocol (D024; complete).
-- **Status:** In progress. F002a seed 42 ran on DAS-5 (2026-10-03): preflight, references, three K16 trainings (no rescue), K16 gate (DeiT-Tiny eliminated), K4/8/16 response and final gate. No automatic backbone and no seed-43 trigger, so the human evidence gate is next, then the decision-log entry and F002b seed 2026. See `experiments/F002/README.md`.
+- **Status:** Completed pending PR review. F002a seed 42 ran on DAS-5 (2026-10-03): preflight, references, three K16 trainings (no rescue), K16 gate (DeiT-Tiny eliminated), K4/8/16 response and final gate (no automatic backbone, no seed-43 trigger). Charalampos and Salo selected MobileNetV2 (D025). F002b seed 2026 passed the validity gate (macro-F1 0.859) and its checkpoint is frozen for T009. No test-partition inference. See `experiments/F002/README.md`.
 - **Acceptance criteria:** Execute [`f002_methodology.md`](f002_methodology.md) and its ordered handoff: F002a bounded qualification selects one recorded backbone, then F002b saves the fresh frozen static reference. Preserve reproducible configurations, raw results, per-input predictions and measurements; distinguish evidence from interpretation. Exploratory candidate checkpoints are not the final baseline; T006 test inference remains deferred.
 
 ### T009 — Characterize candidate adaptive dimensions
