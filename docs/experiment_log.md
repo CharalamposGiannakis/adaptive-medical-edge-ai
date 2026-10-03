@@ -21,3 +21,18 @@ Key measurements:
 - Aggregate validation accuracy remains highest at depth 9 (85.14%). Keep 6–9 and 12 available as candidates for scenario-specific analysis; do not declare an optimal depth from this feasibility-stage validation analysis.
 
 Reproduce using the existing `.venv` with `python experiments/F001c_per_input_depth_utility/run_analysis.py`. Source and interpretation are in `experiments/F001c_per_input_depth_utility/`; generated tables/plots are ignored under `artifacts/F001c_per_input_depth_utility/`. The official test set remains untouched.
+
+## F002a — OpenPOCUS architecture qualification (T008, in progress)
+
+Research question: which of MobileNetV2, ResNet-18 and DeiT-Tiny, under the D024 protocol, should become the single F002b static backbone? Ran on DAS-5 (GTX 1080 Ti, node201/node205) on 2026-10-03 with seed 42, train gradients only on T006 train and selection only on validation. No test-partition inference. Commands, environment deviations (Python 3.12.14 instead of the pinned 3.14.3; all other packages exact) and full tables are in `experiments/F002/README.md`. Outputs are in ignored `artifacts/F002/`.
+
+Measured, duplicate-aware validation (254 units):
+
+- References: all-normal macro-F1 0.412; train-fitted device + zone metadata model 0.482.
+- K16, all valid on the first attempt with no rescue: MobileNetV2 0.867 (best epoch 5 of 8), ResNet-18 0.782 (epoch 1 of 4), DeiT-Tiny 0.710 (epoch 2 of 5).
+- Strict fvcore K16 sequence FLOPs: 5.11 G, 29.17 G and 20.29 G. Model-only median latency on one 1080 Ti: 11.35, 7.53 and 12.74 ms (DeiT fused; fused vs unfused max logit difference 9.5e-7).
+- The K16 gate retained MobileNetV2 and ResNet-18 and eliminated DeiT-Tiny.
+- The same checkpoints at K4/8/16: MobileNetV2 0.813/0.858/0.867, ResNet-18 0.750/0.775/0.782. MobileNetV2 has the higher F1 and lower FLOPs at every K, and ResNet-18 the >10% faster model-only runtime at every K.
+- The final gate gave no automatic backbone. The K16 gap is 0.086, so seed 43 was not triggered. Next is the human evidence gate.
+
+Interpretation: MobileNetV2 is ahead on predictive quality and arithmetic cost. ResNet-18's advantage is GPU latency only, and the JPEG-decode pipeline (21 to 87 ms per request) shrinks it to 3 to 5 ms. F1 rises from K4 to K16 for both, which gives T009 a first hint that variable K is usable. These are single-seed validation numbers that also drove selection, so they are development evidence, not generalization or clinical performance.

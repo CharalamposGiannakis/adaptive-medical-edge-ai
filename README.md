@@ -37,8 +37,9 @@ The independently reviewed F002 qualification and static-baseline contract is
 in [`docs/f002_methodology.md`](docs/f002_methodology.md), with exact values in
 [`configs/f002_protocol.json`](configs/f002_protocol.json). The copied
 [`docs/adaptivity_project_notes.md`](docs/adaptivity_project_notes.md) contains
-course-derived advisory notes; it does not override project decisions. No F002
-model has trained or been selected yet.
+course-derived advisory notes; it does not override project decisions. F002a
+has run (T008 in progress): no backbone is selected yet, pending the human
+evidence gate. See [`experiments/F002/README.md`](experiments/F002/README.md).
 
 ## Repository structure
 

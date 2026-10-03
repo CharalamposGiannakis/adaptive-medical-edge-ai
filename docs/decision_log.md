@@ -317,6 +317,21 @@ available. Historical decisions are kept even if later superseded.
 
 ---
 
+### D025 — Select MobileNetV2 as the F002b static backbone
+
+**Date:** 2026-10-03
+**Status:** Proposed by Salomé; needs Charalampos's agreement before F002b trains
+
+- **Decision:** Train the F002b static reference (seed 2026, K16) on MobileNetV2. ResNet-18 and DeiT-Tiny are not carried forward.
+- **Evidence (F002a, seed 42, duplicate-aware validation; `experiments/F002/README.md`):** The final §6 gate kept MobileNetV2 and ResNet-18 with no automatic winner. MobileNetV2 has the higher macro-F1 and lower FLOPs at every K (K4/8/16: 0.813/0.858/0.867 vs 0.750/0.775/0.782; 1.28/2.55/5.11 vs 7.29/14.59/29.17 GFLOPs). ResNet-18 has the >10% model-only runtime advantage on the GTX 1080 Ti at every K (K16: 7.53 vs 11.35 ms). Seed 43 was not triggered (K16 gap 0.086).
+- **Why MobileNetV2:** Better on every predictive dimension the gate lists (macro-F1, accuracy and both recalls at K16), better on FLOPs, the project's primary cost axis, and 5× smaller (2.23 M parameters, 9.2 MB FP32). Across K, MobileNetV2 at K4 (0.813, 1.28 GFLOPs, 6.24 ms) and at K8 (0.858, 2.55 GFLOPs, 6.35 ms) both beat ResNet-18 at K16 (0.782, 29.17 GFLOPs, 7.53 ms) on F1, FLOPs and model-only latency at once. At matched or better quality MobileNetV2 is also faster; the same-K runtime rule does not look at this. ResNet-18's same-K advantage is model latency on the benchmark GPU. In the practical JPEG pipeline it is 3 to 5 ms per request against 21 to 87 ms totals, though at K4 that is still 15% (20.99 vs 24.80 ms). The protocol does not apply the runtime rule to the pipeline path, and the GPU is a comparison platform, not the edge device.
+- **Training stability:** Neither run needed a rescue, but both were unstable on validation. MobileNetV2's predicted-abnormal rate swung 0.14 → 0.41 → 0.61 → 0.17 over epochs 1–4 before settling (epochs 5–7 macro-F1 0.845–0.867). ResNet-18 peaked at epoch 1 and fell to 0.677 by epoch 4.
+- **Rejected:** DeiT-Tiny, eliminated by the deterministic K16 gate. ResNet-18, for lower predictive quality at 5.7× the FLOPs. Training several F002b references was also considered and rejected, because D024 fixes exactly one fresh static reference.
+- **Post-hoc robustness check (outside the protocol, not a decision rule):** On the same 254 validation units, the MobileNetV2 minus ResNet-18 K16 macro-F1 gap of 0.086 has a unit-bootstrap 95% CI of [0.021, 0.151] and a group-bootstrap CI of [0.008, 0.171]. Exact McNemar gives 34 vs 14 discordant units, p = 0.0055. Within device 0, the only device with many abnormal units (60/132), MobileNetV2 leads by more (macro-F1 0.884 vs 0.727), so its advantage is not a device artefact.
+- **Caveat:** Single-seed validation evidence that also drove selection may be optimistic. MobileNetV2's latency on this GPU barely changes from K4 to K8 (6.24 vs 6.35 ms), which T009 must keep in mind when reporting runtime next to FLOPs.
+
+---
+
 # Open Decisions
 
 The following are intentionally **not decided yet**:
