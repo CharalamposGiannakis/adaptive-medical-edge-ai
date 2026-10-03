@@ -429,12 +429,29 @@ def load_checkpoint(run_dir: Path, device, fused_attn: bool = False):
     from .f002_flops import build_sequence_model
 
     run = json.loads((run_dir / "run.json").read_text())
+    require_frozen_f002b(run, run_dir)
     path = ROOT / run["checkpoint"]
     if sha256_file(path) != run["checkpoint_sha256"]:
         raise ValueError(f"Checkpoint hash changed: {path}")
     model = build_sequence_model(run["candidate"], pretrained=False, fused_attn=fused_attn)
     model.load_state_dict(torch.load(path, map_location="cpu", weights_only=True))
     return run, model.to(device).eval()
+
+
+def require_frozen_f002b(run: dict, run_dir: Path) -> None:
+    """Refuse to consume a run that is not the accepted frozen F002b reference."""
+    if Path(run_dir).parent.name != "f002b":
+        return
+    if (Path(run_dir).name != "mobilenet_v2_seed2026" or
+            run.get("status") != "valid" or run.get("candidate") != "mobilenet_v2" or
+            run.get("seed") != 2026 or run.get("backbone_decision") != "D025" or
+            not run.get("checkpoint_sha256") or not run.get("checkpoint")):
+        raise ValueError("F002b requires valid MobileNetV2 seed 2026, D025 and a checkpoint")
+    checkpoint = Path(run["checkpoint"]).as_posix()
+    if not checkpoint.startswith("artifacts/F002/f002b/mobilenet_v2_seed2026/"):
+        raise ValueError("F002b checkpoint is outside the frozen run")
+    if sha256_file(ROOT / checkpoint) != run["checkpoint_sha256"]:
+        raise ValueError("F002b checkpoint hash differs from run.json")
 
 
 # ---------------------------------------------------------------- benchmark
@@ -479,14 +496,20 @@ def benchmark_checkpoint(run_dir: Path, k: int, device) -> dict:
     """§9 model-only (primary) and JPEG pipeline timing on fixed requests."""
     import torch
 
+    if device.type != "cuda" or not torch.cuda.is_available():
+        raise ValueError("Primary D024 benchmark requires CUDA; CPU timing is not DAS-5 evidence")
     set_benchmark_flags()
+    env = environment_record()
+    if (not env.get("slurm_job_id") or not env.get("slurm_node") or
+            not env.get("node_features") or not env.get("gpu_model")):
+        raise ValueError("Primary D024 benchmark requires DAS-5 SLURM GPU/node provenance")
+    run, model = load_checkpoint(run_dir, device)
     inputs = load_inputs()
     request_ids = benchmark_request_ids(inputs["validation"])
     by_key = {key(row): row for row in inputs["validation"]}
     sequences = Sequences([by_key[node] for node in request_ids["timed"]], k)
-    run, model = load_checkpoint(run_dir, device)
     tensors = [sequences.frames(i).unsqueeze(0).to(device) for i in range(len(sequences))]
-    sync = lambda: torch.cuda.synchronize(device) if device.type == "cuda" else None  # noqa: E731
+    sync = lambda: torch.cuda.synchronize(device)  # noqa: E731
 
     def model_only(index):
         with torch.inference_mode():
@@ -505,9 +528,19 @@ def benchmark_checkpoint(run_dir: Path, k: int, device) -> dict:
         from .f002_flops import set_deit_fused_attention, verify_deit_fused_equivalence
         try:
             equivalence = verify_deit_fused_equivalence(model, tensors)
-        except RuntimeError as error:
-            equivalence = {"equivalent": False, "error": str(error), "k": k}
-        set_deit_fused_attention(model, False)
+            if (equivalence.get("equivalent") is not True or equivalence.get("requests") != 200 or
+                    equivalence.get("k") != k or equivalence.get("tolerance") != 1e-5 or
+                    not math.isfinite(equivalence.get("max_abs_logit_difference", float("nan"))) or
+                    equivalence["max_abs_logit_difference"] > 1e-5):
+                raise ValueError(f"DeiT fused equivalence failed: {equivalence}")
+        except Exception as error:
+            write_json(run_dir / f"benchmark_equivalence_failure_k{k}.json", {
+                "candidate": run["candidate"], "seed": run["seed"], "k": k,
+                "checkpoint_sha256": run["checkpoint_sha256"],
+                "equivalence": equivalence, "error": str(error)})
+            raise ValueError("DeiT fused equivalence failed; primary benchmark stopped") from error
+        finally:
+            set_deit_fused_attention(model, False)
     attention_paths = (["fused", "unfused"] if deit else [None])
     if torch.cuda.is_available():
         torch.cuda.reset_peak_memory_stats(device)
@@ -520,7 +553,7 @@ def benchmark_checkpoint(run_dir: Path, k: int, device) -> dict:
     for path in sequences.selected:  # untimed warm-cache read/decode pass
         for frame in path[1]:
             preprocess_frame(frame)
-    attention = "fused" if deit and equivalence["equivalent"] else ("unfused" if deit else None)
+    attention = "fused" if deit else None
     if deit:
         set_deit_fused_attention(model, attention == "fused")
     label = f"pipeline_{attention}" if attention else "pipeline"
@@ -528,18 +561,16 @@ def benchmark_checkpoint(run_dir: Path, k: int, device) -> dict:
     paths[label] = summarize_timing(repeats, k) | {"raw": repeats}
     if deit:
         set_deit_fused_attention(model, False)
-    primary = ("model_only_fused" if deit and equivalence["equivalent"] else
-               "model_only_unfused" if deit else "model_only")
-    env = environment_record()
-    return {"candidate": run["candidate"], "seed": run["seed"], "k": k,
+    primary = "model_only_fused" if deit else "model_only"
+    return {"candidate": run["candidate"], "seed": run["seed"], "stage": run_dir.parent.name,
+            "k": k,
             "checkpoint_sha256": run["checkpoint_sha256"],
             "request_ids": [f"{e}/{z}" for e, z in request_ids["timed"]],
             "warmup_ids": [f"{e}/{z}" for e, z in request_ids["warmup"]],
             "warmup_per_repeat": 50, "timed_requests": 200, "repeats": 5,
             "primary_path": primary, "fused_runtime_valid": equivalence["equivalent"] if deit else None,
             "deit_equivalence": equivalence, "paths": paths,
-            "peak_memory_mb": torch.cuda.max_memory_allocated(device) / 2**20
-            if device.type == "cuda" else None,
+            "peak_memory_mb": torch.cuda.max_memory_allocated(device) / 2**20,
             "precision": "float32", "execution_device": str(device),
             "batch_semantics": "one_sequence_request_K_frames_internal_batch",
             "transfer_boundary": "model_only: tensors already on device; pipeline: JPEG path list to device output",
@@ -549,6 +580,83 @@ def benchmark_checkpoint(run_dir: Path, k: int, device) -> dict:
 
 
 # ---------------------------------------------------------------- gates
+
+def validate_benchmark_evidence(bench: dict, run: dict, *, stage: str, candidate: str,
+                                seed: int, k: int, request_ids: dict,
+                                hardware: tuple[str, str] | None = None) -> tuple[str, str]:
+    """Check a saved primary timing artifact before any D024 comparison gate.
+
+    Older recorded artifacts omit ``stage``. Their selected checkpoint path
+    supplies it, while the checkpoint SHA binds the benchmark to that run.
+    """
+    checkpoint = run.get("checkpoint")
+    prefix = f"artifacts/F002/{stage}/{candidate}_seed{seed}/"
+    if (run.get("candidate") != candidate or run.get("seed") != seed or
+            run.get("status") not in ("valid", "invalid_validity_gate") or
+            not isinstance(checkpoint, str) or not checkpoint.startswith(prefix) or
+            not run.get("checkpoint_sha256")):
+        raise ValueError("Benchmark run identity or selected checkpoint is invalid")
+    if stage == "f002b" and (run.get("status") != "valid" or
+                             candidate != "mobilenet_v2" or seed != 2026 or
+                             run.get("backbone_decision") != "D025"):
+        raise ValueError("Benchmark does not belong to valid frozen F002b")
+    if (bench.get("candidate") != candidate or bench.get("seed") != seed or
+            bench.get("k") != k or bench.get("stage", stage) != stage or
+            bench.get("checkpoint_sha256") != run["checkpoint_sha256"]):
+        raise ValueError("Benchmark candidate/seed/stage/K/checkpoint mismatch")
+    execution_device = bench.get("execution_device", "")
+    if (bench.get("benchmark_platform") != "DAS-5" or
+            not (execution_device == "cuda" or
+                 (isinstance(execution_device, str) and execution_device.startswith("cuda:") and
+                  execution_device[5:].isdigit()))):
+        raise ValueError("Primary benchmark must be DAS-5 CUDA evidence")
+    if bench.get("benchmark_flags") != PRIMARY_BENCHMARK_FLAGS:
+        raise ValueError("Benchmark flags differ from D024")
+    timed = [f"{exam}/{zone}" for exam, zone in request_ids["timed"]]
+    warmup = [f"{exam}/{zone}" for exam, zone in request_ids["warmup"]]
+    if (len(timed) != 200 or len(warmup) != 50 or warmup != timed[:50] or
+            bench.get("request_ids") != timed or bench.get("warmup_ids") != warmup or
+            bench.get("timed_requests") != 200 or bench.get("warmup_per_repeat") != 50 or
+            bench.get("repeats") != 5):
+        raise ValueError("Benchmark request IDs, order or repetitions differ from D024")
+    env = bench.get("environment")
+    if not isinstance(env, dict):
+        raise ValueError("Benchmark environment provenance is missing")
+    pair = (env.get("gpu_model"), env.get("node_features"))
+    if (not all(pair) or not env.get("hostname") or not env.get("slurm_job_id") or
+            not env.get("slurm_node") or (hardware is not None and pair != hardware)):
+        raise ValueError("Benchmark GPU model or node class differs")
+    expected_primary = "model_only_fused" if candidate == "deit_tiny" else "model_only"
+    primary_name = bench.get("primary_path")
+    if primary_name != expected_primary or not isinstance(bench.get("paths"), dict):
+        raise ValueError("Benchmark primary path is invalid")
+    primary = bench["paths"].get(primary_name)
+    required = ("median_latency_ms", "p95_latency_ms", "sequence_throughput_s",
+                "frame_throughput_s")
+    if (not isinstance(primary, dict) or any(
+            not isinstance(primary.get(field), (int, float)) or
+            not math.isfinite(primary[field]) or primary[field] <= 0 for field in required)):
+        raise ValueError("Benchmark primary path has invalid timings")
+    raw = primary.get("raw")
+    if (not isinstance(raw, list) or len(raw) != 5 or any(
+            not isinstance(repeat, dict) or
+            not isinstance(repeat.get("latencies_ms"), list) or
+            len(repeat["latencies_ms"]) != 200 or
+            not isinstance(repeat.get("wall_seconds"), (int, float)) or
+            not math.isfinite(repeat["wall_seconds"]) or repeat["wall_seconds"] <= 0 or
+            any(not isinstance(ms, (int, float)) or not math.isfinite(ms) or ms <= 0
+                for ms in repeat["latencies_ms"]) for repeat in raw)):
+        raise ValueError("Benchmark primary path lacks five valid 200-request repeats")
+    if candidate == "deit_tiny":
+        equivalence = bench.get("deit_equivalence") or {}
+        if (bench.get("fused_runtime_valid") is not True or
+                equivalence.get("equivalent") is not True or equivalence.get("requests") != 200 or
+                equivalence.get("k") != k or equivalence.get("tolerance") != 1e-5 or
+                not isinstance(equivalence.get("max_abs_logit_difference"), (int, float)) or
+                not math.isfinite(equivalence["max_abs_logit_difference"]) or
+                equivalence["max_abs_logit_difference"] > 1e-5):
+            raise ValueError("DeiT fused primary path lacks accepted equivalence")
+    return pair
 
 def k16_gate_row(run: dict, bench: dict, flops: dict) -> dict:
     primary = bench["paths"][bench["primary_path"]]

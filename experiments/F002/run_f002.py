@@ -90,8 +90,9 @@ def all_normal_f1() -> float:
 
 def cmd_train(args) -> None:
     """§11 steps 5/8/10: one K16 run with its single allowed rescue."""
-    if args.stage == "f002b" and (args.seed != 2026 or not args.decision):
-        raise SystemExit("F002b is seed 2026 and needs the recorded backbone decision ID")
+    if args.stage == "f002b" and (args.candidate != "mobilenet_v2" or
+                                   args.seed != 2026 or args.decision != "D025"):
+        raise SystemExit("F002b requires MobileNetV2, seed 2026 and decision D025")
     if args.stage == "f002a" and args.seed not in (42, 43):
         raise SystemExit("F002a uses seed 42 (and 43 only for the confirmation trigger)")
     out = run_dir(args.stage, args.candidate, args.seed)
@@ -102,6 +103,8 @@ def cmd_train(args) -> None:
         run["backbone_decision"] = args.decision
         pipe.write_json(out / "run.json", run)
     print(json.dumps({k: run[k] for k in ("candidate", "seed", "status", "attempts", "selected")}))
+    if args.stage == "f002b" and run["status"] != "valid":
+        raise SystemExit("F002b failed its validity gate; frozen baseline unavailable")
 
 
 def cmd_evaluate(args) -> None:
@@ -143,14 +146,19 @@ def cmd_gate_k16(args) -> None:
     """§6 validity + deterministic reduction to at most two K16 finalists."""
     flops = read(ART / "preflight" / "flops.json")
     rows, runs = [], {}
+    requests = benchmark_request_ids(pipe.load_inputs()["validation"])
+    hardware = None
     for candidate in pipe.CANDIDATES:
         out = run_dir("f002a", candidate, args.seed)
         run = read(out / "run.json")
         runs[candidate] = run
         if run["status"] == "optimization_failed":
             continue
-        rows.append(pipe.k16_gate_row(run, read(out / "benchmark_k16.json"),
-                                      flops[f"{candidate}_k16"]))
+        bench = read(out / "benchmark_k16.json")
+        hardware = pipe.validate_benchmark_evidence(
+            bench, run, stage="f002a", candidate=candidate, seed=args.seed,
+            k=16, request_ids=requests, hardware=hardware)
+        rows.append(pipe.k16_gate_row(run, bench, flops[f"{candidate}_k16"]))
     gate = reduce_k16_candidates(rows, all_normal_f1())
     table = [row | {"parameters": runs[row["id"]]["parameters"],
                     "checkpoint_bytes": runs[row["id"]]["checkpoint_bytes"],
@@ -167,15 +175,26 @@ def cmd_gate_final(args) -> None:
     """§6 two-finalist K4/8/16 dominance; reports the seed-43 trigger."""
     gate = read(ART / "gates" / "k16_seed42.json")  # seed 43 confirms the same finalists
     evidence, status = {}, {}
+    requests = benchmark_request_ids(pipe.load_inputs()["validation"])
+    hardware = None
     for candidate in gate["retained"]:
         out = run_dir("f002a", candidate, args.seed)
-        status[candidate] = read(out / "run.json")["status"]
+        run = read(out / "run.json")
+        status[candidate] = run["status"]
         if status[candidate] != "valid":
             continue  # §6: a failed seed-43 run goes to the human gate, never substituted
-        response = read(out / "k_response.json")["by_k"]
+        response_record = read(out / "k_response.json")
+        if (response_record.get("candidate") != candidate or
+                response_record.get("seed") != args.seed or
+                response_record.get("checkpoint_sha256") != run["checkpoint_sha256"]):
+            raise ValueError("K-response differs from the selected checkpoint")
+        response = response_record["by_k"]
         evidence[candidate] = {}
         for k in (4, 8, 16):
             bench = read(out / f"benchmark_k{k}.json")
+            hardware = pipe.validate_benchmark_evidence(
+                bench, run, stage="f002a", candidate=candidate, seed=args.seed,
+                k=k, request_ids=requests, hardware=hardware)
             primary = bench["paths"][bench["primary_path"]]
             evidence[candidate][k] = {
                 **response[str(k)]["duplicate_aware"], "flops": response[str(k)]["flops"],

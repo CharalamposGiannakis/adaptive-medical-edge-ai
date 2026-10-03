@@ -320,7 +320,23 @@ available. Historical decisions are kept even if later superseded.
 ### D025 — Select MobileNetV2 as the F002b static backbone
 
 **Date:** 2026-10-03
-**Status:** Accepted by Salo and Charalampos on 2026-10-03 (§6 human evidence gate), before F002b training
+**Status:** Accepted by Salo and Charalampos on 2026-10-03 (§6 human evidence gate); the team records acceptance before F002b training, subject to the provenance limit below
+
+**Decision-recording provenance:** The first T008 commit (`ee4aaa4`) has the
+merged T007/D024 commit (`32bb08d`) as its direct parent, even though the
+working branch may have been created earlier. It was therefore synchronized
+or rebased onto the accepted methodology before the first T008 commit; branch
+creation time does not establish the experimental base. The message says
+F002a was complete, D025 was proposed pending agreement, and F002b had not
+trained. The team records that Charalampos accepted MobileNetV2 before F002b
+execution, but that acceptance entered Git only in the later commit that also
+records F002b. The available PR #23 and issue #10 timelines contain no
+independent timestamped acceptance before the F002b job; Git history alone
+therefore cannot timestamp the human decision relative to that job. This is a
+decision-recording provenance limit, not evidence that F002b used an unaccepted
+D024 implementation. The measured seed-2026 F002b run remains the frozen
+reference; rerunning after observing its result would not restore prospective
+decision timing.
 
 - **Charalampos's reasoning on acceptance:** The deciding evidence is not only the higher K16 F1. MobileNetV2's K4/K8 operating points already beat ResNet-18 K16 on predictive quality with much less compute, and beat its model-only latency across K. ResNet-18's same-K GTX 1080 Ti speed advantage is real and stays documented, but it does not outweigh the predictive, FLOPs, size and K-frontier evidence.
 

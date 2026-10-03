@@ -83,8 +83,21 @@ sbatch -w node201 --exclusive experiments/F002/das5_f002.sbatch benchmark --cand
 - **Recorded git commit.** The `git_head` field in every artifact says
   `32bb08d` (the T007 merge), because the DAS-5 copy was synced before the T008
   code was committed. The code that ran is identified by `source_sha256`
-  instead. Those hashes equal the files committed in `ee4aaa4`, which haven't
-  changed since.
+  instead. The team records that those hashes match the execution files in
+  `ee4aaa4`; this review's fail-closed guards change some of those files after
+  the run. The ignored DAS-5 artifact bundle is not in this checkout, so its
+  source and protocol hashes cannot be independently rechecked here. The
+  protocol file and execution source are unchanged between `ee4aaa4` and the
+  original PR #23 head (`c833884`).
+- **Decision chronology.** The first T008 commit `ee4aaa4` directly follows
+  the merged T007/D024 commit `32bb08d`, regardless of when the working branch
+  was created. It was synchronized or rebased onto the accepted T007 state
+  before that first commit. Its message says F002a was complete, D025 was
+  still proposed, and F002b had not trained. The team records Charalampos's
+  acceptance before F002b execution, but no independent timestamped acceptance
+  was found in the available Git, PR #23 or issue #10 records before the job.
+  D025 records this narrow provenance limit. It does not call for retraining
+  the observed run.
 - **Python deviation.** The protocol pins Python 3.14.3. The reused `myenv`
   has Python 3.12.14. torch 2.14.0+cu126, torchvision 0.29.0+cu126, timm
   1.0.30, fvcore 0.1.5.post20221221, Pillow 12.3.0, NumPy 2.5.3 and
