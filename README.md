@@ -24,21 +24,22 @@ These are **validation-only feasibility results**. The official test split is in
 
 The current direction is to:
 
-1. train a static OpenPOCUS proof of concept and characterize candidate frame-count operating points;
+1. use the frozen static OpenPOCUS reference and characterize candidate adaptive frame-count operating points;
 2. design an adaptive policy that selects measured input-workload operating points;
 3. evaluate predictive performance, FLOPs and throughput;
 4. study how the system behaves under edge constraints;
 5. keep the design reproducible and deployable rather than treating adaptivity only as an offline model experiment.
 
-The prehospital/ambulance lung POCUS use-case design and variable-frame direction were accepted in TA Sudaksh's feedback. OpenPOCUS remains a technical experimental proxy; T007 fixes bounded F002 qualification frame counts, while the winning architecture, final adaptive operating points and controller mapping remain undecided (see D020–D024 in `docs/decision_log.md`).
+The prehospital/ambulance lung POCUS use-case design and variable-frame direction were accepted in TA Sudaksh's feedback. OpenPOCUS remains a technical experimental proxy. D025 selected MobileNetV2 as the F002 static backbone, and the fresh seed-2026 MobileNetV2 F002b run is the frozen static reference. Adaptive operating points, compression and controller choices remain open; the K4/K8/K16 F002 screen did not fix the final adaptive points. T009 follows after PR #23 merges (see D020–D025 in `docs/decision_log.md`). No held-out OpenPOCUS test results are claimed here.
 
 The current conditional technical plan is in [`docs/design_pathway.md`](docs/design_pathway.md).
 The independently reviewed F002 qualification and static-baseline contract is
 in [`docs/f002_methodology.md`](docs/f002_methodology.md), with exact values in
 [`configs/f002_protocol.json`](configs/f002_protocol.json). The copied
 [`docs/adaptivity_project_notes.md`](docs/adaptivity_project_notes.md) contains
-course-derived advisory notes; it does not override project decisions. No F002
-model has trained or been selected yet.
+course-derived advisory notes; it does not override project decisions. T008 ran
+F002a and F002b: MobileNetV2 is the selected backbone (D025), and the frozen
+seed-2026 F002b checkpoint is the static reference for T009. See [`experiments/F002/README.md`](experiments/F002/README.md).
 
 ## Repository structure
 

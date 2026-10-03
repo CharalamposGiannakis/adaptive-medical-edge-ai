@@ -317,13 +317,46 @@ available. Historical decisions are kept even if later superseded.
 
 ---
 
+### D025 — Select MobileNetV2 as the F002b static backbone
+
+**Date:** 2026-10-03
+**Status:** Accepted by Salo and Charalampos on 2026-10-03 (§6 human evidence gate); the team records acceptance before F002b training, subject to the provenance limit below
+
+**Decision-recording provenance:** The first T008 commit (`ee4aaa4`) has the
+merged T007/D024 commit (`32bb08d`) as its direct parent, even though the
+working branch may have been created earlier. It was therefore synchronized
+or rebased onto the accepted methodology before the first T008 commit; branch
+creation time does not establish the experimental base. The message says
+F002a was complete, D025 was proposed pending agreement, and F002b had not
+trained. The team records that Charalampos accepted MobileNetV2 before F002b
+execution, but that acceptance entered Git only in the later commit that also
+records F002b. The available PR #23 and issue #10 timelines contain no
+independent timestamped acceptance before the F002b job; Git history alone
+therefore cannot timestamp the human decision relative to that job. This is a
+decision-recording provenance limit, not evidence that F002b used an unaccepted
+D024 implementation. The measured seed-2026 F002b run remains the frozen
+reference; rerunning after observing its result would not restore prospective
+decision timing.
+
+- **Charalampos's reasoning on acceptance:** The deciding evidence is not only the higher K16 F1. MobileNetV2's K4/K8 operating points already beat ResNet-18 K16 on predictive quality with much less compute, and beat its model-only latency across K. ResNet-18's same-K GTX 1080 Ti speed advantage is real and stays documented, but it does not outweigh the predictive, FLOPs, size and K-frontier evidence.
+
+- **Decision:** Train the F002b static reference (seed 2026, K16) on MobileNetV2. ResNet-18 and DeiT-Tiny are not carried forward.
+- **Evidence (F002a, seed 42, duplicate-aware validation; `experiments/F002/README.md`):** The final §6 gate kept MobileNetV2 and ResNet-18 with no automatic winner. MobileNetV2 has the higher macro-F1 and lower FLOPs at every K (K4/8/16: 0.813/0.858/0.867 vs 0.750/0.775/0.782; 1.28/2.55/5.11 vs 7.29/14.59/29.17 GFLOPs). ResNet-18 has the >10% model-only runtime advantage on the GTX 1080 Ti at every K (K16: 7.53 vs 11.35 ms). Seed 43 was not triggered (K16 gap 0.086).
+- **Why MobileNetV2:** Better on every predictive dimension the gate lists (macro-F1, accuracy and both recalls at K16), better on FLOPs, the project's primary cost axis, and 5× smaller (2.23 M parameters, 9.2 MB FP32). Across K, MobileNetV2 at K4 (0.813, 1.28 GFLOPs, 6.24 ms) and at K8 (0.858, 2.55 GFLOPs, 6.35 ms) both beat ResNet-18 at K16 (0.782, 29.17 GFLOPs, 7.53 ms) on F1, FLOPs and model-only latency at once. At matched or better quality MobileNetV2 is also faster; the same-K runtime rule does not look at this. ResNet-18's same-K advantage is model latency on the benchmark GPU. In the practical JPEG pipeline it is 3 to 5 ms per request against 21 to 87 ms totals, though at K4 that is still 15% (20.99 vs 24.80 ms). The protocol does not apply the runtime rule to the pipeline path, and the GPU is a comparison platform, not the edge device.
+- **Throughput (D020):** Sudaksh asked for throughput alongside FLOPs for this variable-frame design. At matched or better quality MobileNetV2 still has the higher model-only throughput (K8: 157 seq/s at 0.858 vs ResNet-18 K16: 133 seq/s at 0.782). Against it: on the 1080 Ti, MobileNetV2's model-only throughput barely changes from K4 to K8 (160 vs 157 seq/s), while ResNet-18's scales with K (357/232/133). In the practical JPEG pipeline both scale with K (MobileNetV2 40/23/12, ResNet-18 48/24/12 seq/s), because decoding dominates. A model-only throughput-vs-K curve on this GPU would look flatter for MobileNetV2.
+- **Training stability:** Neither run needed a rescue, but both were unstable on validation. MobileNetV2's predicted-abnormal rate swung 0.14 → 0.41 → 0.61 → 0.17 over epochs 1–4 before settling (epochs 5–7 macro-F1 0.845–0.867). ResNet-18 peaked at epoch 1 and fell to 0.677 by epoch 4.
+- **Rejected:** DeiT-Tiny, eliminated by the deterministic K16 gate. ResNet-18, for lower predictive quality at 5.7× the FLOPs. Training several F002b references was also considered and rejected, because D024 fixes exactly one fresh static reference.
+- **Post-hoc robustness check (outside the protocol, not a decision rule):** On the same 254 validation units, the MobileNetV2 minus ResNet-18 K16 macro-F1 gap of 0.086 has a unit-bootstrap 95% CI of [0.021, 0.151] and a group-bootstrap CI of [0.008, 0.171]. Exact McNemar gives 34 vs 14 discordant units, p = 0.0055. Within device 0, the only device with many abnormal units (60/132), MobileNetV2 leads by more (macro-F1 0.884 vs 0.727), so its advantage is not a device artefact.
+- **Caveat:** Single-seed validation evidence that also drove selection may be optimistic. MobileNetV2's latency on this GPU barely changes from K4 to K8 (6.24 vs 6.35 ms), which T009 must keep in mind when reporting runtime next to FLOPs.
+
+---
+
 # Open Decisions
 
 The following are intentionally **not decided yet**:
 
 - Whether OpenPOCUS's size, bias and sample properties permit useful model/adaptive behaviour, to be tested with a proof-of-concept baseline; it remains a technical proxy rather than clinical deployment evidence.
 - Any additional biological-patient identity mapping if new provenance becomes available; D023 fixes the current T006 quality exclusions and known-group split protocol.
-- Final backbone selection after the bounded F002a comparison; D024 fixes the candidate input processing and K screen, but no winner.
 - Whether variable-frame input yields useful adaptive behaviour, and whether other adaptive dimensions also help.
 - Final measured operating points beyond the specified F002 qualification K screen and mapping from active resource states to those points.
 - Compression technique.
