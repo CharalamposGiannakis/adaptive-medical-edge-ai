@@ -4,7 +4,7 @@
 of [`docs/f002_methodology.md`](../../docs/f002_methodology.md). The
 deterministic gates left two finalists with no automatic winner and no seed-43
 trigger, so the one-backbone choice now goes to the human evidence gate
-(Charalampos and Salomé, §6). F002b (seed 2026) has not been trained. No model
+(Charalampos and Salo, §6). F002b (seed 2026) has not been trained. No model
 has seen the T006 test partition.
 
 The scientific contract is D024, `docs/f002_methodology.md` and
@@ -57,6 +57,21 @@ run.
   Training ran on node201 and node205; every benchmark ran on node201 with
   `--exclusive`. Each artifact JSON records hostname, job ID, GPU, driver,
   package versions, protocol SHA-256 and source-file hashes.
+- **Who ran it, and how long it took.** Salo ran F002a on DAS-5 under his
+  account on 2026-10-03. SLURM accounting is disabled on DAS-5, so job
+  durations come from the per-epoch timings in `attempt.json` and the SLURM log
+  modification times. The three trainings ran in parallel on separate GPUs:
+  MobileNetV2 took 27.7 min (8 epochs of about 207 s), DeiT-Tiny 13.7 min
+  (5 × about 165 s) and ResNet-18 10.6 min (4 × about 160 s). Each epoch is
+  about 19,700 decoded JPEG frames, and JPEG decoding with zero data-loader
+  workers, as the protocol requires, sets the pace. Benchmarks ran one after
+  another on node201: about 3 min per K16 benchmark, and 2 to 4.5 min for each
+  finalist's K4 + K8 benchmark. The K-response evaluations took about 2 min
+  each, and preflight + references about 2 min. The whole sequence, from the
+  successful preflight to the last benchmark, took about 47 min of wall-clock
+  time and about 1.3 GPU-hours. Setup before that was copying the 6.1 GB of
+  OpenPOCUS frames to `/var/scratch`, adding timm, fvcore and scikit-learn to
+  the existing `myenv`, and pre-downloading the pretrained weights.
 - **Python deviation.** The protocol pins Python 3.14.3. The reused `myenv`
   has Python 3.12.14. torch 2.14.0+cu126, torchvision 0.29.0+cu126, timm
   1.0.30, fvcore 0.1.5.post20221221, Pillow 12.3.0, NumPy 2.5.3 and
