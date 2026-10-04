@@ -73,6 +73,23 @@ Stop at three initial backbones, two `K`-screen candidates and one final backbon
 
 T008 trains/evaluates the selected backbone under T007's frozen protocol and saves an immutable reference artifact, configuration, raw results and measurement conditions for downstream comparison. The F002a exploratory checkpoints do not become the final static baseline merely because they exist. No F002 model, result or final choice exists at the time of this document.
 
+### Exploratory F002c evidence — not a locked architecture decision
+
+A user-authorized experiment on 2026-10-04 tested one pretrained TinyViT-5M
+outside the accepted F002 architecture-selection protocol. Its selected K16
+checkpoint reached duplicate-aware validation macro-F1 **0.874** with abnormal
+recall **0.829**; the same checkpoint reached macro-F1 **0.860 / 0.868 / 0.874**
+at K4/K8/K16 without retraining. The frozen F002b MobileNetV2 reference remains
+macro-F1 **0.859** at K16.
+
+This result does **not** replace D025, reopen F002a, or make TinyViT the official
+static baseline. F002c uses a different fine-tuning recipe, only one TinyViT seed
+has been run, and equivalent F002-style FLOPs, latency and throughput have not yet
+been measured. It is sufficient evidence to retain TinyViT as one bounded
+adaptive candidate. Any promotion into the course-critical T009/T010 path should
+first measure its cost/throughput under the shared convention and be recorded as
+an explicit project decision rather than silently changing the frozen baseline.
+
 ## T009 DECISION GATE: frame-count response
 
 After F002b, characterize evidence-driven candidate `K` values densely or where the response changes. They are **not** the four controller budget percentages. Ask whether additional frames produce a useful accuracy–compute frontier, including throughput and latency effects under the fixed measurement convention.

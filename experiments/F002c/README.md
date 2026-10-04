@@ -130,19 +130,78 @@ aggregation retained 254 units. No test-image inference occurred. Source/data
 hashes confirmed the frozen inputs were unchanged. These are engineering checks,
 not predictive results or GTX 1080 Ti measurements.
 
-**DAS status:** not submitted. This machine has no configured DAS SSH alias or key;
-host/account/authentication instructions are pending from the user. Local F002b
-checkpoint is absent, so only its recorded reference metrics are used here.
+**DAS-5 result (2026-10-04).** Job `110822` completed successfully on
+`node205`, which Slurm assigned an NVIDIA GeForce GTX 1080 Ti with 11,165 MiB
+reported device memory. The reused DAS environment used Python 3.12.14 with the
+pinned torch/torchvision/timm/fvcore/Pillow/NumPy/scikit-learn versions. Before
+submission, the local DAS copy removed only
+`#SBATCH --constraint=GTX1080Ti` following teaching-team scheduling advice while
+retaining `#SBATCH --gres=gpu:1`; Slurm still assigned a GTX 1080 Ti. This was a
+scheduler-only local edit and did not change model, data or training code.
 
-No full F002c training result exists yet. Approximately 0.859 with healthy abnormal
-recall would be strong descriptive evidence; 0.84–0.859 may justify an adaptive
-follow-up; clearly below 0.81 suggests closing this direction. Validation also
-selects the checkpoint, so observed scores are development evidence only.
+The allocated-node run passed all 48 F002/F002c tests and the mandatory same-device
+CUDA preflight. Full training stopped after epoch 13 by the five-epoch patience
+rule; the selected checkpoint is epoch **8**. End-to-end training/evaluation time
+recorded in `run.json` was **1,480.97 s (24 min 41 s)**. Peak GPU memory recorded
+during the run was **3,142 MiB allocated / 3,556 MiB reserved**. The selected
+checkpoint SHA-256 is
+`30b70734426e84f429b83011abca04511540149d1fc3e416274c6fbcb14853b2`.
+
+### Predictive result and frozen MobileNetV2 comparison
+
+All values below are duplicate-aware validation metrics over the same 254
+evaluation units at threshold 0.5. The MobileNetV2 row is the unchanged F002b
+frozen reference; F002c did not retrain or modify it.
+
+| Metric | TinyViT F002c K16 | Frozen MobileNetV2 F002b K16 | TinyViT - MobileNetV2 |
+|---|---:|---:|---:|
+| Macro-F1 | **0.8737** | 0.859 | **+0.0147** |
+| Accuracy | **0.8937** | 0.886 | **+0.0077** |
+| Normal recall | 0.9213 | **0.944** | -0.0227 |
+| Abnormal recall | **0.8289** | 0.750 | **+0.0789** |
+| Aggregated BCE | **0.3294** | 0.354 | -0.0246 |
+
+TinyViT therefore exceeded the recorded MobileNetV2 reference on validation
+macro-F1, accuracy and abnormal recall in this one exploratory run, while
+MobileNetV2 retained higher normal recall. This is **descriptive development
+evidence, not an architecture-winner claim**: the experiments use different
+training recipes, validation also selected the checkpoints, only one TinyViT seed
+was run, and F002c has not yet measured TinyViT with the frozen F002 FLOPs,
+latency and throughput protocol. D025 and the F002b MobileNetV2 frozen static
+reference remain unchanged.
+
+The automatic same-checkpoint frame-count evaluation also ran because the selected
+K16 checkpoint exceeded the predeclared F002c trigger. No K-specific retraining
+occurred:
+
+| K | Macro-F1 | Accuracy | Normal recall | Abnormal recall | Aggregated BCE |
+|---:|---:|---:|---:|---:|---:|
+| 4 | 0.8602 | 0.8819 | 0.9101 | 0.8158 | 0.3843 |
+| 8 | 0.8676 | 0.8898 | **0.9270** | 0.8026 | 0.3551 |
+| 16 | **0.8737** | **0.8937** | 0.9213 | **0.8289** | **0.3294** |
+
+K4 is only 0.0135 macro-F1 below K16 while using 75% fewer input frames, and K8
+is only 0.0062 below K16 while using 50% fewer input frames. These percentages
+describe input-frame count only; they are **not** measured compute, energy,
+latency or throughput savings. The next justified step, if TinyViT is carried
+forward, is measurement-only cost characterization under the same convention used
+for F002 rather than another architecture search.
+
+The exploratory question is therefore answered positively: one pretrained TinyViT
+can approximately match and in this run exceed the frozen MobileNetV2 predictive
+reference while retaining useful same-checkpoint K4/K8/K16 behavior. That supports
+keeping TinyViT as a bounded adaptive candidate, but does not replace the official
+F002b static baseline or by itself select the final adaptive architecture.
 
 Raw evidence stays under `artifacts/F002c/`: `smoke.json`, test logs,
 `tinyvit5m_seed2026/run.json` (configuration, environment/source hashes, epoch
 history, selection, memory and elapsed time), the exact `initial_state.pt`,
 selected `checkpoint.pt`, per-epoch/selected row predictions and aggregated-unit
-JSON, optional `k_response.json`, and scheduler logs. Frozen inputs are hashed
+JSON, `k_response.json`, and scheduler logs. Frozen inputs are hashed
 before and after execution. The frozen F002b checkpoint is checked against its
 known hash if present; its absence is not represented as an independent recheck.
+
+A complete 2026-10-04 artifact archive was copied off DAS-5 as
+`F002c_2026-10-04_job110822.tar.gz`; archive SHA-256
+`e098f0a671d98cafb70817b494afb09794730771ed7c75e4a4b73478a65ca03c`.
+The archive is external evidence and remains outside Git.

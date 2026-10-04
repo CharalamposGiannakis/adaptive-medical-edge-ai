@@ -67,7 +67,31 @@ with 3,122 MiB peak allocated memory. The 1,232 train/265 validation inventories
 and 254 validation evaluation units verified. No test-image inference occurred;
 only frozen test-manifest metadata was verified by the shared helper.
 
-No full training run or predictive result yet. DAS-5 submission is waiting for
-host/account/authentication instructions; the machine has no configured DAS SSH
-alias/key. Raw checks are ignored under `artifacts/F002c/`. F002b remains the
-unchanged static reference (macro-F1 0.859, abnormal recall 0.750, K16 5.11 GFLOPs).
+Full DAS-5 run completed on 2026-10-04 as Slurm job `110822` on
+`node205` (NVIDIA GeForce GTX 1080 Ti). The local batch copy removed only the
+GTX1080Ti scheduler constraint while retaining the generic one-GPU request; Slurm
+assigned a 1080 Ti anyway. All 48 F002/F002c tests and the same-device CUDA
+preflight passed. Training stopped after epoch 13; the selected epoch-8 checkpoint
+has SHA-256
+`30b70734426e84f429b83011abca04511540149d1fc3e416274c6fbcb14853b2`.
+The run took 1,480.97 s (24 min 41 s) and recorded 3,142 MiB peak allocated /
+3,556 MiB peak reserved GPU memory.
+
+Measured duplicate-aware validation for the selected checkpoint:
+
+- K4: macro-F1 0.8602, accuracy 0.8819, normal recall 0.9101, abnormal recall 0.8158.
+- K8: macro-F1 0.8676, accuracy 0.8898, normal recall 0.9270, abnormal recall 0.8026.
+- K16: macro-F1 0.8737, accuracy 0.8937, normal recall 0.9213, abnormal recall 0.8289.
+- Frozen F002b MobileNetV2 K16 remains macro-F1 0.859, accuracy 0.886,
+  normal recall 0.944 and abnormal recall 0.750.
+
+Interpretation: this one exploratory TinyViT run is predictively competitive with
+the frozen MobileNetV2 reference and gives strong same-checkpoint K4/K8/K16
+behavior. It does **not** overturn D025 or establish a formal architecture winner:
+the recipes differ, only one TinyViT seed was run, validation selected the
+checkpoint, and TinyViT F002-style FLOPs/latency/throughput have not yet been
+measured. F002b therefore remains the frozen static reference; F002c justifies a
+bounded cost/adaptivity characterization before any architecture decision.
+Raw evidence remains ignored under `artifacts/F002c/`; a complete external
+artifact archive has SHA-256
+`e098f0a671d98cafb70817b494afb09794730771ed7c75e4a4b73478a65ca03c`.
