@@ -49,3 +49,25 @@ Measured, duplicate-aware validation (254 units):
 - Frozen checkpoint `artifacts/F002/f002b/mobilenet_v2_seed2026/lr1e-4/checkpoint.pt`, SHA-256 `5bad132633fd6188c0e449a75f73294612479bb1f0dc1820d8e6c459f7bdb823`, read-only locally and on DAS-5.
 
 Interpretation: seed 2026 lands close to F002a's seed-42 MobileNetV2 (0.859 vs 0.867; both find 57 of 76 abnormal units, 53 of them the same), which suggests the backbone choice was not a lucky seed. It is still one validation split that also chose the checkpoint, so it is development evidence, not a generalization estimate.
+
+## F002c — Exploratory TinyViT transfer (2026-10-04)
+
+User-authorized one-evening learning experiment, separate from frozen F002a/F002b.
+Question: can one pretrained transformer roughly match the static MobileNetV2
+reference while offering useful later adaptive dimensions? Choose only TinyViT-5M
+(`tiny_vit_5m_224.dist_in22k_ft_in1k`), mean K16 frame embeddings and a binary head.
+Use a small-data AdamW recipe with separate encoder/head learning rates, warm-up,
+cosine decay and frozen BatchNorm statistics. T006 cohort/labels/splits and
+duplicate-aware evaluation units remain unchanged; threshold 0.5 is primary.
+Exact recipe, rationale and commands: `experiments/F002c/README.md`.
+
+Measured engineering checks: 36 existing F002 tests and 12 F002c tests passed;
+pretrained K16 forward/backward/Adam smoke passed on the local RTX 4060 Laptop GPU
+with 3,122 MiB peak allocated memory. The 1,232 train/265 validation inventories
+and 254 validation evaluation units verified. No test-image inference occurred;
+only frozen test-manifest metadata was verified by the shared helper.
+
+No full training run or predictive result yet. DAS-5 submission is waiting for
+host/account/authentication instructions; the machine has no configured DAS SSH
+alias/key. Raw checks are ignored under `artifacts/F002c/`. F002b remains the
+unchanged static reference (macro-F1 0.859, abnormal recall 0.750, K16 5.11 GFLOPs).
