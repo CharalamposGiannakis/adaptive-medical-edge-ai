@@ -5,7 +5,8 @@ data/openpocus/raw/
 data/openpocus/Lung Database.zip
 data/openpocus/Lung Database.zip.aria2
 data/openpocus/.extract/
-checkpoints/
+checkpoints/*
+!checkpoints/f002c_tinyvit5m_epoch8.pt
 artifacts/
 
 # Python caches and local environments

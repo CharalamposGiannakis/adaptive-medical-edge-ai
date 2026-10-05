@@ -351,14 +351,58 @@ decision timing.
 
 ---
 
+### D026 — Select TinyViT as the adaptive-system backbone
+
+**Date:** 2026-10-05
+**Status:** Accepted by Charalampos and Salo
+
+- **Decision:** Carry the F002c timm
+  `tiny_vit_5m_224.dist_in22k_ft_in1k` epoch-8 checkpoint forward as the
+  adaptive-system backbone for T009 onward. Its canonical shared frozen copy is
+  [`checkpoints/f002c_tinyvit5m_epoch8.pt`](../checkpoints/f002c_tinyvit5m_epoch8.pt),
+  with SHA-256
+  `30b70734426e84f429b83011abca04511540149d1fc3e416274c6fbcb14853b2`.
+- **Evidence retention:** The ignored source
+  `artifacts/F002c/tinyvit5m_seed2026/checkpoint.pt` remains part of the raw
+  experiment history. The complete external artifact archive remains archival
+  evidence outside Git.
+- **Static-reference boundary:** D025 continues to govern the frozen F002b
+  MobileNetV2 seed-2026 K16 static reference. D026 does not retrain, replace or
+  modify that checkpoint, invalidate F002a/F002b, or rewrite the historical F002
+  architecture-selection result.
+- **K16 validation evidence:** On the same duplicate-aware validation units at
+  threshold 0.5, TinyViT versus frozen MobileNetV2 produced macro-F1
+  **0.8737 vs 0.859**, accuracy **0.8937 vs 0.886**, normal recall
+  **0.9213 vs 0.944**, and abnormal recall **0.8289 vs 0.750**.
+- **Same-checkpoint K response:** Without K-specific retraining, TinyViT reached
+  macro-F1 **0.8602 / 0.8676 / 0.8737** at K4/K8/K16. This provides a useful
+  initial frame-count response while retaining a transformer architecture that
+  exposes additional bounded adaptive dimensions for T009.
+- **Rationale:** This is a project engineering and research choice for the
+  adaptive phase. TinyViT is predictively competitive with the static reference,
+  improves abnormal recall in this run, and provides a richer architecture for
+  studying shared-model adaptive inference. MobileNetV2 remains the required
+  static comparison.
+- **Supersession scope:** D026 supersedes only the earlier consequence in D022/D025
+  that downstream adaptive work necessarily uses the backbone selected for F002b.
+  All other accepted data, task, F002 protocol and static-reference decisions
+  remain in force.
+- **Limits:** This does not establish statistical or universal superiority. The
+  models used different training recipes, validation selected both checkpoints,
+  only one TinyViT seed was run, and TinyViT still needs consistent F002-style
+  FLOPs, latency and throughput characterization. The held-out T006 test partition
+  remains untouched during T009–T012 development.
+
+---
+
 # Open Decisions
 
 The following are intentionally **not decided yet**:
 
-- Whether OpenPOCUS's size, bias and sample properties permit useful model/adaptive behaviour, to be tested with a proof-of-concept baseline; it remains a technical proxy rather than clinical deployment evidence.
+- How well the validation-supported model and adaptive behavior generalize; OpenPOCUS remains a technical proxy rather than clinical deployment evidence.
 - Any additional biological-patient identity mapping if new provenance becomes available; D023 fixes the current T006 quality exclusions and known-group split protocol.
-- Whether variable-frame input yields useful adaptive behaviour, and whether other adaptive dimensions also help.
-- Final measured operating points beyond the specified F002 qualification K screen and mapping from active resource states to those points.
+- Which variable-frame configurations yield useful measured quality–cost trade-offs, and whether other bounded TinyViT dimensions add value.
+- Final measured operating points beyond the preliminary F002c K4/K8/K16 evidence and mapping from active resource states to those points.
 - Compression technique.
 - Whether resource conditions beyond the accepted simulated budget states will also be measured.
 - Whether input uncertainty becomes part of the runtime policy.

@@ -49,3 +49,59 @@ Measured, duplicate-aware validation (254 units):
 - Frozen checkpoint `artifacts/F002/f002b/mobilenet_v2_seed2026/lr1e-4/checkpoint.pt`, SHA-256 `5bad132633fd6188c0e449a75f73294612479bb1f0dc1820d8e6c459f7bdb823`, read-only locally and on DAS-5.
 
 Interpretation: seed 2026 lands close to F002a's seed-42 MobileNetV2 (0.859 vs 0.867; both find 57 of 76 abnormal units, 53 of them the same), which suggests the backbone choice was not a lucky seed. It is still one validation split that also chose the checkpoint, so it is development evidence, not a generalization estimate.
+
+## F002c — Exploratory TinyViT transfer (2026-10-04)
+
+User-authorized one-evening learning experiment, separate from frozen F002a/F002b.
+Question: can one pretrained transformer roughly match the static MobileNetV2
+reference while offering useful later adaptive dimensions? Choose only TinyViT-5M
+(`tiny_vit_5m_224.dist_in22k_ft_in1k`), mean K16 frame embeddings and a binary head.
+Use a small-data AdamW recipe with separate encoder/head learning rates, warm-up,
+cosine decay and frozen BatchNorm statistics. T006 cohort/labels/splits and
+duplicate-aware evaluation units remain unchanged; threshold 0.5 is primary.
+Exact recipe, rationale and commands: `experiments/F002c/README.md`.
+
+Measured engineering checks: 36 existing F002 tests and 12 F002c tests passed;
+pretrained K16 forward/backward/Adam smoke passed on the local RTX 4060 Laptop GPU
+with 3,122 MiB peak allocated memory. The 1,232 train/265 validation inventories
+and 254 validation evaluation units verified. No test-image inference occurred;
+only frozen test-manifest metadata was verified by the shared helper.
+
+Full DAS-5 run completed on 2026-10-04 as Slurm job `110822` on
+`node205` (NVIDIA GeForce GTX 1080 Ti). The local batch copy removed only the
+GTX1080Ti scheduler constraint while retaining the generic one-GPU request; Slurm
+assigned a 1080 Ti anyway. All 48 F002/F002c tests and the same-device CUDA
+preflight passed. Training stopped after epoch 13; the selected epoch-8 checkpoint
+has SHA-256
+`30b70734426e84f429b83011abca04511540149d1fc3e416274c6fbcb14853b2`.
+The run took 1,480.97 s (24 min 41 s) and recorded 3,142 MiB peak allocated /
+3,556 MiB peak reserved GPU memory.
+
+Measured duplicate-aware validation for the selected checkpoint:
+
+- K4: macro-F1 0.8602, accuracy 0.8819, normal recall 0.9101, abnormal recall 0.8158.
+- K8: macro-F1 0.8676, accuracy 0.8898, normal recall 0.9270, abnormal recall 0.8026.
+- K16: macro-F1 0.8737, accuracy 0.8937, normal recall 0.9213, abnormal recall 0.8289.
+- Frozen F002b MobileNetV2 K16 remains macro-F1 0.859, accuracy 0.886,
+  normal recall 0.944 and abnormal recall 0.750.
+
+Interpretation: this one exploratory TinyViT run is predictively competitive with
+the frozen MobileNetV2 reference and gives strong same-checkpoint K4/K8/K16
+behavior. It does **not** overturn D025 or establish a formal architecture winner:
+the recipes differ, only one TinyViT seed was run, validation selected the
+checkpoint, and TinyViT F002-style FLOPs/latency/throughput have not yet been
+measured. F002b therefore remains the frozen static reference; F002c justifies a
+bounded cost/adaptivity characterization before any architecture decision.
+Raw evidence remains ignored under `artifacts/F002c/`; a complete external
+artifact archive has SHA-256
+`e098f0a671d98cafb70817b494afb09794730771ed7c75e4a4b73478a65ca03c`.
+
+**Subsequent decision (2026-10-05):** After reviewing this evidence, Charalampos
+and Salo selected the F002c epoch-8 TinyViT checkpoint as the adaptive-system
+backbone for T009 onward (D026). This later project decision does not alter the
+original exploratory interpretation, reopen F002 or replace the frozen F002b
+MobileNetV2 static reference. The canonical shared frozen copy is
+[`checkpoints/f002c_tinyvit5m_epoch8.pt`](../checkpoints/f002c_tinyvit5m_epoch8.pt).
+The ignored `artifacts/F002c/tinyvit5m_seed2026/checkpoint.pt` remains raw
+experiment history, and the external archive remains archival evidence outside
+Git.

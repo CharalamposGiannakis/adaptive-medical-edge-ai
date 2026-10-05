@@ -2,44 +2,51 @@
 
 A course project exploring **adaptive inference at the edge**, with lung ultrasound classification as the current application scenario.
 
-The current OpenPOCUS direction investigates **variable frame counts per lung-zone sequence prediction** as an adaptive input/workload mechanism. The earlier shared-transformer, intermediate-exit work is a feasibility pilot, not a final architecture choice. The project studies predictive performance, FLOPs, throughput, latency, adaptive policies and deployment constraints at the edge.
+The current OpenPOCUS direction develops **TinyViT-5M as an adaptive backbone**,
+starting from variable frame counts per lung-zone sequence prediction and measuring
+other bounded adaptive dimensions where useful. The project studies predictive
+performance, FLOPs, throughput, latency, adaptive policies and deployment
+constraints at the edge.
 
 ## Current status
 
-The first feasibility experiment (**F001**) is complete.
+The architecture and data foundation is complete, and T009 adaptive-dimension
+characterization is next. The frozen static reference remains F002b MobileNetV2
+(D025): K16 validation macro-F1 0.859, abnormal recall 0.750 and 5.11 GFLOPs.
+Charalampos and Salo selected the F002c TinyViT-5M epoch-8 checkpoint as the
+adaptive-system backbone (D026). That same checkpoint reached validation macro-F1
+0.8602/0.8676/0.8737 at K4/K8/K16 without K-specific retraining. Its canonical
+shared frozen copy is
+[`checkpoints/f002c_tinyvit5m_epoch8.pt`](checkpoints/f002c_tinyvit5m_epoch8.pt).
 
-We fine-tuned an ImageNet-pretrained **DeiT-Tiny** on **DermaMNIST (224×224)** and evaluated one shared backbone at transformer depths **4, 8, and 12**.
-
-| Depth | Validation accuracy | Macro-F1 | fvcore FLOPs | Mean latency |
-|---:|---:|---:|---:|---:|
-| 4 | 74.48% | 0.3389 | 0.3792 G | 1.67 ms |
-| 8 | 84.25% | 0.6655 | 0.7293 G | 3.25 ms |
-| 12 | 84.45% | 0.6955 | 1.0794 G | 4.27 ms |
-
-The depth-8 operating point is particularly promising: it nearly matches the full 12-block model in validation accuracy while using less reported compute and lower measured latency.
-
-These are **validation-only feasibility results**. The official test split is intentionally untouched.
+These are validation development results, not clinical performance or a claim of
+universal architecture superiority. The T006 held-out test partition remains
+untouched.
 
 ## Project direction
 
 The current direction is to:
 
-1. use the frozen static OpenPOCUS reference and characterize candidate adaptive frame-count operating points;
-2. design an adaptive policy that selects measured input-workload operating points;
-3. evaluate predictive performance, FLOPs and throughput;
+1. characterize useful adaptive dimensions and costs around the selected TinyViT checkpoint;
+2. construct at least three measured shared-model operating points;
+3. integrate one compression technique and a resource-aware policy;
 4. study how the system behaves under edge constraints;
-5. keep the design reproducible and deployable rather than treating adaptivity only as an offline model experiment.
+5. compare the final adaptive system with the frozen MobileNetV2 static reference.
 
-The prehospital/ambulance lung POCUS use-case design and variable-frame direction were accepted in TA Sudaksh's feedback. OpenPOCUS remains a technical experimental proxy. D025 selected MobileNetV2 as the F002 static backbone, and the fresh seed-2026 MobileNetV2 F002b run is the frozen static reference. Adaptive operating points, compression and controller choices remain open; the K4/K8/K16 F002 screen did not fix the final adaptive points. T009 follows after PR #23 merges (see D020–D025 in `docs/decision_log.md`). No held-out OpenPOCUS test results are claimed here.
+The prehospital/ambulance lung POCUS use-case design and variable-frame direction
+were accepted in TA Sudaksh's feedback. OpenPOCUS remains a technical experimental
+proxy. D025 continues to govern the MobileNetV2 static reference; D026 selects
+TinyViT for adaptive development. Adaptive operating points, compression and
+controller choices remain open. No held-out OpenPOCUS test results are claimed.
 
-The current conditional technical plan is in [`docs/design_pathway.md`](docs/design_pathway.md).
+The current technical pathway is in [`docs/design_pathway.md`](docs/design_pathway.md).
 The independently reviewed F002 qualification and static-baseline contract is
 in [`docs/f002_methodology.md`](docs/f002_methodology.md), with exact values in
 [`configs/f002_protocol.json`](configs/f002_protocol.json). The copied
 [`docs/adaptivity_project_notes.md`](docs/adaptivity_project_notes.md) contains
-course-derived advisory notes; it does not override project decisions. T008 ran
-F002a and F002b: MobileNetV2 is the selected backbone (D025), and the frozen
-seed-2026 F002b checkpoint is the static reference for T009. See [`experiments/F002/README.md`](experiments/F002/README.md).
+course-derived advisory notes; it does not override project decisions. See the
+historical records in [`experiments/F002/README.md`](experiments/F002/README.md)
+and [`experiments/F002c/README.md`](experiments/F002c/README.md).
 
 ## Repository structure
 
@@ -58,8 +65,9 @@ adaptive-medical-edge-ai/
 │   ├── presentation.md
 │   └── ai_workflow.md
 │
-├── experiments/
-│   └── feasibility_001/
+├── experiments/          # experiment-specific code and reproducibility records
+│
+├── checkpoints/          # explicitly tracked frozen handoffs
 │
 ├── src/
 ├── configs/
@@ -97,7 +105,12 @@ This downloads `Lung Database.zip` (~5.3 GB) and unpacks the frames into `data/o
 
 ## Reproducibility
 
-Experiment-specific setup and run instructions live inside each experiment directory. Generated datasets, checkpoints, artifacts, caches, and local environments are excluded from Git.
+Experiment-specific setup and run instructions live inside each experiment
+directory. Generated datasets, ordinary checkpoints, artifacts, caches, and local
+environments are excluded from Git. The one tracked checkpoint exception is the
+canonical frozen F002c adaptive backbone above; its provenance and archival
+boundaries are recorded in
+[`experiments/F002c/README.md`](experiments/F002c/README.md#canonical-shared-checkpoint).
 
 The first experiment can be found in:
 

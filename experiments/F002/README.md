@@ -1,6 +1,6 @@
 # F002 — OpenPOCUS architecture qualification and static reference
 
-**Status:** T008 complete pending PR review. Every step of the
+**Status:** T008 complete; PR #23 merged. Every step of the
 [`docs/f002_methodology.md`](../../docs/f002_methodology.md) §11 handoff ran
 on DAS-5 on 2026-10-03. F002a's deterministic gates left two finalists with no
 automatic winner and no seed-43 trigger. Charalampos and Salo then chose
