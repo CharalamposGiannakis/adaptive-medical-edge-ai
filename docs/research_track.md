@@ -2,18 +2,45 @@
 
 ## Current direction
 
-Investigate adaptive edge inference for prehospital/ambulance lung POCUS with OpenPOCUS as a technical experimental proxy. Variable frame count per zone-sequence prediction is a supported primary direction; the DermaMNIST-224/DeiT-Tiny depth work remains pilot evidence, not the selected architecture. Exact frame counts, utility and policy mapping remain open (D020–D021).
+Develop adaptive edge inference for prehospital/ambulance lung POCUS with
+OpenPOCUS as a technical experimental proxy. D025 keeps F002b MobileNetV2 as the
+frozen static reference; D026 selects the F002c TinyViT-5M epoch-8 checkpoint as
+the adaptive-system backbone, with its canonical shared frozen copy at
+[`checkpoints/f002c_tinyvit5m_epoch8.pt`](../checkpoints/f002c_tinyvit5m_epoch8.pt).
+T009 now characterizes useful adaptive dimensions and their costs before T010
+selects operating points.
 
 ## Evidence so far
 
-- F001 established three shared-backbone operating points (4/8/12) without using the official test split.
-- F001b measured each depth from 4 through 12. Validation accuracy peaks at depth 9, with non-monotonic behavior thereafter; compute is explicitly reported as fvcore FLOPs.
-- F001c shows per-input complementarity but not a straightforward case for always extending inference: 9→12 yields 28 rescues and 35 regressions. Five examples are first correct at depth 12. A perfect hindsight oracle covers 92.2%, but this is an unattainable upper bound. Confidence/entropy patterns merit cautious follow-up, not a controller claim.
+- F001–F001c established pilot evidence for shared-depth operation and per-input
+  complementarity on DermaMNIST, without using its official test split. Those
+  studies remain historical feasibility work rather than the selected POCUS model.
+- T006 fixed the OpenPOCUS cohort and known-dependency-group-disjoint split.
+- F002b established the frozen MobileNetV2 static reference at K16: validation
+  macro-F1 0.859, abnormal recall 0.750 and 5.11 GFLOPs.
+- F002c's selected TinyViT checkpoint reached duplicate-aware validation macro-F1
+  0.8602/0.8676/0.8737 at K4/K8/K16 without K-specific retraining. At K16 its
+  abnormal recall was 0.8289. This supports the D026 adaptive-backbone choice but
+  is single-seed development evidence under a different training recipe.
+- TinyViT FLOPs, latency and throughput have not yet been measured under the
+  consistent convention needed for final operating-point comparisons.
 
 ## Next research decision
 
-Use F002 to test whether OpenPOCUS supports useful predictive behaviour, then characterize variable-frame configurations before selecting operating points or mapping them to simulated resource states. Compare any later policy with fixed baselines under one pre-specified protocol. Clarify the throughput unit with the teaching team on Thursday. Reserve the official test set for a final pre-specified evaluation.
+T009 should determine which bounded TinyViT configurations form a useful adaptive
+configuration space. Frame count is the first promising dimension; additional K
+values, architecture-supported depth/exits, spatial resolution, compression
+interactions or input-difficulty signals may be investigated when they can change
+the operating-point decision. Evidence should reject unnecessary complexity.
+
+T010 will select at least three measured shared-model operating points. T011 adds
+one compression method, T012 maps resource states to measured points, and T013
+performs the final static-versus-adaptive comparison. The T006 held-out test
+partition remains reserved until a final protocol is fixed.
 
 ## Interpretation guardrails
 
-Separate aggregate validation metrics, per-input rescue/regression behavior, theoretical oracle headroom, and deployable policy performance. Do not call a depth optimal, infer clinical significance from errors, or treat confidence as a validated routing signal.
+Separate validation measurements, validation-driven model/checkpoint selection,
+per-input analyses, cost measurements and deployable policy performance. Do not
+infer clinical significance, statistical superiority or edge-device behavior from
+the present validation results.

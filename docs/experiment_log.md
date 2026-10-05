@@ -95,3 +95,13 @@ bounded cost/adaptivity characterization before any architecture decision.
 Raw evidence remains ignored under `artifacts/F002c/`; a complete external
 artifact archive has SHA-256
 `e098f0a671d98cafb70817b494afb09794730771ed7c75e4a4b73478a65ca03c`.
+
+**Subsequent decision (2026-10-05):** After reviewing this evidence, Charalampos
+and Salo selected the F002c epoch-8 TinyViT checkpoint as the adaptive-system
+backbone for T009 onward (D026). This later project decision does not alter the
+original exploratory interpretation, reopen F002 or replace the frozen F002b
+MobileNetV2 static reference. The canonical shared frozen copy is
+[`checkpoints/f002c_tinyvit5m_epoch8.pt`](../checkpoints/f002c_tinyvit5m_epoch8.pt).
+The ignored `artifacts/F002c/tinyvit5m_seed2026/checkpoint.pt` remains raw
+experiment history, and the external archive remains archival evidence outside
+Git.

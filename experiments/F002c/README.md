@@ -7,6 +7,12 @@ User-authorized exploratory experiment, 2026-10-04; branch
 F002a/F002b, D024/D025, the dataset, T006 labels/splits and evaluation units remain
 unchanged. No formal architecture-fairness or statistical-winner claim is intended.
 
+**Subsequent decision (2026-10-05):** Charalampos and Salo selected the F002c
+epoch-8 TinyViT checkpoint recorded below as the adaptive-system backbone for
+T009 onward under [D026](../../docs/decision_log.md#d026--select-tinyvit-as-the-adaptive-system-backbone).
+F002b MobileNetV2 remains the immutable static reference under D025. This later
+project decision preserves the original experiment design, results and caveats.
+
 ## Design chosen before training
 
 One model: timm `tiny_vit_5m_224.dist_in22k_ft_in1k`, ImageNet-22K distilled then
@@ -96,9 +102,10 @@ mkdir -p artifacts/F002c/logs
 sbatch experiments/F002c/das5_f002c.sbatch train
 ```
 
-The wrapper requests one GTX 1080 Ti, four CPUs, 32 GB host RAM and two hours;
-runs the relevant tests on the allocated node; and runs CUDA preflight before
-training. Estimate 1–2 hours before measuring actual epoch time, plus queue delay.
+The wrapper requests one GPU without a GPU-model constraint, four CPUs, 32 GB
+host RAM and two hours; runs the relevant tests on the allocated node; and runs
+CUDA preflight before training. Slurm chooses the GPU model. The original planning
+estimate was 1–2 hours plus queue delay; the measured run time is recorded below.
 It reuses an existing environment and never installs packages. A finished or
 partial run directory cannot be overwritten or implicitly resumed. No automatic
 rescue is attempted: at most one optimization-motivated change can be documented
@@ -138,6 +145,8 @@ submission, the local DAS copy removed only
 `#SBATCH --constraint=GTX1080Ti` following teaching-team scheduling advice while
 retaining `#SBATCH --gres=gpu:1`; Slurm still assigned a GTX 1080 Ti. This was a
 scheduler-only local edit and did not change model, data or training code.
+The tracked wrapper now matches that successful submission: the model constraint
+is absent and the one-GPU request is retained.
 
 The allocated-node run passed all 48 F002/F002c tests and the mandatory same-device
 CUDA preflight. Full training stopped after epoch 13 by the five-epoch patience
@@ -146,6 +155,17 @@ recorded in `run.json` was **1,480.97 s (24 min 41 s)**. Peak GPU memory recorde
 during the run was **3,142 MiB allocated / 3,556 MiB reserved**. The selected
 checkpoint SHA-256 is
 `30b70734426e84f429b83011abca04511540149d1fc3e416274c6fbcb14853b2`.
+
+### Canonical shared checkpoint
+
+The canonical shared frozen adaptive-backbone copy is
+[`checkpoints/f002c_tinyvit5m_epoch8.pt`](../../checkpoints/f002c_tinyvit5m_epoch8.pt).
+It is 20,441,977 bytes and has SHA-256
+`30b70734426e84f429b83011abca04511540149d1fc3e416274c6fbcb14853b2`.
+It was copied byte-for-byte from the ignored raw run artifact
+`artifacts/F002c/tinyvit5m_seed2026/checkpoint.pt`, which remains part of the raw
+experiment history. The complete external artifact archive remains archival
+evidence outside Git and is not committed.
 
 ### Predictive result and frozen MobileNetV2 comparison
 

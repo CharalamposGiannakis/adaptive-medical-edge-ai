@@ -1,6 +1,6 @@
 # OpenPOCUS lung ultrasound
 
-The independently measured T002 audit is in [`docs/openpocus_dataset_audit.md`](../../docs/openpocus_dataset_audit.md). It records image-backed sample counts, missing zones, exact duplicate sequences, recordings shared across folders, patient-identity uncertainty and candidate tasks. The selected T004 task is defined below and in [decision D019](../../docs/decision_log.md#d019--define-the-openpocus-binary-zone-sequence-task). T006's derived cohort and known-group-disjoint split are described below and in D023; independent review is pending.
+The independently measured T002 audit is in [`docs/openpocus_dataset_audit.md`](../../docs/openpocus_dataset_audit.md). It records image-backed sample counts, missing zones, exact duplicate sequences, recordings shared across folders, patient-identity uncertainty and candidate tasks. The selected T004 task is defined below and in [decision D019](../../docs/decision_log.md#d019--define-the-openpocus-binary-zone-sequence-task). T006's independently reviewed derived cohort and known-group-disjoint split are described below and in D023.
 
 License is CC BY-NC-SA 4.0 (`LICENSE.md`): non-commercial, share-alike.
 Background on the labeling protocol, devices and interrater agreement is in
@@ -37,13 +37,14 @@ zone-level annotation.** It does not mean trauma, pneumothorax, FAST/free fluid,
 urgency, critical illness or need for intervention. This is an annotation-derived
 lung-finding task in the audited ED/clinic dataset. TA Sudaksh considered the
 prehospital/ambulance use-case design appropriate, with OpenPOCUS as a technical
-experimental proxy; whether dataset bias and sample properties support useful
-prediction/adaptivity remains to be tested (D020).
+experimental proxy. F002/F002c provide validation evidence of useful prediction
+and frame-count behavior, without establishing generalization or clinical utility.
 
 Primary classification metrics are **accuracy and macro-F1**, at the zone-sequence
 prediction unit. The candidate classes are imbalanced (69.52% normal, 30.48%
-abnormal), so accuracy alone is insufficient. T007 will define the final F002
-evaluation protocol; there are no model measurements yet.
+abnormal), so accuracy alone is insufficient. D024/T007 defined the F002
+evaluation protocol; measured model evidence is recorded in the F002 and F002c
+experiment READMEs.
 
 ### Reproduce the task manifest
 
@@ -201,8 +202,8 @@ architecture or model-specific batching is imposed by T006.
 - **Same-target shared recordings:** Keep both aliases and their flags within
   the same dependency group; no silent deduplication or weighting change. These
   separate rows can overweight one recording in validation/test metrics or
-  checkpoint/threshold selection. T007 must pre-specify duplicate-aware
-  evaluation and selection handling; T006 chooses no method.
+  checkpoint/threshold selection. D024/T007 therefore defined duplicate-aware
+  evaluation and selection handling; T006 itself chooses no method.
 - **Within-exam finding-code differences:** ED2 z2/z3 source codes 2/3 and
   Pt160C z5/z6 source codes 1/2 all map to T004 binary `abnormal`. They do not
   disagree on this task's target, and each pair is within one exam, so neither

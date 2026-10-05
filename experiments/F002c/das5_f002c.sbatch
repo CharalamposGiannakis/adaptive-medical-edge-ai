@@ -2,7 +2,6 @@
 # Submit from the repository root after preparing the weight cache; see README.
 #SBATCH --job-name=f002c
 #SBATCH --partition=defq
-#SBATCH --constraint=GTX1080Ti
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=32G

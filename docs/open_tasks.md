@@ -1,116 +1,106 @@
-# Open task queue
+# Active task queue
 
-Course-critical tasks are listed first. Priorities: **P0** = resolve before committing to the final task/scenario; **P1** = core implementation/evaluation, including compression, policy and final comparison; **P2** = research extensions after the core. Owners are coordination assignments, not evidence that work has started. Do not infer completion from discussion; update this queue from repository-backed work. The conditional technical sequence is in [`design_pathway.md`](design_pathway.md).
+GitHub Issues carry live assignment, discussion and pull-request status. This file
+keeps the current technical queue and acceptance outcomes without repeating the
+full history of completed work. The active pathway is in
+[`design_pathway.md`](design_pathway.md).
 
-## Course-critical tasks
+## Completed foundation
 
-### T001 — Integrate Salome's POCUS download script through a PR
+- **T001–T003:** Integrated and audited OpenPOCUS, and documented the proxy
+  prehospital/ambulance POCUS scenario. See the dataset README and audit.
+- **T004–T005:** Fixed the supported binary zone-sequence task and recorded
+  teaching-team feedback/resource-state conventions (D019–D021).
+- **T006:** Froze the reproducible cohort, known-dependency-group-disjoint split
+  and manifests (D023; PR #20; issue #8).
+- **T007:** Fixed the F002 qualification/static-reference protocol (D024; PR #22;
+  issue #9).
+- **T008:** Ran F002a/F002b and froze the MobileNetV2 static reference (D025;
+  PR #23; issue #10 closed).
+- **F002c:** Ran the bounded TinyViT exploration. Charalampos and Salo selected
+  the epoch-8 checkpoint as the adaptive-system backbone (D026). MobileNetV2
+  remains the static reference.
 
-- **Priority:** P0
-- **Owner:** Salome
-- **Dependencies:** None
-- **Scope:** Integrate Salome's existing script; do not reimplement it here before reviewing her PR.
-- **Acceptance criteria:** Reproducible download command/script; downloaded dataset is gitignored; no credentials or machine-specific paths; short usage documentation.
+Historical acceptance criteria and evidence remain in
+[`decision_log.md`](decision_log.md), [`experiment_log.md`](experiment_log.md),
+[`experiments/F002/README.md`](../experiments/F002/README.md) and
+[`experiments/F002c/README.md`](../experiments/F002c/README.md).
 
-### T002 — Audit downloaded POCUS dataset
+## T009 — Characterize useful adaptive dimensions (issue #11)
 
-- **Priority:** P0
-- **Owner:** Charalampos / Salome
-- **Dependencies:** T001
-- **Audit evidence:** Independent review and full rerun passed 2026-09-26; see `docs/openpocus_dataset_audit.md` and `data/openpocus/audit_openpocus.py`. T002b later documented shared cross-ID recordings and provisional split groups (D018). Patient identity and source metadata limitations remain; task definition follows in T004 (D019), while F002 remains unspecified.
-- **Scope:** Determine labels, patients, clip count, class distribution, video/image format, available resolutions/frame rates, patient identifiers, licensing, disk size, and feasibility of patient-level splits.
-- **Acceptance criteria:** Repository-backed audit records each available property, source/license, missing metadata, and whether leakage-safe patient-level splitting is possible.
+- **Priority:** P1
+- **Owner:** Salom
+- **Status:** Ready; dependency T008/issue #10 is complete and closed. Start after
+  the F002c/D026 phase-transition branch merges.
+- **Foundation:** Use the canonical shared frozen F002c TinyViT epoch-8 checkpoint
+  at [`checkpoints/f002c_tinyvit5m_epoch8.pt`](../checkpoints/f002c_tinyvit5m_epoch8.pt),
+  selected in D026. Keep the T006 split and duplicate-aware evaluation units
+  frozen; use train/validation only.
+- **Goal:** Empirically and analytically characterize a useful adaptive
+  configuration space for T010.
+- **Scope:** Frame count K is already supported by preliminary same-checkpoint
+  K4/K8/K16 evidence. Measure useful K values and their predictive/FLOPs/runtime/
+  throughput behavior under a consistent convention. Bounded experiments may
+  also examine TinyViT-supported depth/exits, spatial resolution, compression
+  interactions, input-difficulty/confidence signals or another justified
+  dimension. The list is optional; evidence should eliminate unnecessary
+  complexity.
+- **Acceptance criteria:** Reproducible configurations/commands and raw validation
+  evidence; no T006 test inference; consistent cost/runtime measurements for
+  candidate configurations; explicit measured-versus-interpreted conclusions; an
+  evidence-backed selection of the adaptive axes and candidate configuration space
+  passed to T010.
 
-### T003 — Reflect provisional prehospital/ambulance POCUS scenario in the repository
-
-- **Priority:** P0
-- **Owner:** Charalampos
-- **Dependencies:** None
-- **Scope:** Make the scenario visible while explicitly labeling it provisional and distinguishing the public dataset as a technical proxy where appropriate.
-- **Acceptance criteria:** Relevant project-facing documentation does not present the scenario, dataset fit, or clinical population as finalized.
-
-### T004 — Lock the exact prediction task supported by the selected public dataset
-
-- **Priority:** P0
-- **Owner:** Charalampos
-- **Dependencies:** T002
-- **Repository evidence:** D019 defines binary normal versus definite abnormal at the exam × lung-zone sequence level, with accuracy and macro-F1 as primary classification metrics. `data/openpocus/build_binary_task.py` implements the mapping and explicit exclusions; tests reconcile 1,227 normal + 538 abnormal candidates with T002. See `data/openpocus/README.md` for reproduction and limitations; GitHub issue #6 carries completion status.
-- **Scope:** Define target, input unit, labels, and evaluation unit only from the audited dataset and documented project goals.
-- **Acceptance criteria:** Prediction task and rationale are documented; task scope is supported by available labels/data and does not overstate ambulance/trauma representativeness.
-
-### T005 — Record teaching-team feedback and resolve project assumptions
-
-- **Priority:** P0
-- **Owner:** Charalampos
-- **Dependencies:** None
-- **Status:** Completed (GitHub issue #7). D020 records TA Sudaksh's feedback separately from project decisions; D021 records the normalized simulated resource-budget convention. `PROJECT_STATE.md` summarizes the current design. Thursday's non-blocking clarification is whether throughput means frames/s, completed zone-sequence predictions/s, or both.
-- **Acceptance criteria:** Feedback is recorded faithfully in project documentation, including unresolved assumptions; do not fabricate or paraphrase feedback that has not been received.
-
-### T006 — Build reproducible POCUS cohort and known-group-disjoint split pipeline
+## T010 — Construct shared adaptive operating points
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Dependencies:** T002, T004 (complete)
-- **Status:** Completed after independent review; PR #20 merged and GitHub issue #8 closed. D023 records the quality/split policy. `data/openpocus/t006/` holds the small tracked shared foundation; `data/openpocus/README.md` gives reproduction and measured diagnostics.
-- **Scope:** Decide quality/exclusion rules before model results, including Pt45 and duplicate-associated label conflicts. Produce one common cohort and known-family/shared-recording-group-disjoint partition foundation for every architecture; no architecture-specific split. Biological-patient independence remains unverified.
-- **Acceptance criteria:** Deterministic manifests/config and source hashes; attrition and class/device/group/sequence-length summaries; connected-group and leakage assertions; immutable source labels/raw data and no dataset files committed. See the T006 gate in `design_pathway.md`.
+- **Dependency:** T009.
+- **Scope:** Select and implement at least three useful operating points from the
+  T009 evidence, sharing the relevant TinyViT model/weights or a documented
+  shared-weight extension.
+- **Acceptance criteria:** Exact configurations, shared-weight relationship and
+  raw predictive/cost measurements are reproducible. Do not invent points merely
+  to mirror the number of budget states.
 
-### T007 — Pre-specify F002 architecture qualification and frozen static baseline
-
-- **Priority:** P1
-- **Owner:** Charalampos
-- **Dependencies:** T002, T004, T005 and T006 (complete).
-- **Status:** Completed after independent review; PR #22 merged and issue #9 closed (D024 accepted). No F002 model training has begun. The authoritative contract is [`f002_methodology.md`](f002_methodology.md).
-- **Scope:** Common K16 screen for MobileNetV2, ResNet-18 and DeiT-Tiny; at-most-two K4/8/16 same-checkpoint screen; one-backbone decision gate; fresh frozen F002b reference. T007 does not train models.
-- **T006 handoff:** Known same-target shared recordings remain separate retained rows inside one dependency group. Group-disjoint partitions prevent train/test leakage, but duplicate rows can overweight a recording in validation/test metrics or checkpoint/threshold selection. Pre-specify duplicate-aware evaluation and selection handling in T007; T006 chooses no weighting or canonicalization method.
-- **Acceptance criteria:** Pre-specified data use, sampler/preprocessing, comparable bounded training, checkpoint/threshold selection, predictive metrics, consistent FLOPs with operator checks, latency, both throughput quantities, held-out-test protection and hardware/software record. Exact `K` follows T006 sequence-length evidence; see `design_pathway.md`.
-
-### T008 — Implement and run F002 static POCUS baseline
-
-- **Priority:** P1
-- **Owner:** Salom (intended implementer)
-- **Dependencies:** T006 and independently reviewed/merged T007 protocol (D024; complete).
-- **Status:** Completed pending PR review. F002a seed 42 ran on DAS-5 (2026-10-03): preflight, references, three K16 trainings (no rescue), K16 gate (DeiT-Tiny eliminated), K4/8/16 response and final gate (no automatic backbone, no seed-43 trigger). Charalampos and Salo selected MobileNetV2 (D025). F002b seed 2026 passed the validity gate (macro-F1 0.859) and its checkpoint is frozen for T009. No test-partition inference. See `experiments/F002/README.md`.
-- **Acceptance criteria:** Execute [`f002_methodology.md`](f002_methodology.md) and its ordered handoff: F002a bounded qualification selects one recorded backbone, then F002b saves the fresh frozen static reference. Preserve reproducible configurations, raw results, per-input predictions and measurements; distinguish evidence from interpretation. Exploratory candidate checkpoints are not the final baseline; T006 test inference remains deferred.
-
-### T009 — Characterize candidate adaptive dimensions
+## T011 — Integrate one compression technique
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Dependencies:** F002 (T008)
-- **Scope:** Densely or selectively characterize frame count `K` on the selected F002 model as the primary adaptive hypothesis, without mapping resource percentages to `K`.
-- **Acceptance criteria:** Measured predictive/cost response decides whether variable `K` yields useful operating points. If it does not, retain the cheapest adequate `K` and examine one bounded fallback axis, preferably depth/early exits or spatial resolution; do not manufacture four frame-count points.
+- **Dependency:** Stable operating points from T010.
+- **Scope:** Choose one technique supported by model/backend evidence and evaluate
+  it against the appropriate uncompressed reference.
+- **Acceptance criteria:** Reproducible method and artifacts; predictive and cost
+  effects measured under the same convention. INT8 post-training quantization and
+  structured pruning remain candidates, not commitments.
 
-### T010 — F003: construct at least three shared adaptive operating points
-
-- **Priority:** P1
-- **Owner:** Charalampos
-- **Dependencies:** To be specified after T009 and the F002 findings.
-- **Acceptance criteria:** At least three reproducible operating points share the relevant model/weights as defined by the approved design; configurations and raw measurements are saved.
-
-### T011 — Integrate one compression technique
+## T012 — Implement a resource-aware policy
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Dependencies:** To be specified after core operating points are established.
-- **Acceptance criteria:** One evidence/backend-dependent technique is implemented and evaluated against a documented uncompressed baseline; methodology and results are reproducible. INT8 PTQ is a candidate, structured pruning a fallback, with neither selected yet.
+- **Dependencies:** T010 and relevant T011 results.
+- **Scope:** Map active normalized resource states to measured operating points;
+  `b = 0.00` defers inference. Compare with fixed/static alternatives under the
+  same protocol.
+- **Acceptance criteria:** Reproducible policy, scenarios and comparisons; no
+  held-out-test use during policy development. A learned or optimization-based
+  controller is optional research work, not required for the core.
 
-### T012 — Implement a simple runtime resource-aware policy
-
-- **Priority:** P1
-- **Owner:** Charalampos
-- **Dependencies:** Scenario, operating points, and resource signals to be specified from preceding tasks.
-- **Acceptance criteria:** A simple lookup policy maps active normalized budget states to measured operating points, defers at `b = 0.00`, and is compared with fixed/static alternatives under the same protocol. Optimization-based or learned control remains research work.
-
-### T013 — Final static-versus-adaptive Pareto evaluation
+## T013 — Final static-versus-adaptive evaluation
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Dependencies:** T008, T010, T011, T012; final scenario and protocol must be locked first.
-- **Acceptance criteria:** Static and adaptive/compressed systems are compared on the pre-specified task, splits, predictive metrics, FLOPs and throughput; limitations and uncertainty are reported.
+- **Dependencies:** T010–T012 and a frozen final evaluation protocol.
+- **Scope:** Compare the frozen F002b MobileNetV2 static reference with the selected
+  TinyViT adaptive/compressed system.
+- **Acceptance criteria:** Pre-specify any held-out-test use before inference;
+  report predictive metrics, consistent FLOPs, throughput and relevant latency;
+  preserve raw evidence and state uncertainty, proxy-dataset limits and any
+  validation-driven selection bias.
 
-## Research backlog (non-course-critical)
+## Research backlog
 
-- **R001 — Optimization-based controller:** Explore only after the core task, policy, and evaluation are established.
-- **R002 — Broad ViT/transformer exploration:** Research possibility, not a current architecture commitment. DeiT-Tiny's bounded F002a candidacy does not select a transformer.
-- **R003 — Other temporal/window variants:** Explore beyond the primary variable-frame direction after the dataset-supported task and baseline are established.
+- Optimization-based or learned resource control after the simple T012 policy.
+- Broad architecture searches beyond the selected TinyViT backbone.
+- More complex temporal selection or joint frame/depth routing if the course core
+  is complete and T009 evidence warrants it.
