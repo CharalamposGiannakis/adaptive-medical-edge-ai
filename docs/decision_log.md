@@ -395,13 +395,28 @@ decision timing.
 
 ---
 
+### D027 — Use frame count as the primary adaptive axis
+
+**Date:** 2026-10-06
+**Status:** Proposed by Salo from T009/F003; needs Charalampos's agreement
+
+- **Decision:** Use frame count K as the primary adaptive axis for T010, with the frozen D026 TinyViT checkpoint and nested spread frames. Carry the measured K1/K2/K4/K8/K12/K16 candidates into T010; T010 selects the final operating points from their measured quality-cost trade-offs. The core T012 policy switches between the selected points by resource budget. Input-driven escalation stays an open T012 question.
+- **Evidence (F003, validation):** macro-F1 0.816 / 0.860 / 0.868 / 0.874 and AUROC 0.888 / 0.937 / 0.950 / 0.952 at K1 / K4 / K8 / K16 for 1.29 / 5.15 / 10.30 / 20.60 GFLOPs. K8 and K12 are practically equal to K16, K4 slightly lower, K1/K2 clearly lower. Threshold-free, the K curve lies above every alternative tested; the trend holds within device 0.
+- **Rejected:** frozen-trunk early exits and lower resolution (lower AUROC than the K curve at similar cost) and consecutive-frame sampling (worse at K4, p = 0.04).
+- **Not resolved:** input-driven K → K16 escalation (cross-validated reruns scatter around plain K4; only 7 units fixable from K4) and the short-scan idea (no detectable effect of scan share).
+- **Static baseline:** at its own cost (5.1 GFLOPs), TinyViT K4 ties MobileNetV2 F002b on macro-F1 at 0.5 with different errors. Run at the same nested K, MobileNetV2's frame-count curve is level with or below TinyViT's at every matched cost, most clearly at the cheap end (macro-F1 0.761 vs 0.816 at about 1.3 GFLOPs), though no single matched comparison is resolved. MobileNetV2 has higher device-0 normal recall.
+- **Shared weights:** all K run the same weights, so sharing holds by construction; nested frames allow anytime upgrades (K4 → K16 reuses the computed frames). A stronger shared-weight mechanism (trained exits or training across K) changes the weights and should be decided before T010.
+- **Limits:** one checkpoint and seed, 76 abnormal validation units, unknown frame rate; MobileNetV2's low-K response differs between checkpoints (F002a vs F002b). Details: [`experiments/F003/README.md`](../experiments/F003/README.md).
+
+---
+
 # Open Decisions
 
 The following are intentionally **not decided yet**:
 
 - How well the validation-supported model and adaptive behavior generalize; OpenPOCUS remains a technical proxy rather than clinical deployment evidence.
 - Any additional biological-patient identity mapping if new provenance becomes available; D023 fixes the current T006 quality exclusions and known-group split protocol.
-- Which variable-frame configurations yield useful measured quality–cost trade-offs, and whether other bounded TinyViT dimensions add value.
+- Final acceptance of D027 (frame count as the primary axis) and the exact T010 operating points.
 - Final measured operating points beyond the preliminary F002c K4/K8/K16 evidence and mapping from active resource states to those points.
 - Compression technique.
 - Whether resource conditions beyond the accepted simulated budget states will also be measured.

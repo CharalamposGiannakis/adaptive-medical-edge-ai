@@ -105,3 +105,11 @@ MobileNetV2 static reference. The canonical shared frozen copy is
 The ignored `artifacts/F002c/tinyvit5m_seed2026/checkpoint.pt` remains raw
 experiment history, and the external archive remains archival evidence outside
 Git.
+
+## F003 — Adaptive dimensions of the D026 TinyViT (T009)
+
+Which ways of changing the compute of the frozen D026 TinyViT give useful accuracy–cost trade-offs? Ran on DAS-5 on 2026-10-06, validation only (254 units, 76 abnormal), no test-partition inference. Tested frame count K ∈ {1, 2, 4, 8, 12, 16}, frame selection (scan share, consecutive frames), frozen-trunk exits, 160/192 px input and K → K16 escalation, with strict fvcore FLOPs, F002 §9 timing on a GTX 1080 Ti, AUROC and paired tests. Design, commands, tables and figures: `experiments/F003/README.md`; outputs in ignored `artifacts/F003/`.
+
+Measured: macro-F1 0.816 / 0.860 / 0.868 / 0.874 and AUROC 0.888 / 0.937 / 0.950 / 0.952 at K1 / K4 / K8 / K16, for 1.29 / 5.15 / 10.30 / 20.60 GFLOPs and 16.7 / 34.2 / 58.8 / 115.1 ms end to end. MobileNetV2 F002b: 0.859 / 0.913 at 5.11 GFLOPs. Exits and lower resolution have lower AUROC than the K curve at similar cost. Consecutive frames are worse than spread frames at K4 (p = 0.04). Cross-validated escalation scatters around plain K4. MobileNetV2 F002b at the same nested K: macro-F1 0.708 / 0.761 / 0.831 / 0.859 at K1 / K4 / K8 / K16 (0.32 / 1.28 / 2.55 / 5.11 GFLOPs), level with or below TinyViT at every matched cost.
+
+Interpretation: frame count is the primary axis (proposed as D027); escalation and the short-scan idea are unresolved; at the static baseline's cost TinyViT ties it at threshold 0.5; per FLOP its frame-count curve is level with or above MobileNetV2's, not significantly at any single point. Single checkpoint and seed, so development evidence.
