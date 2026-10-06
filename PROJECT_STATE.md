@@ -1,7 +1,8 @@
 # Current phase
 
-The architecture and data foundation is complete. The project is entering adaptive
-experimentation, with T009 next after the F002c phase-transition branch merges.
+The architecture and data foundation is complete. T009/F003 is complete and under
+review; D027 selects frame count as the primary adaptive axis pending acceptance.
+T010 is next.
 F002b MobileNetV2 remains the frozen static comparison; D026 selects the F002c
 TinyViT-5M checkpoint as the model to develop adaptively. No model has run on the
 T006 held-out test partition.
@@ -78,8 +79,9 @@ measured this space. Frame count is the useful axis: macro-F1 0.816 / 0.860 /
 Frozen exits and lower resolution were rejected; input-driven escalation is
 unresolved. At matched FLOPs TinyViT K4 ties the static MobileNetV2 (0.860 vs
 0.859), and MobileNetV2 run at fewer frames stays level with or below TinyViT
-per FLOP. D027 proposes K1/K4/K8/K16 with budget-driven switching, pending
-Charalampos's agreement.
+per FLOP. D027 proposes frame count as the primary axis and carries the measured
+K1/K2/K4/K8/K12/K16 candidates into T010, which selects the final operating
+points, pending Charalampos's agreement.
 
 ## Guardrails
 
