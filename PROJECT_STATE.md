@@ -1,7 +1,7 @@
 # Current phase
 
-The architecture and data foundation is complete. T009/F003 is complete and under
-review; D027 selects frame count as the primary adaptive axis pending acceptance.
+The architecture and data foundation is complete. T009/F003 is complete (PR #24
+merged); D027 selects frame count as the primary adaptive axis pending acceptance.
 T010 is next.
 F002b MobileNetV2 remains the frozen static comparison; D026 selects the F002c
 TinyViT-5M checkpoint as the model to develop adaptively. No model has run on the

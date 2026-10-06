@@ -30,8 +30,8 @@ Historical acceptance criteria and evidence remain in
 
 - **Priority:** P1
 - **Owner:** Salom
-- **Status:** In review (Salo). F003 (2026-10-06) proposes frame count as the
-  primary axis (D027); see [`experiments/F003/README.md`](../experiments/F003/README.md).
+- **Status:** Done (PR #24; issue #11 closed). F003 (2026-10-06) proposes frame
+  count as the primary axis (D027); see [`experiments/F003/README.md`](../experiments/F003/README.md).
 - **Foundation:** Use the canonical shared frozen F002c TinyViT epoch-8 checkpoint
   at [`checkpoints/f002c_tinyvit5m_epoch8.pt`](../checkpoints/f002c_tinyvit5m_epoch8.pt),
   selected in D026. Keep the T006 split and duplicate-aware evaluation units
