@@ -12,7 +12,7 @@ from experiments.F003.adaptive import (EXITS, EXIT_DIMS, K_VALUES, ExitSequenceM
                                        F003Sequences, Trunk, _scalar_only, count_flops,
                                        dense_indices, fit_exit_head, frame_indices,
                                        load_backbone, positions_in_k16, window_indices)
-from experiments.F003.run_f003 import (auroc, cascade, cross_validated_cascade, device_table,
+from experiments.F003.run_f003 import (auroc, cascade, count_sequence_flops_any_k, cross_validated_cascade, device_table,
                                        group_folds, mcnemar, paired_auroc_delta, pareto_front,
                                        paired_delta, temporal_configs)
 
@@ -172,6 +172,17 @@ class RobustnessTests(unittest.TestCase):
         test = mcnemar(perfect, flipped)
         self.assertEqual((test["only_a_correct"], test["only_b_correct"]), (4, 0))
         self.assertAlmostEqual(test["exact_p"], 0.125)
+
+
+class MobileNetFlopsTests(unittest.TestCase):
+    def test_unrestricted_counter_matches_frozen_counter(self):
+        from src.f002_flops import build_sequence_model, count_sequence_flops
+        model = build_sequence_model("mobilenet_v2", pretrained=False)
+        for k in (4, 8, 16):
+            self.assertEqual(count_sequence_flops_any_k(model, k)["flops"],
+                             count_sequence_flops(model, k)["flops"])
+        self.assertAlmostEqual(count_sequence_flops_any_k(model, 4)["flops"] /
+                               count_sequence_flops_any_k(model, 1)["flops"], 4, delta=0.01)
 
 
 class LeakageTests(unittest.TestCase):

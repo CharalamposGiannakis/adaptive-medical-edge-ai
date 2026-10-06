@@ -22,10 +22,11 @@ No test-partition inference. One checkpoint, one seed. Not tested: model width
   and only 7 units can be fixed from K4 (Table 4).
 - **Rejected:** frozen-trunk early exits and lower resolution, both with lower
   AUROC than the K curve at similar cost (Table 2).
-- **Versus the static MobileNetV2 (F002b):** at matched FLOPs (TinyViT K4)
-  macro-F1 ties with different errors on 39 units; TinyViT ranks better
-  threshold-free (K16: CI above zero); MobileNetV2 has higher device-0 normal
-  recall (Tables 5 and 6).
+- **Versus MobileNetV2 (F002b):** run at the same nested K, its frame-count
+  curve lies level with or below TinyViT's at every matched cost; the gap is
+  largest at the cheap end, but no single matched comparison is resolved. At the static
+  reference's own cost (TinyViT K4) macro-F1 ties with different errors on 39
+  units; MobileNetV2 has higher device-0 normal recall (Tables 5–7).
 
 ## Figures
 
@@ -37,8 +38,10 @@ macro-F1 at threshold 0.5, AUROC threshold-free, 95% unit-bootstrap intervals
 **Figure 1.** Predictive quality against cost. (a) Macro-F1; (b) AUROC. Cost
 is fvcore GFLOPs per sequence (F002 convention, log scale). Solid line: K = 1,
 2, 4, 8, 12, 16 at 224 px with its 95% band. Dotted: linear exit heads on the
-frozen trunk. Triangles: 192 and 160 px. Dashed: K consecutive frames. Other
-intervals are omitted for legibility (see Tables 2 and 6).
+frozen trunk. Triangles: 192 and 160 px. Pink dashed: K consecutive frames.
+Black dashed, open circles: MobileNetV2 F002b at the same nested K (its own
+bilinear preprocessing). Other intervals are omitted for legibility (Tables 2,
+6 and 7).
 ![Figure 1](figures/fig1_quality_vs_cost.png)
 
 **Figure 2.** Runtime on one GTX 1080 Ti (node201, shared). (a) Macro-F1
@@ -91,6 +94,10 @@ preprocessing, threshold 0.5 and the T006 duplicate-aware units.
   frozen trunk, folded into one `nn.Linear`.
 - **Resolution 160/192/224 px.** Same weights; TinyViT pads its attention
   windows.
+- **MobileNetV2 at each K.** The frozen F002b checkpoint (read-only,
+  hash-checked) with its own F002 bilinear preprocessing and the same nested
+  frame sets, from one cached K16 pass. FLOPs use the F002 counter and handlers
+  with only the K4/8/16 restriction lifted (identical at K4/8/16, tested).
 - **One cached pass.** Features are mean-pooled per frame before a linear head
   and every K set lies inside K16, so one K16 pass storing per-frame features at
   every exit gives every (exit, K) prediction. The cache reproduces direct
@@ -131,6 +138,7 @@ sbatch -w node201 experiments/F003/das5_f003.sbatch benchmark
 sbatch experiments/F003/das5_f003.sbatch features-temporal
 sbatch experiments/F003/das5_f003.sbatch analyze-extra
 sbatch --gres=gpu:0 experiments/F003/das5_f003.sbatch analyze-robustness   # CPU only
+sbatch experiments/F003/das5_f003.sbatch mobilenet-k
 python experiments/F003/run_f003.py report       # summary.json
 python experiments/F003/create_figures.py        # needs matplotlib
 ```
@@ -147,7 +155,8 @@ mix passes or timing sessions.
   the teaching-team advice recorded for F002c), FP32 with TF32 off: train 224 px
   on node219 (Titan RTX, 62 s), validation 224 px on node202 (GTX TITAN X, 22 s),
   160/192 px on node220 (Titan RTX, 13–14 s), temporal frames on a GTX 1080 Ti
-  (12,468 frames, 46 s).
+  (12,468 frames, 46 s), MobileNetV2 frames on node205 (GTX 1080 Ti, 27 s; cache
+  reproduces direct logits to 3.8e-6 and F002b's recorded K16 macro-F1 exactly).
 - All timings ran in job 110931 on node201 (GTX 1080 Ti, driver 580.95.05), the
   F002b timing host, shared with another user's 7-day jobs. The same job re-timed
   F002b read-only: 11.33 ms model-only (11.40 ms in the exclusive F002b run),
@@ -265,6 +274,24 @@ difference; McNemar = units only A / only B gets right at 0.5.
 | Consecutive − spread, K4 / K8 / K16 | – | −0.036 [−0.071, −0.003] / −0.027 [−0.060, +0.004] / −0.012 [−0.039, +0.013] | 8/20 (0.04), 10/20 (0.10), 12/17 (0.46) |
 | TinyViT K4 − F002b, device 0 normal / abnormal | – | – | 1/11 (0.006), 8/6 (0.79) |
 | TinyViT K4 − F002b, device 4 normal / abnormal | – | – | 4/1 (0.38), 4/0 (0.13) |
+| TinyViT K1 − MobileNetV2 K4 (1.29 vs 1.28 GFLOPs) | +0.056 [−0.017, +0.128] | +0.056 [−0.012, +0.122] | 31 / 23 (0.34) |
+| TinyViT K2 − MobileNetV2 K8 (2.57 vs 2.55 GFLOPs) | −0.001 [−0.066, +0.066] | +0.026 [−0.021, +0.075] | 23 / 26 (0.78) |
+
+**Table 7. MobileNetV2 F002b at each K** (frozen K16 checkpoint, no
+retraining). Last column: paired TinyViT − MobileNetV2 at the same K.
+
+| K | GFLOPs | Macro-F1 [95% CI] | AUROC [95% CI] | Acc. | Normal rec. | Abnormal rec. | ΔAUROC same K [95% CI] |
+|---:|---:|---|---|---:|---:|---:|---|
+| 1 | 0.32 | 0.708 [0.644, 0.765] | 0.774 [0.711, 0.833] | 0.780 | 0.910 | 0.474 | +0.114 [+0.050, +0.178] |
+| 2 | 0.64 | 0.758 [0.695, 0.817] | 0.807 [0.749, 0.867] | 0.815 | 0.927 | 0.553 | +0.111 [+0.055, +0.168] |
+| 4 | 1.28 | 0.761 [0.698, 0.820] | 0.832 [0.773, 0.887] | 0.815 | 0.921 | 0.566 | +0.105 [+0.053, +0.158] |
+| 8 | 2.55 | 0.831 [0.774, 0.883] | 0.893 [0.848, 0.931] | 0.866 | 0.944 | 0.684 | +0.057 [+0.018, +0.099] |
+| 12 | 3.83 | 0.853 [0.800, 0.900] | 0.905 [0.859, 0.942] | 0.882 | 0.944 | 0.737 | +0.048 [+0.008, +0.090] |
+| 16 | 5.11 | 0.859 [0.806, 0.906] | 0.913 [0.870, 0.948] | 0.886 | 0.944 | 0.750 | +0.039 [+0.003, +0.079] |
+
+The seed-42 F002a MobileNetV2 scored higher at small K (macro-F1 0.813 at K4,
+0.858 at K8), so the frame-count response varies between checkpoints of the
+same architecture.
 
 ## Interpretation
 
@@ -285,10 +312,19 @@ difference; McNemar = units only A / only B gets right at 0.5.
 - **Lower resolution ranks cases worse** (AUROC); 192 px's higher macro-F1 at
   some K reflects a shifted operating point. (An earlier draft argued from
   abnormal recall, a secondary metric.)
-- **TinyViT versus MobileNetV2:** a tie at threshold 0.5 with different
-  errors, a TinyViT lead threshold-free, and part of the difference is
-  calibration (MobileNetV2 calls more units normal). D024 fixes 0.5 for the
-  baseline.
+- **TinyViT versus MobileNetV2:** per FLOP, TinyViT's frame-count curve is
+  level with or above MobileNetV2's everywhere they overlap, most clearly at the
+  cheap end, where MobileNetV2 loses abnormal recall. No single matched
+  comparison is resolved, and MobileNetV2's low-K response differs between
+  checkpoints (F002a vs F002b), so this is a consistent tendency, not a proven
+  gap. At threshold 0.5 part of the difference is calibration (MobileNetV2
+  calls more units normal); D024 fixes 0.5 for the baseline.
+- **Weight sharing holds by construction.** All K run the same weights, which
+  satisfies "one deployable artifact" but leaves nothing to verify by comparing
+  layers. The nested frame sets do allow anytime inference: moving from K4 to
+  K16 reuses the four frames already computed. A stronger shared-weight
+  mechanism (trained exits on a shared trunk, or training across K) changes the
+  weights and should be decided before T010.
 - **Runtime is setup-specific.** Model-only latency is flat for small K on the
   1080 Ti; end-to-end gains come from serial JPEG decoding, which a probe-fed
   device would not do; preprocessing differs between the models. FLOPs remain
@@ -306,8 +342,9 @@ difference; McNemar = units only A / only B gets right at 0.5.
 | K8 | 10.30 | 0.868 | 0.950 | 58.8 | about as good as K16 |
 | K16 | 20.60 | 0.874 | 0.952 | 115.1 | full |
 
-One checkpoint, nested spread frames. Not carried forward: exits, lower
-resolution, consecutive frames. Escalation is an open T012 question; the
+One checkpoint, nested spread frames. MobileNetV2 F002b at the same K (Table 7)
+is available as an adaptive comparison for T013. Not carried forward: exits,
+lower resolution, consecutive frames. Escalation is an open T012 question; the
 short-scan idea is untested rather than supported. Better cheap points would
 most directly come from training across several K, which changes the weights
 and needs its own decision.
@@ -329,5 +366,6 @@ Ignored, in `artifacts/F003/` (local and DAS-5
 - `predictions/`: row CSVs and unit JSONs per configuration.
 - `benchmark/`: raw per-request latencies, both attention paths, equivalence,
   F002b reference.
+- `mobilenet_k/`: MobileNetV2 F002b at each K (`mobilenet_k.json`, predictions).
 - `summary.json`, `figures/`, `logs/`; `pareto_f003.png` is an older overview
   plot, superseded by the figures.

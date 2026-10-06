@@ -404,8 +404,9 @@ decision timing.
 - **Evidence (F003, validation):** macro-F1 0.816 / 0.860 / 0.868 / 0.874 and AUROC 0.888 / 0.937 / 0.950 / 0.952 at K1 / K4 / K8 / K16 for 1.29 / 5.15 / 10.30 / 20.60 GFLOPs. K8 is practically equal to K16, K4 slightly lower, K1/K2 clearly lower. Threshold-free, the K curve lies above every alternative tested; the trend holds within device 0.
 - **Rejected:** frozen-trunk early exits and lower resolution (lower AUROC than the K curve at similar cost) and consecutive-frame sampling (worse at K4, p = 0.04). K12 adds little.
 - **Not resolved:** input-driven K → K16 escalation (cross-validated reruns scatter around plain K4; only 7 units fixable from K4) and the short-scan idea (no detectable effect of scan share).
-- **Static baseline:** at matched FLOPs, TinyViT K4 ties MobileNetV2 F002b on macro-F1 at 0.5 with different errors; threshold-free TinyViT ranks better (K16 CI above zero); MobileNetV2 has higher device-0 normal recall.
-- **Limits:** one checkpoint and seed, 76 abnormal validation units, unknown frame rate. Training across several K could improve the cheap points but changes the weights and needs its own decision. Details: [`experiments/F003/README.md`](../experiments/F003/README.md).
+- **Static baseline:** at its own cost (5.1 GFLOPs), TinyViT K4 ties MobileNetV2 F002b on macro-F1 at 0.5 with different errors. Run at the same nested K, MobileNetV2's frame-count curve is level with or below TinyViT's at every matched cost, most clearly at the cheap end (macro-F1 0.761 vs 0.816 at about 1.3 GFLOPs), though no single matched comparison is resolved. MobileNetV2 has higher device-0 normal recall.
+- **Shared weights:** all K run the same weights, so sharing holds by construction; nested frames allow anytime upgrades (K4 → K16 reuses the computed frames). A stronger shared-weight mechanism (trained exits or training across K) changes the weights and should be decided before T010.
+- **Limits:** one checkpoint and seed, 76 abnormal validation units, unknown frame rate; MobileNetV2's low-K response differs between checkpoints (F002a vs F002b). Details: [`experiments/F003/README.md`](../experiments/F003/README.md).
 
 ---
 

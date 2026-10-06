@@ -32,7 +32,7 @@ from experiments.F003.adaptive import (CHECKPOINT_SHA256, EXITS, EXIT_DIMS, K_VA
                                        RESOLUTIONS, TEMPORAL_K, WINDOW_FRACTIONS,
                                        ExitSequenceModel, F003Sequences, Trunk, count_flops,
                                        dense_indices, fit_exit_head, load_backbone,
-                                       set_fused_attention, window_indices)
+                                       positions_in_k16, set_fused_attention, window_indices)
 
 ART = ROOT / "artifacts" / "F003"
 SOURCES = ("experiments/F003/adaptive.py", "experiments/F003/run_f003.py",
@@ -852,6 +852,121 @@ def cmd_analyze_robustness(args) -> None:
     print(result["escalation_ceiling"])
 
 
+# ---------------------------------------------------------------- MobileNetV2 frame count
+
+F002B_RUN = ROOT / "artifacts/F002/f002b/mobilenet_v2_seed2026"
+MOBILENET_MATCHED = (("final_k1_r224", 4), ("final_k2_r224", 8), ("final_k4_r224", 16))
+
+
+def count_sequence_flops_any_k(model, k: int) -> dict:
+    """F002 strict fvcore count for a K the frozen F002 counter does not allow.
+
+    Same handlers, bookkeeping allowlist and head check as
+    ``src.f002_flops.count_sequence_flops``; only the K restriction is lifted.
+    """
+    from fvcore.nn import FlopCountAnalysis
+    from src.f002_flops import BOOKKEEPING_ALLOWLIST, CUSTOM_HANDLERS
+
+    class Strict(FlopCountAnalysis):
+        def _should_ignore_node(self, node):
+            if node.kind() in BOOKKEEPING_ALLOWLIST:
+                return True
+            if super()._should_ignore_node(node):
+                raise RuntimeError(f"Unapproved fvcore-ignored operator: {node.kind()}")
+            return False
+
+    model.eval()
+    analysis = Strict(model, torch.zeros(1, k, 3, 224, 224)).set_op_handle(**CUSTOM_HANDLERS)
+    analysis.unsupported_ops_warnings(False)
+    analysis.uncalled_modules_warnings(False)
+    total = int(analysis.total())
+    if analysis.unsupported_ops():
+        raise RuntimeError(f"Uncounted operators: {dict(analysis.unsupported_ops())}")
+    head = int(analysis.by_module_and_operator().get("head", {}).get("linear", 0))
+    if head != model.head.in_features or analysis.by_operator().get("mean_pool", 0) <= 0:
+        raise RuntimeError("Incomplete sequence encoder/pool/head FLOPs trace")
+    return {"flops": total, "by_operator": dict(analysis.by_operator()), "k": k}
+
+
+def cmd_mobilenet_k(args) -> None:
+    """Frozen F002b MobileNetV2 at every F003 K on validation; read-only.
+
+    F002 bilinear preprocessing (the model's own), F003 nested frame sets, one
+    cached K16 pass of per-frame encoder features. Writes only to
+    artifacts/F003/mobilenet_k/.
+    """
+    out = ART / "mobilenet_k"
+    if (out / "mobilenet_k.json").exists():
+        raise SystemExit(f"{out} already has results; refusing to overwrite")
+    device = torch.device(args.device)
+    pipe.set_training_determinism(2026)
+    inputs = pipe.load_inputs()
+    rows, unit_of = inputs["validation"], inputs["unit_of"]
+    run, model = pipe.load_checkpoint(F002B_RUN, device)
+    sequences = pipe.Sequences(rows, 16)
+    width = model.head.in_features
+    features, direct = torch.zeros(len(rows), 16, width), torch.zeros(len(rows))
+    started = time.time()
+    with torch.inference_mode():
+        for i in range(len(rows)):
+            frames = sequences.frames(i).to(device)
+            features[i] = model.encoder(frames).float().cpu()
+            direct[i] = model(frames.unsqueeze(0)).float().cpu()[0]
+    seconds = time.time() - started
+    model = model.cpu()
+    positions = {k: [positions_in_k16(int(r["frame_count"]), k) for r in rows] for k in K_VALUES}
+    results, units = {}, {}
+    for k in K_VALUES:
+        pooled_k = torch.stack([features[i, positions[k][i]].mean(dim=0) for i in range(len(rows))])
+        with torch.no_grad():
+            logits = model.head(pooled_k).squeeze(-1).double()
+        if k == 16:
+            cache_error = float((logits.float() - direct).abs().max())
+            if cache_error > 1e-4:
+                raise ValueError(f"Cached MobileNetV2 features do not reproduce direct logits ({cache_error})")
+        preds = [{"exam_id": r["exam_id"], "zone_id": r["zone_id"],
+                  "binary_target": int(r["binary_target"]), "device": r["device"],
+                  "unit_id": unit_of[key(r)], "k": k, "logit": float(l),
+                  "probability": float(torch.sigmoid(l))} for r, l in zip(rows, logits)]
+        evaluation = aggregate_validation(rows, preds, unit_of)
+        pipe.write_predictions(out / "predictions" / f"mobilenet_k{k}.csv", evaluation)
+        units[k] = evaluation["units"]
+        results[k] = {"duplicate_aware": evaluation["duplicate_aware"],
+                      "row_level": evaluation["row_level"],
+                      "macro_f1_ci95": bootstrap(evaluation["units"]),
+                      "auroc": auroc(evaluation["units"]), "auroc_ci95": auroc_ci(evaluation["units"]),
+                      "flops": count_sequence_flops_any_k(model, k)}
+        print(f"MobileNetV2 K{k}: macro-F1 {evaluation['duplicate_aware']['macro_f1']:.4f} "
+              f"AUROC {results[k]['auroc']:.4f} GFLOPs {results[k]['flops']['flops'] / 1e9:.2f}", flush=True)
+    recorded = run["selected"]["macro_f1"]
+    if abs(results[16]["duplicate_aware"]["macro_f1"] - recorded) > 1e-12:
+        raise ValueError("K16 does not reproduce the recorded F002b macro-F1")
+    comparisons = {}
+    for tiny_name, mobile_k in MOBILENET_MATCHED:
+        tiny = read_units(tiny_name)
+        comparisons[f"{tiny_name}_vs_mobilenet_k{mobile_k}"] = {
+            "macro_f1": paired_delta(tiny, units[mobile_k]),
+            "auroc": paired_auroc_delta(tiny, units[mobile_k]),
+            "mcnemar_at_0.5": mcnemar(tiny, units[mobile_k])}
+    for k in K_VALUES:
+        tiny = read_units(f"final_k{k}_r224")
+        comparisons[f"same_k{k}_tinyvit_vs_mobilenet"] = {
+            "macro_f1": paired_delta(tiny, units[k]), "auroc": paired_auroc_delta(tiny, units[k])}
+    pipe.write_json(out / "mobilenet_k.json", {
+        "checkpoint_sha256": run["checkpoint_sha256"], "preprocessing": "F002 bilinear (model's own)",
+        "frame_sets": "F003 nested K1 ⊂ K2 ⊂ K4 ⊂ K8 ⊂ K12 ⊂ K16",
+        "results": {str(k): v for k, v in results.items()}, "comparisons": comparisons,
+        "cache_max_abs_logit_error": cache_error, "feature_pass_seconds": seconds,
+        "test_image_inference": False, "environment": environment()})
+    for name, c in comparisons.items():
+        if "same_k" in name:
+            continue
+        print(f"{name:44s} dF1 {c['macro_f1']['delta']:+.4f} [{c['macro_f1']['ci95'][0]:+.3f}, "
+              f"{c['macro_f1']['ci95'][1]:+.3f}] dAUROC {c['auroc']['delta']:+.4f} "
+              f"[{c['auroc']['ci95'][0]:+.3f}, {c['auroc']['ci95'][1]:+.3f}] McNemar "
+              f"{c['mcnemar_at_0.5']['only_a_correct']}/{c['mcnemar_at_0.5']['only_b_correct']}", flush=True)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     sub = parser.add_subparsers(dest="command", required=True)
@@ -869,6 +984,9 @@ def main() -> None:
     temporal.set_defaults(func=cmd_features_temporal)
     sub.add_parser("analyze-extra").set_defaults(func=cmd_analyze_extra)
     sub.add_parser("analyze-robustness").set_defaults(func=cmd_analyze_robustness)
+    mobile = sub.add_parser("mobilenet-k")
+    mobile.add_argument("--device", default="cuda")
+    mobile.set_defaults(func=cmd_mobilenet_k)
     bench = sub.add_parser("benchmark")
     bench.add_argument("--configs", nargs="*", help="subset of config names; default all")
     bench.set_defaults(func=cmd_benchmark)

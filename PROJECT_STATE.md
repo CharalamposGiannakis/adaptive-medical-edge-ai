@@ -77,7 +77,8 @@ measured this space. Frame count is the useful axis: macro-F1 0.816 / 0.860 /
 0.868 / 0.874 at K1 / K4 / K8 / K16 for 1.29 / 5.15 / 10.30 / 20.60 GFLOPs.
 Frozen exits and lower resolution were rejected; input-driven escalation is
 unresolved. At matched FLOPs TinyViT K4 ties the static MobileNetV2 (0.860 vs
-0.859). D027 proposes K1/K4/K8/K16 with budget-driven switching, pending
+0.859), and MobileNetV2 run at fewer frames stays level with or below TinyViT
+per FLOP. D027 proposes K1/K4/K8/K16 with budget-driven switching, pending
 Charalampos's agreement.
 
 ## Guardrails

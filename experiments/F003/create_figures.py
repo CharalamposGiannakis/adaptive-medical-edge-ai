@@ -39,7 +39,7 @@ def create_figures(copy_to: str | None) -> None:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.lines import Line2D
-    from matplotlib.ticker import FixedLocator, NullFormatter, ScalarFormatter
+    from matplotlib.ticker import FixedLocator, FuncFormatter, NullFormatter
 
     plt.rcParams.update({
         "font.family": "serif", "font.serif": ["DejaVu Serif"], "mathtext.fontset": "dejavuserif",
@@ -57,6 +57,7 @@ def create_figures(copy_to: str | None) -> None:
     robust = read(ART / "analysis_robustness.json")
     rows = {r["config"]: r for r in summary["configs"]}
     auc, auc_ci = robust["auroc"], robust["auroc_ci95"]
+    mobilenet_k = read(ART / "mobilenet_k" / "mobilenet_k.json")["results"]
     ref = summary["reference"]
     mobilenet = {"flops": ref["f002b_recorded"]["flops"] / 1e9, "f1": ref["f002b_recorded"]["macro_f1"],
                  "f1_ci": robust["f002b_macro_f1_ci95"], "auc": auc["f002b_mobilenet_v2_k16"],
@@ -69,7 +70,7 @@ def create_figures(copy_to: str | None) -> None:
     def log_x(axis, ticks):
         axis.set_xscale("log")
         axis.xaxis.set_major_locator(FixedLocator(ticks))
-        axis.xaxis.set_major_formatter(ScalarFormatter())
+        axis.xaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}"))
         axis.xaxis.set_minor_formatter(NullFormatter())
 
     def panel(axis, letter, title):
@@ -91,6 +92,8 @@ def create_figures(copy_to: str | None) -> None:
 
     def k_label(axis, xs, ys, offset=(-3, 6)):
         for k, x, y in zip(K_VALUES, xs, ys):
+            if k == 12:  # unlabelled: it is the point between K8 and K16
+                continue
             axis.annotate(f"K{k}", (x, y), textcoords="offset points", xytext=offset, fontsize=7,
                           color=C["k"], ha="center")
 
@@ -118,15 +121,19 @@ def create_figures(copy_to: str | None) -> None:
         dense_y = [extra["temporal"][f"dense_k{k}"]["duplicate_aware"]["macro_f1"] if metric == "f1"
                    else auc[f"temporal_dense_k{k}"] for k in TEMPORAL_K]
         axis.plot(temporal_x, dense_y, "D--", color=C["dense"], markersize=4)
+        mk = [mobilenet_k[str(k)] for k in K_VALUES]
+        axis.plot([m["flops"]["flops"] / 1e9 for m in mk],
+                  [m["duplicate_aware"]["macro_f1"] if metric == "f1" else m["auroc"] for m in mk],
+                  "o--", color=C["ref"], markerfacecolor="white", markersize=4, linewidth=1.0)
         axis.scatter([mobilenet["flops"]], [mobilenet["f1"] if metric == "f1" else mobilenet["auc"]],
                      **reference_marker)
-        log_x(axis, [1, 2, 5, 10, 20])
+        log_x(axis, [0.5, 1, 2, 5, 10, 20])
         axis.set_xlabel("Cost (GFLOPs per sequence, log scale)")
         axis.set_ylabel("Macro-F1 (threshold 0.5)" if metric == "f1" else "AUROC")
         axis.grid(True)
     panel(axes[0], "a", "Macro-F1")
     panel(axes[1], "b", "AUROC")
-    figure_title(fig, "Predictive quality versus computational cost of TinyViT configurations")
+    figure_title(fig, "Predictive quality versus computational cost")
     handles = [Line2D([], [], color=C["k"], marker="o", label="TinyViT, K spread frames (224 px)"),
                Line2D([], [], color=C["stage2"], marker="s", linestyle=":", label="exit after stage 2"),
                Line2D([], [], color=C["stage2_mid"], marker="^", linestyle=":", label="exit within stage 2"),
@@ -134,9 +141,11 @@ def create_figures(copy_to: str | None) -> None:
                Line2D([], [], color=C["res"], marker=">", linestyle="none", label="192 px input"),
                Line2D([], [], color=C["res"], marker="<", linestyle="none", alpha=0.6, label="160 px input"),
                Line2D([], [], color=C["dense"], marker="D", linestyle="--", label="K consecutive frames"),
+               Line2D([], [], color=C["ref"], marker="o", markerfacecolor="white", linestyle="--",
+                      label="MobileNetV2 (F002b), K spread frames"),
                Line2D([], [], color=C["ref"], marker="*", markerfacecolor="none", linestyle="none",
-                      markersize=9, label="MobileNetV2 static reference (F002b)")]
-    fig.legend(handles=handles, loc="lower center", ncol=4, bbox_to_anchor=(0.5, -0.12))
+                      markersize=9, label="MobileNetV2 static reference (F002b, K16)")]
+    fig.legend(handles=handles, loc="lower center", ncol=4, bbox_to_anchor=(0.5, -0.15))
     fig.tight_layout()
     save(fig, "fig1_quality_vs_cost")
 
