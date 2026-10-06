@@ -10,9 +10,11 @@ from src import f002_pipeline as pipe
 from src.f002_protocol import binary_metrics, nested_frame_indices
 from experiments.F003.adaptive import (EXITS, EXIT_DIMS, K_VALUES, ExitSequenceModel,
                                        F003Sequences, Trunk, _scalar_only, count_flops,
-                                       fit_exit_head, frame_indices, load_backbone,
-                                       positions_in_k16)
-from experiments.F003.run_f003 import cascade, pareto_front, paired_delta
+                                       dense_indices, fit_exit_head, frame_indices,
+                                       load_backbone, positions_in_k16, window_indices)
+from experiments.F003.run_f003 import (auroc, cascade, cross_validated_cascade, device_table,
+                                       group_folds, mcnemar, paired_auroc_delta, pareto_front,
+                                       paired_delta, temporal_configs)
 
 
 class SamplerTests(unittest.TestCase):
@@ -27,6 +29,17 @@ class SamplerTests(unittest.TestCase):
                 self.assertEqual(len(set(chosen[k])), k)
                 k16 = nested_frame_indices(n, 16)
                 self.assertEqual([k16[p] for p in positions_in_k16(n, k)], list(chosen[k]))
+
+    def test_temporal_windows_stay_inside_their_share_of_the_clip(self):
+        for n in (16, 60, 143, 572, 1090):
+            for k in (4, 8, 16):
+                self.assertEqual(window_indices(n, 1.0, k), frame_indices(n, k))
+                self.assertEqual(dense_indices(n, k), tuple(range(k)))
+                for w in (0.25, 0.5, 0.75):
+                    chosen = window_indices(n, w, k)
+                    self.assertEqual(len(set(chosen)), k)
+                    self.assertLess(max(chosen), max(16, -(-int(w * n * 1000) // 1000)))
+            self.assertEqual(len(temporal_configs(n)), 15)
 
     def test_rejects_unknown_k(self):
         with self.assertRaises(ValueError):
@@ -113,6 +126,52 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(result["delta"], 0)
         self.assertEqual(binary_metrics([u["binary_target"] for u in units],
                                         [u["probability"] for u in units])["macro_f1"], 1.0)
+
+
+class CrossValidationTests(unittest.TestCase):
+    def units(self):
+        units = {f"u{i}": {"groups": {f"g{i // 2}"}, "devices": {str(i % 3)}} for i in range(40)}
+        cheap = [{"unit_id": f"u{i}", "binary_target": i % 2,
+                  "probability": (0.45 if i % 4 == 1 else (0.9 if i % 2 else 0.1))} for i in range(40)]
+        full = [{"unit_id": f"u{i}", "binary_target": i % 2,
+                 "probability": 0.9 if i % 2 else 0.1} for i in range(40)]
+        return units, cheap, full
+
+    def test_folds_keep_groups_together(self):
+        units, _, _ = self.units()
+        folds = group_folds(units)
+        for i in range(0, 40, 2):
+            self.assertEqual(folds[f"u{i}"], folds[f"u{i + 1}"])
+        self.assertEqual(set(folds.values()), set(range(5)))
+
+    def test_cv_cascade_escalates_only_uncertain_units(self):
+        units, cheap, full = self.units()
+        score = {u["unit_id"]: -abs(u["probability"] - 0.5) for u in cheap}
+        result = cross_validated_cascade(cheap, full, score, group_folds(units), 100, 400, 100)
+        self.assertEqual(result["held_out"]["macro_f1"], 1.0)
+        self.assertAlmostEqual(result["escalation_rate"], 10 / 40)
+        self.assertAlmostEqual(result["expected_flops"], 100 + 0.25 * 300)
+
+    def test_device_table_splits_mixed_units(self):
+        units, cheap, _ = self.units()
+        units["u0"]["devices"] = {"0", "4"}
+        table = device_table(cheap, units)
+        self.assertEqual(table["mixed"]["units"], 1)
+        self.assertEqual(sum(v["units"] for v in table.values()), 40)
+
+
+class RobustnessTests(unittest.TestCase):
+    def test_auroc_and_mcnemar_on_known_cases(self):
+        perfect = [{"unit_id": i, "binary_target": i % 2, "probability": 0.9 if i % 2 else 0.1}
+                   for i in range(20)]
+        flipped = [dict(u, probability=1 - u["probability"]) if u["unit_id"] < 4 else u
+                   for u in perfect]
+        self.assertEqual(auroc(perfect), 1.0)
+        self.assertLess(auroc(flipped), 1.0)
+        self.assertGreater(paired_auroc_delta(perfect, flipped, reps=50)["delta"], 0)
+        test = mcnemar(perfect, flipped)
+        self.assertEqual((test["only_a_correct"], test["only_b_correct"]), (4, 0))
+        self.assertAlmostEqual(test["exact_p"], 0.125)
 
 
 class LeakageTests(unittest.TestCase):

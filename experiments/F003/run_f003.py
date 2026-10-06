@@ -1,7 +1,9 @@
 """F003 (T009) commands: cost, cached features, validation analysis, runtime.
 
 Run order: flops → features (train/validation at 224; validation at 160/192)
-→ analyze → benchmark → report. Everything writes to ignored artifacts/F003/.
+→ analyze → benchmark(-reference) → features-temporal → analyze-extra →
+analyze-robustness → report. Everything writes to ignored artifacts/F003/.
+Figures are made separately by create_figures.py from the saved results.
 No command builds a loader for the T006 test partition.
 """
 from __future__ import annotations
@@ -27,9 +29,10 @@ from torch.utils.data import DataLoader, Dataset
 from src import f002_pipeline as pipe
 from src.f002_protocol import aggregate_validation, benchmark_request_ids, key
 from experiments.F003.adaptive import (CHECKPOINT_SHA256, EXITS, EXIT_DIMS, K_VALUES,
-                                       RESOLUTIONS, ExitSequenceModel, F003Sequences,
-                                       Trunk, count_flops, fit_exit_head, load_backbone,
-                                       set_fused_attention)
+                                       RESOLUTIONS, TEMPORAL_K, WINDOW_FRACTIONS,
+                                       ExitSequenceModel, F003Sequences, Trunk, count_flops,
+                                       dense_indices, fit_exit_head, load_backbone,
+                                       set_fused_attention, window_indices)
 
 ART = ROOT / "artifacts" / "F003"
 SOURCES = ("experiments/F003/adaptive.py", "experiments/F003/run_f003.py",
@@ -294,6 +297,246 @@ def cmd_analyze(args) -> None:
     print(json.dumps(comparisons, indent=1))
 
 
+# ---------------------------------------------------------------- extra analyses
+
+def temporal_configs(frame_count: int) -> dict[str, tuple[int, ...]]:
+    """Every scan-duration (window) and native-rate (dense) frame selection."""
+    configs = {f"window{int(w * 100)}_k{k}": window_indices(frame_count, w, k)
+               for w in WINDOW_FRACTIONS for k in TEMPORAL_K}
+    configs |= {f"dense_k{k}": dense_indices(frame_count, k) for k in TEMPORAL_K}
+    return configs
+
+
+class TemporalFrames(Dataset):
+    def __init__(self, sequences: F003Sequences):
+        self.sequences = sequences
+        self.needed = [sorted(set().union(*temporal_configs(int(r["frame_count"])).values()))
+                       for r in sequences.rows]
+
+    def __len__(self):
+        return len(self.sequences)
+
+    def __getitem__(self, index):
+        return self.sequences.frames_at(index, self.needed[index]), index
+
+
+def cmd_features_temporal(args) -> None:
+    """Final-exit features for every frame a temporal configuration needs."""
+    out = ART / "features" / "validation_temporal.pt"
+    if out.exists():
+        raise SystemExit(f"{out} exists; refusing to overwrite")
+    device = torch.device(args.device)
+    pipe.set_training_determinism(2026)
+    inputs = pipe.load_inputs()
+    sequences = F003Sequences(inputs["validation"])
+    dataset = TemporalFrames(sequences)
+    trunk = Trunk(load_backbone(device).encoder).eval()
+    features, started = [None] * len(dataset), time.time()
+    with torch.inference_mode():
+        for frames, index in DataLoader(dataset, batch_size=1, num_workers=args.workers):
+            features[index.item()] = trunk(frames[0].to(device))["final"].float().cpu()
+    record = {"features": features, "frame_numbers": dataset.needed,
+              "keys": [key(r) for r in sequences.rows], "seconds": time.time() - started,
+              "frames": sum(len(n) for n in dataset.needed), "environment": environment()}
+    torch.save(record, out)
+    print(f"wrote {out}: {record['frames']} frames in {record['seconds']:.0f} s", flush=True)
+
+
+def unit_records(rows: list[dict], unit_of: dict) -> dict:
+    """Unit → split group and device(s); aliases always share a group (T006)."""
+    units = {}
+    for row in rows:
+        unit = units.setdefault(unit_of[key(row)], {"groups": set(), "devices": set()})
+        unit["groups"].add(row["split_group"])
+        unit["devices"].add(row["device"])
+    for unit_id, unit in units.items():
+        if len(unit["groups"]) != 1:
+            raise ValueError(f"Unit {unit_id} spans dependency groups")
+    return units
+
+
+def group_folds(units: dict, folds: int = 5, seed: int = 2026) -> dict:
+    groups = sorted({next(iter(u["groups"])) for u in units.values()})
+    random.Random(seed).shuffle(groups)
+    fold_of_group = {g: i % folds for i, g in enumerate(groups)}
+    return {u: fold_of_group[next(iter(rec["groups"]))] for u, rec in units.items()}
+
+
+def cross_validated_cascade(cheap: list[dict], full: list[dict], score: dict, fold_of: dict,
+                            cheap_flops: float, full_flops: float, reused: float,
+                            tolerance: float = 0.01) -> dict:
+    """Pick the escalation threshold on 4 group folds, score it on the 5th.
+
+    Rule fixed before looking at held-out folds: the cheapest threshold whose
+    training-fold macro-F1 is at least training-fold K16 macro-F1 − tolerance.
+    Higher ``score`` means more reason to escalate.
+    """
+    from src.f002_protocol import binary_metrics
+    cheap_by, full_by = {u["unit_id"]: u for u in cheap}, {u["unit_id"]: u for u in full}
+
+    def f1(ids, escalate):
+        chosen = [full_by[i] if i in escalate else cheap_by[i] for i in ids]
+        return binary_metrics([u["binary_target"] for u in chosen],
+                              [u["probability"] for u in chosen])["macro_f1"]
+    held_out_escalated, per_fold = set(), []
+    for fold in sorted(set(fold_of.values())):
+        train = [u for u in cheap_by if fold_of[u] != fold]
+        test = [u for u in cheap_by if fold_of[u] == fold]
+        target = f1(train, set(train)) - tolerance
+        ranked = sorted(train, key=lambda u: -score[u])
+        threshold = math.inf
+        for n in range(len(ranked) + 1):
+            if f1(train, set(ranked[:n])) >= target:
+                threshold = math.inf if n == 0 else score[ranked[n - 1]]
+                break
+        escalated = {u for u in test if score[u] >= threshold}
+        held_out_escalated |= escalated
+        per_fold.append({"fold": fold, "threshold": threshold, "train_units": len(train),
+                         "held_out_units": len(test),
+                         "held_out_escalation_rate": len(escalated) / len(test)})
+    ids = sorted(cheap_by)
+    chosen = [full_by[i] if i in held_out_escalated else cheap_by[i] for i in ids]
+    rate = len(held_out_escalated) / len(ids)
+    return {"held_out": binary_metrics([u["binary_target"] for u in chosen],
+                                       [u["probability"] for u in chosen]),
+            "escalation_rate": rate,
+            "expected_flops": cheap_flops + rate * (full_flops - reused),
+            "rule": f"cheapest threshold with training-fold macro-F1 >= K16 - {tolerance}",
+            "folds": per_fold}
+
+
+def device_table(evaluation_units: list[dict], units: dict) -> dict:
+    from src.f002_protocol import binary_metrics
+    table = {}
+    for device in sorted({d for u in units.values() for d in u["devices"]} | {"mixed"}):
+        chosen = [u for u in evaluation_units if
+                  (device == "mixed" and len(units[u["unit_id"]]["devices"]) > 1) or
+                  units[u["unit_id"]]["devices"] == {device}]
+        if chosen:
+            metrics = binary_metrics([u["binary_target"] for u in chosen],
+                                     [u["probability"] for u in chosen])
+            table[device] = {"units": len(chosen),
+                             "abnormal_units": sum(u["binary_target"] for u in chosen),
+                             **{m: metrics[m] for m in ("accuracy", "normal_recall",
+                                                        "abnormal_recall", "tn", "fp", "fn", "tp")}}
+    return table
+
+
+def cmd_analyze_extra(args) -> None:
+    """Temporal axis, cross-validated cascades, disagreement signal, per device."""
+    inputs = pipe.load_inputs()
+    rows, unit_of = inputs["validation"], inputs["unit_of"]
+    backbone = load_backbone("cpu")
+    flops = read(ART / "flops.json")["configs"]
+    analysis = read(ART / "analysis.json")
+    val = load_features("validation", 224)
+    temporal = torch.load(ART / "features" / "validation_temporal.pt", weights_only=False)
+    if temporal["keys"] != [key(r) for r in rows] or val["keys"] != temporal["keys"]:
+        raise ValueError("Temporal features do not match the frozen validation rows")
+    if temporal["environment"]["checkpoint_sha256"] != CHECKPOINT_SHA256:
+        raise ValueError("Temporal features belong to another checkpoint")
+    units = unit_records(rows, unit_of)
+
+    def score_rows(logits, name, k):
+        preds = [{"exam_id": r["exam_id"], "zone_id": r["zone_id"],
+                  "binary_target": int(r["binary_target"]), "device": r["device"],
+                  "unit_id": unit_of[key(r)], "k": k, "config": name, "logit": float(l),
+                  "probability": float(torch.sigmoid(l))} for r, l in zip(rows, logits)]
+        return aggregate_validation(rows, preds, unit_of)
+
+    # 1. Temporal axis: same head, same cost per K, different frames.
+    evaluations, results = {}, {}
+    k16_full = None
+    for name in temporal_configs(int(rows[0]["frame_count"])):
+        k = int(name.rsplit("_k", 1)[1])
+        pooled_rows = []
+        for i, row in enumerate(rows):
+            wanted = temporal_configs(int(row["frame_count"]))[name]
+            position = {f: p for p, f in enumerate(temporal["frame_numbers"][i])}
+            pooled_rows.append(temporal["features"][i][[position[f] for f in wanted]].mean(dim=0))
+        with torch.no_grad():
+            logits = backbone.head(torch.stack(pooled_rows)).squeeze(-1).double()
+        evaluation = score_rows(logits, name, k)
+        evaluations[name] = evaluation
+        pipe.write_predictions(ART / "predictions" / f"temporal_{name}.csv", evaluation)
+        results[name] = {"k": k, "duplicate_aware": evaluation["duplicate_aware"],
+                         "macro_f1_ci95": bootstrap(evaluation["units"]),
+                         "flops": flops[f"final_k{k}_r224"]["flops"]}
+    # The full-clip window must reproduce the main K configurations.
+    reproduction = {}
+    for k in TEMPORAL_K:
+        main = analysis["configs"][f"final_k{k}_r224"]["duplicate_aware"]["macro_f1"]
+        reproduction[f"k{k}"] = abs(results[f"window100_k{k}"]["duplicate_aware"]["macro_f1"] - main)
+    if max(reproduction.values()) > 1e-9:
+        raise ValueError(f"window100 does not reproduce the main K results: {reproduction}")
+    k16_units = read_units("final_k16_r224")
+    for name in evaluations:
+        results[name]["paired_vs_k16_full_clip"] = paired_delta(evaluations[name]["units"], k16_units)
+        d = results[name]["duplicate_aware"]
+        print(f"{name:16s} F1 {d['macro_f1']:.4f} n {d['normal_recall']:.3f} a {d['abnormal_recall']:.3f}", flush=True)
+
+    # 2–3. Escalation signals for K → K16 cascades, descriptive and cross-validated.
+    folds = group_folds(units)
+    per_frame = (flops["final_k16_r224"]["flops"] - flops["final_k8_r224"]["flops"]) / 8
+    signals, cv = {}, {}
+    with torch.no_grad():
+        frame_probs = torch.sigmoid(backbone.head(val["features"]["final"]).squeeze(-1))
+    for k in (1, 2, 4, 8):
+        cheap = read_units(f"final_k{k}_r224")
+        confidence = {u["unit_id"]: -abs(u["probability"] - 0.5) for u in cheap}
+        row_spread = {}
+        if k > 1:
+            for i, row in enumerate(rows):
+                probs = frame_probs[i, val["positions"][k][i]]
+                row_spread.setdefault(unit_of[key(row)], []).append(float(probs.std(unbiased=False)))
+        disagreement = {u: sum(v) / len(v) for u, v in row_spread.items()}
+        cost = dict(cheap_flops=flops[f"final_k{k}_r224"]["flops"],
+                    full_flops=flops["final_k16_r224"]["flops"], reused=k * per_frame)
+        for signal_name, score in (("confidence", confidence), ("disagreement", disagreement)):
+            if not score:
+                continue
+            name = f"final_k{k}_to_k16_{signal_name}"
+            cv[name] = cross_validated_cascade(cheap, k16_units, score, folds, **cost)
+            ranked = sorted(score, key=lambda u: -score[u])
+            curve = []
+            for rate in [i / 20 for i in range(21)]:
+                escalate = set(ranked[:round(rate * len(ranked))])
+                chosen = [u if u["unit_id"] not in escalate else
+                          next(f for f in k16_units if f["unit_id"] == u["unit_id"]) for u in cheap]
+                from src.f002_protocol import binary_metrics
+                m = binary_metrics([u["binary_target"] for u in chosen],
+                                   [u["probability"] for u in chosen])
+                curve.append({"escalation_rate": len(escalate) / len(ranked),
+                              "expected_flops": cost["cheap_flops"] + len(escalate) / len(ranked) *
+                              (cost["full_flops"] - cost["reused"]), **m})
+            signals[name] = curve
+            held = cv[name]["held_out"]
+            print(f"CV {name:32s} F1 {held['macro_f1']:.4f} esc {cv[name]['escalation_rate']:.2f} "
+                  f"GF {cv[name]['expected_flops'] / 1e9:.2f}", flush=True)
+
+    # 4. Per-device K curve (TinyViT) and the static MobileNetV2 reference.
+    devices = {f"final_k{k}_r224": device_table(read_units(f"final_k{k}_r224"), units)
+               for k in K_VALUES}
+    if F002B_UNITS.exists():
+        devices["f002b_mobilenet_v2_k16"] = device_table(read(F002B_UNITS), units)
+
+    pipe.write_json(ART / "analysis_extra.json", {
+        "temporal": results, "window100_reproduction_abs_diff": reproduction,
+        "cascade_curves_by_escalation_rate": signals, "cascade_cross_validated": cv,
+        "group_folds": {"folds": 5, "seed": 2026, "units_per_fold":
+                        [sum(1 for f in folds.values() if f == i) for i in range(5)]},
+        "per_device": devices, "threshold": 0.5,
+        "notes": ["temporal windows are shares of each clip; frame rate is unknown",
+                  "cross-validated cascades pick thresholds on 4 group folds and score the 5th"],
+        "environment": environment()})
+    print(json.dumps({d: {k: (v["units"], v["abnormal_units"], round(v["abnormal_recall"], 3))
+                          for k, v in t.items()} for d, t in devices.items()}, indent=0))
+
+
+def read_units(config: str) -> list[dict]:
+    return read(ART / "predictions" / f"{config}_units.json")
+
+
 # ---------------------------------------------------------------- runtime
 
 def cmd_benchmark(args) -> None:
@@ -474,45 +717,139 @@ def cmd_report(args) -> None:
     pipe.write_json(ART / "summary.json", {"configs": rows, "pareto_front": front,
                                            "reference": reference})
     print("pareto front:", front)
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-    except ImportError:
-        print("matplotlib unavailable; summary.json written without a plot")
-        return
-    fig, ax = plt.subplots(figsize=(7, 4.5))
-    styles = {"final": ("o", "TinyViT, frame count K (224 px)"),
-              "stage2": ("s", "exit after stage 2"), "stage2_mid": ("^", "exit mid stage 2"),
-              "stage1": ("v", "exit after stage 1")}
-    for exit_name, (marker, label) in styles.items():
-        pts = sorted((r for r in rows if r["exit"] == exit_name and r["resolution"] == 224),
-                     key=lambda r: r["flops"])
-        ax.plot([p["flops"] / 1e9 for p in pts], [p["macro_f1"] for p in pts],
-                marker=marker, label=label, linestyle="-" if exit_name == "final" else ":")
-        if exit_name == "final":
-            for p in pts:
-                ax.annotate(f"K{p['k']}", (p["flops"] / 1e9, p["macro_f1"]),
-                            textcoords="offset points", xytext=(4, -10), fontsize=8)
-    steps = analysis["cascades"]["final_k4_to_k16"]
-    ax.plot([c["expected_flops"] / 1e9 for c in steps], [c["macro_f1"] for c in steps],
-            linestyle="--", color="gray", marker=".",
-            label="K4→K16 escalation if |p−0.5|<τ (τ tuned on validation)")
-    res = [r for r in rows if r["resolution"] != 224 and r["k"] == 16]
-    ax.scatter([p["flops"] / 1e9 for p in res], [p["macro_f1"] for p in res], marker="D",
-               label="K16 at 160/192 px")
-    ref = analysis["f002b_reference"]
-    ax.scatter([ref["flops"] / 1e9], [ref["macro_f1"]], marker="*", s=200, color="black",
-               label="static MobileNetV2 (F002b, K16)", zorder=5)
-    ax.set_xscale("log")
-    ax.set_xlabel("sequence GFLOPs (fvcore, log scale)")
-    ax.set_ylabel("duplicate-aware validation macro-F1")
-    ax.set_title("F003: TinyViT configurations on validation (threshold 0.5)")
-    ax.legend(fontsize=7, loc="lower right")
-    ax.grid(alpha=0.3)
-    fig.tight_layout()
-    fig.savefig(ART / "pareto_f003.png", dpi=160)
-    print("wrote", ART / "pareto_f003.png")
+    print("wrote", ART / "summary.json")
+
+
+# ---------------------------------------------------------------- robustness
+
+def auroc(units: list[dict]) -> float:
+    from sklearn.metrics import roc_auc_score
+    return float(roc_auc_score([u["binary_target"] for u in units], [u["probability"] for u in units]))
+
+
+def auroc_ci(units: list[dict], reps: int = 1000, seed: int = 2026) -> list[float]:
+    """Unit bootstrap 95% interval of AUROC."""
+    from sklearn.metrics import roc_auc_score
+    rng, values = random.Random(seed), []
+    for _ in range(reps):
+        sample = [units[rng.randrange(len(units))] for _ in units]
+        targets = [u["binary_target"] for u in sample]
+        if len(set(targets)) == 2:
+            values.append(roc_auc_score(targets, [u["probability"] for u in sample]))
+    values.sort()
+    return [values[int(0.025 * len(values))], values[int(0.975 * len(values)) - 1]]
+
+
+def paired_auroc_delta(a: list[dict], b: list[dict], reps: int = 2000, seed: int = 2026) -> dict:
+    """Paired unit bootstrap of AUROC(a) − AUROC(b), threshold-free."""
+    from sklearn.metrics import roc_auc_score
+    pa, pb = {u["unit_id"]: u for u in a}, {u["unit_id"]: u for u in b}
+    if pa.keys() != pb.keys():
+        raise ValueError("Paired comparison needs identical evaluation units")
+    ids, rng, deltas = sorted(pa), random.Random(seed), []
+    for _ in range(reps):
+        chosen = [ids[rng.randrange(len(ids))] for _ in ids]
+        targets = [pa[i]["binary_target"] for i in chosen]
+        if len(set(targets)) == 2:
+            deltas.append(roc_auc_score(targets, [pa[i]["probability"] for i in chosen]) -
+                          roc_auc_score(targets, [pb[i]["probability"] for i in chosen]))
+    deltas.sort()
+    return {"delta": auroc(a) - auroc(b), "ci95": [deltas[int(0.025 * len(deltas))],
+                                                    deltas[int(0.975 * len(deltas)) - 1]]}
+
+
+def mcnemar(a: list[dict], b: list[dict], ids=None) -> dict:
+    """Exact McNemar on correctness at 0.5: units only a, or only b, gets right."""
+    from scipy.stats import binomtest
+    pa, pb = {u["unit_id"]: u for u in a}, {u["unit_id"]: u for u in b}
+    ids = sorted(pa) if ids is None else ids
+    right = lambda u: (u["probability"] >= 0.5) == bool(u["binary_target"])  # noqa: E731
+    only_a = sum(right(pa[i]) and not right(pb[i]) for i in ids)
+    only_b = sum(right(pb[i]) and not right(pa[i]) for i in ids)
+    p = binomtest(only_a, only_a + only_b, 0.5).pvalue if only_a + only_b else 1.0
+    return {"only_a_correct": only_a, "only_b_correct": only_b, "exact_p": float(p), "units": len(ids)}
+
+
+def cmd_analyze_robustness(args) -> None:
+    """Threshold-free and paired checks of the F003 claims; CPU only."""
+    inputs = pipe.load_inputs()
+    rows, unit_of = inputs["validation"], inputs["unit_of"]
+    units = unit_records(rows, unit_of)
+    names = sorted(p.name[:-len("_units.json")] for p in (ART / "predictions").glob("*_units.json"))
+    preds = {n: read_units(n) for n in names}
+    if F002B_UNITS.exists():
+        preds["f002b_mobilenet_v2_k16"] = read(F002B_UNITS)
+    result = {"auroc": {n: auroc(u) for n, u in preds.items()},
+              "auroc_ci95": {n: auroc_ci(u) for n, u in preds.items()},
+              "f002b_macro_f1_ci95": bootstrap(preds["f002b_mobilenet_v2_k16"])}
+    pairs = [("final_k16_r224", "f002b_mobilenet_v2_k16"), ("final_k4_r224", "f002b_mobilenet_v2_k16"),
+             ("final_k1_r224", "final_k16_r224"), ("final_k2_r224", "final_k16_r224"),
+             ("final_k4_r224", "final_k16_r224"), ("final_k8_r224", "final_k16_r224"),
+             ("final_k2_r192", "final_k2_r224"), ("final_k8_r192", "final_k8_r224"),
+             ("final_k16_r192", "final_k16_r224"), ("stage2_mid_k1_r224", "final_k1_r224"),
+             ("stage2_k4_r224", "final_k4_r224"), ("stage2_k16_r224", "final_k8_r224"),
+             ("temporal_window25_k4", "final_k4_r224"), ("temporal_window25_k16", "final_k16_r224"),
+             ("temporal_dense_k4", "final_k4_r224"), ("temporal_dense_k8", "final_k8_r224"),
+             ("temporal_dense_k16", "final_k16_r224")]
+    result["paired"] = {f"{a}_vs_{b}": {"auroc": paired_auroc_delta(preds[a], preds[b]),
+                                       "mcnemar_at_0.5": mcnemar(preds[a], preds[b])}
+                        for a, b in pairs}
+    device_tests = {}
+    tiny, mobile = preds["final_k4_r224"], preds["f002b_mobilenet_v2_k16"]
+    for device in ("0", "4"):
+        for target, label in ((0, "normal"), (1, "abnormal")):
+            ids = sorted(u["unit_id"] for u in tiny
+                         if units[u["unit_id"]]["devices"] == {device} and u["binary_target"] == target)
+            device_tests[f"device{device}_{label}_tinyvit_k4_vs_f002b"] = mcnemar(tiny, mobile, ids)
+    result["per_device_mcnemar"] = device_tests
+    # How much can any K -> K16 escalation rule gain, and how stable is the CV estimate?
+    right = lambda u: (u["probability"] >= 0.5) == bool(u["binary_target"])  # noqa: E731
+    k16 = {u["unit_id"]: u for u in preds["final_k16_r224"]}
+    flops = read(ART / "flops.json")["configs"]
+    per_frame = (flops["final_k16_r224"]["flops"] - flops["final_k8_r224"]["flops"]) / 8
+    val = load_features("validation", 224)
+    backbone = load_backbone("cpu")
+    with torch.no_grad():
+        frame_probs = torch.sigmoid(backbone.head(val["features"]["final"]).squeeze(-1))
+    ceiling, sensitivity = {}, {}
+    for cheap_k in (2, 4):
+        cheap = {u["unit_id"]: u for u in preds[f"final_k{cheap_k}_r224"]}
+        ceiling[f"k{cheap_k}_to_k16"] = {
+            "cheap_wrong_k16_right": sum(right(k16[i]) and not right(cheap[i]) for i in cheap),
+            "cheap_right_k16_wrong": sum(right(cheap[i]) and not right(k16[i]) for i in cheap)}
+        spread = {}
+        for i, row in enumerate(rows):
+            spread.setdefault(unit_of[key(row)], []).append(
+                float(frame_probs[i, val["positions"][cheap_k][i]].std(unbiased=False)))
+        scores = {"confidence": {u: -abs(cheap[u]["probability"] - 0.5) for u in cheap},
+                  "disagreement": {u: sum(v) / len(v) for u, v in spread.items()}}
+        cost = dict(cheap_flops=flops[f"final_k{cheap_k}_r224"]["flops"],
+                    full_flops=flops["final_k16_r224"]["flops"], reused=cheap_k * per_frame)
+        for signal, score in scores.items():
+            for tolerance in (0.0, 0.005, 0.01, 0.02):
+                runs = [cross_validated_cascade(preds[f"final_k{cheap_k}_r224"], preds["final_k16_r224"],
+                                                score, group_folds(units, seed=seed),
+                                                tolerance=tolerance, **cost)
+                        for seed in (2026, 1, 2, 3, 4)]
+                sensitivity[f"k{cheap_k}_{signal}_tol{tolerance}"] = [
+                    {"fold_seed": seed, "macro_f1": r["held_out"]["macro_f1"],
+                     "escalation_rate": r["escalation_rate"], "expected_flops": r["expected_flops"]}
+                    for seed, r in zip((2026, 1, 2, 3, 4), runs)]
+    result["escalation_ceiling"] = ceiling
+    result["k4_to_k16_ceiling"] = {"k4_wrong_k16_right": ceiling["k4_to_k16"]["cheap_wrong_k16_right"],
+                                   "k4_right_k16_wrong": ceiling["k4_to_k16"]["cheap_right_k16_wrong"]}
+    result["cascade_cv_sensitivity"] = sensitivity
+    result["environment"] = environment()
+    pipe.write_json(ART / "analysis_robustness.json", result)
+    for name in ("final_k1_r224", "final_k4_r224", "final_k16_r224", "f002b_mobilenet_v2_k16"):
+        print(f"AUROC {name:24s} {result['auroc'][name]:.4f}")
+    for name, test in result["paired"].items():
+        a = test["auroc"]
+        print(f"{name:48s} dAUROC {a['delta']:+.4f} [{a['ci95'][0]:+.4f}, {a['ci95'][1]:+.4f}] "
+              f"McNemar {test['mcnemar_at_0.5']['only_a_correct']}/{test['mcnemar_at_0.5']['only_b_correct']} "
+              f"p={test['mcnemar_at_0.5']['exact_p']:.3f}")
+    print(json.dumps(result["per_device_mcnemar"], indent=0))
+    print(result["escalation_ceiling"])
 
 
 def main() -> None:
@@ -526,6 +863,12 @@ def main() -> None:
     features.add_argument("--workers", type=int, default=4)
     features.set_defaults(func=cmd_features)
     sub.add_parser("analyze").set_defaults(func=cmd_analyze)
+    temporal = sub.add_parser("features-temporal")
+    temporal.add_argument("--device", default="cuda")
+    temporal.add_argument("--workers", type=int, default=4)
+    temporal.set_defaults(func=cmd_features_temporal)
+    sub.add_parser("analyze-extra").set_defaults(func=cmd_analyze_extra)
+    sub.add_parser("analyze-robustness").set_defaults(func=cmd_analyze_robustness)
     bench = sub.add_parser("benchmark")
     bench.add_argument("--configs", nargs="*", help="subset of config names; default all")
     bench.set_defaults(func=cmd_benchmark)

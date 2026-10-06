@@ -400,10 +400,12 @@ decision timing.
 **Date:** 2026-10-06
 **Status:** Proposed by Salo from T009/F003; needs Charalampos's agreement
 
-- **Decision:** Build T010's operating points on frame count K with the frozen D026 TinyViT checkpoint and nested frame sets. Candidate points are K1, K4, K8 and K16 (K2 optional). Carry the K4 → K16 confidence-escalation cascade forward as the input-adaptive candidate for T012, with its threshold fixed on validation before any test-partition evaluation.
-- **Evidence (F003, validation, `experiments/F003/README.md`):** Macro-F1 0.816 / 0.860 / 0.868 / 0.874 at K1 / K4 / K8 / K16 for 1.29 / 5.15 / 10.30 / 20.60 GFLOPs and 16.7 / 34.2 / 58.8 / 115.1 ms JPEG-pipeline latency on a GTX 1080 Ti. K4–K12 are not distinguishable from K16; K1 and K2 are significantly lower. The cascade reached 0.874 at about 6.9 GFLOPs with 11% escalation, with τ tuned on the same data.
-- **Rejected:** linear early exits on the frozen trunk (below the K curve except at K1) and lower input resolution (160 px collapses abnormal recall; 192 px trades abnormal for normal recall). K12 adds little between K8 and K16.
-- **Limits:** One checkpoint and seed, 76 abnormal validation units, and an optimistic cascade threshold. At matched compute (K4 vs F002b) TinyViT ties the static MobileNetV2 baseline. Training the shared model across several K values could lift the cheap end, but it changes the weights and would need its own decision.
+- **Decision:** Build T010's operating points on frame count K with the frozen D026 TinyViT checkpoint and nested, spread frame sets: K1, K4, K8, K16 (K2 optional). The core T012 policy switches between these points by resource budget. Input-driven escalation stays an open T012 question.
+- **Evidence (F003, validation):** macro-F1 0.816 / 0.860 / 0.868 / 0.874 and AUROC 0.888 / 0.937 / 0.950 / 0.952 at K1 / K4 / K8 / K16 for 1.29 / 5.15 / 10.30 / 20.60 GFLOPs. K8 is practically equal to K16, K4 slightly lower, K1/K2 clearly lower. Threshold-free, the K curve lies above every alternative tested; the trend holds within device 0.
+- **Rejected:** frozen-trunk early exits and lower resolution (lower AUROC than the K curve at similar cost) and consecutive-frame sampling (worse at K4, p = 0.04). K12 adds little.
+- **Not resolved:** input-driven K → K16 escalation (cross-validated reruns scatter around plain K4; only 7 units fixable from K4) and the short-scan idea (no detectable effect of scan share).
+- **Static baseline:** at matched FLOPs, TinyViT K4 ties MobileNetV2 F002b on macro-F1 at 0.5 with different errors; threshold-free TinyViT ranks better (K16 CI above zero); MobileNetV2 has higher device-0 normal recall.
+- **Limits:** one checkpoint and seed, 76 abnormal validation units, unknown frame rate. Training across several K could improve the cheap points but changes the weights and needs its own decision. Details: [`experiments/F003/README.md`](../experiments/F003/README.md).
 
 ---
 

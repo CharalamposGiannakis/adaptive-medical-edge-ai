@@ -27,6 +27,8 @@ K_VALUES = (1, 2, 4, 8, 12, 16)
 EXITS = ("stage1", "stage2_mid", "stage2", "final")
 EXIT_DIMS = {"stage1": 128, "stage2_mid": 160, "stage2": 160, "final": 320}
 RESOLUTIONS = (160, 192, 224)
+WINDOW_FRACTIONS = (0.25, 0.5, 0.75, 1.0)
+TEMPORAL_K = (4, 8, 16)
 
 
 # ---------------------------------------------------------------- frames
@@ -63,6 +65,34 @@ def positions_in_k16(frame_count: int, k: int) -> list[int]:
     return [k16.index(index) for index in frame_indices(frame_count, k)]
 
 
+def window_indices(frame_count: int, fraction: float, k: int) -> tuple[int, ...]:
+    """K frames spread over the first ``fraction`` of the clip.
+
+    Scan-duration axis: the window is the first max(16, ceil(fraction × N))
+    frames (never more than N), and the usual nested rule spreads K frames
+    over that window. Fraction 1.0 equals ``frame_indices``. Frame rate is
+    unknown, so the window is a share of the clip, not a number of seconds.
+    """
+    if fraction not in WINDOW_FRACTIONS or k not in TEMPORAL_K:
+        raise ValueError("Unknown F003 temporal window")
+    length = min(frame_count, max(16, math.ceil(fraction * frame_count)))
+    return frame_indices(length, k)
+
+
+def dense_indices(frame_count: int, k: int) -> tuple[int, ...]:
+    """The first K consecutive frames: native sampling rate, shortest scan."""
+    if k not in TEMPORAL_K or frame_count < k:
+        raise ValueError("Unknown F003 dense configuration")
+    return tuple(range(k))
+
+
+def load_frame(path: Path, resolution: int = 224) -> torch.Tensor:
+    """F002c preprocessing: RGB, full-square bicubic resize, ImageNet norm."""
+    with Image.open(path) as image:
+        image = image.convert("RGB").resize((resolution, resolution), Image.Resampling.BICUBIC)
+        return TF.normalize(TF.to_tensor(image), pipe.MEAN, pipe.STD)
+
+
 class F003Sequences(F002cSequences):
     """F002c train/validation loader at K16, with resolution and K subsets.
 
@@ -82,13 +112,12 @@ class F003Sequences(F002cSequences):
 
     def frames(self, index: int, k: int = 16) -> torch.Tensor:
         paths = [self.selected[index][1][p] for p in self.positions(index, k)]
-        tensors = []
-        for path in paths:
-            with Image.open(path) as image:
-                image = image.convert("RGB").resize((self.resolution, self.resolution),
-                                                    Image.Resampling.BICUBIC)
-                tensors.append(TF.normalize(TF.to_tensor(image), pipe.MEAN, pipe.STD))
-        return torch.stack(tensors)
+        return torch.stack([load_frame(path, self.resolution) for path in paths])
+
+    def frames_at(self, index: int, frame_numbers) -> torch.Tensor:
+        """Arbitrary retained frames of a row, by zero-based index (hash-checked)."""
+        paths = pipe.retained_frames(self.rows[index], self.raw)
+        return torch.stack([load_frame(paths[i], self.resolution) for i in frame_numbers])
 
 
 # ---------------------------------------------------------------- model

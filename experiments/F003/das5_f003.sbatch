@@ -23,5 +23,9 @@ export HF_HUB_OFFLINE=1
 export PYTHONUNBUFFERED=1
 
 hostname
-nvidia-smi --query-gpu=name,driver_version --format=csv,noheader -i "${CUDA_VISIBLE_DEVICES%%,*}"
+if [ -n "${CUDA_VISIBLE_DEVICES:-}" ]; then
+  nvidia-smi --query-gpu=name,driver_version --format=csv,noheader -i "${CUDA_VISIBLE_DEVICES%%,*}"
+else
+  echo "no GPU allocated (CPU-only step)"
+fi
 python experiments/F003/run_f003.py "$@"
