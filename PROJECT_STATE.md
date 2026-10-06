@@ -72,6 +72,17 @@ The output is an evidence-backed choice of the configurations and adaptive axes 
 carry into T010. Exploratory work should stay reproducible, but it does not require
 a new decision-log entry or full preregistration for every small idea.
 
+F003 (2026-10-06, validation only) measured this space; see
+[`experiments/F003/README.md`](experiments/F003/README.md). Frame count is the
+useful axis: macro-F1 0.816 / 0.860 / 0.868 / 0.874 at K1 / K4 / K8 / K16 for
+1.29 / 5.15 / 10.30 / 20.60 GFLOPs and 16.7 / 34.2 / 58.8 / 115.1 ms end-to-end
+latency on a GTX 1080 Ti. A K4 → K16 confidence cascade matched K16 at about a
+third of its FLOPs, with an optimistic validation-tuned threshold. Frozen-trunk
+early exits and lower resolution were rejected. At matched compute, TinyViT K4
+ties the static MobileNetV2 baseline (0.860 vs 0.859 at 5.15 vs 5.11 GFLOPs).
+D027 proposes K1/K4/K8/K16 and the cascade for T010/T012, pending Charalampos's
+agreement.
+
 ## Guardrails
 
 - Keep the T006 cohort, labels, train/validation/test split and evaluation units

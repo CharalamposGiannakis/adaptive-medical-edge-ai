@@ -30,8 +30,10 @@ Historical acceptance criteria and evidence remain in
 
 - **Priority:** P1
 - **Owner:** Salom
-- **Status:** Ready; dependency T008/issue #10 is complete and closed. Start after
-  the F002c/D026 phase-transition branch merges.
+- **Status:** In review. F003 ran on DAS-5 on 2026-10-06 (claimed by Salo). It
+  measured frame count, early exits, resolution and a K4 → K16 cascade on the
+  D026 checkpoint, and proposes frame count as the primary axis (D027). See
+  [`experiments/F003/README.md`](../experiments/F003/README.md).
 - **Foundation:** Use the canonical shared frozen F002c TinyViT epoch-8 checkpoint
   at [`checkpoints/f002c_tinyvit5m_epoch8.pt`](../checkpoints/f002c_tinyvit5m_epoch8.pt),
   selected in D026. Keep the T006 split and duplicate-aware evaluation units

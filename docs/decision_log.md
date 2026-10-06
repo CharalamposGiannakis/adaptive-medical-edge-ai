@@ -395,13 +395,25 @@ decision timing.
 
 ---
 
+### D027 — Use frame count as the primary adaptive axis
+
+**Date:** 2026-10-06
+**Status:** Proposed by Salo from T009/F003; needs Charalampos's agreement
+
+- **Decision:** Build T010's operating points on frame count K with the frozen D026 TinyViT checkpoint and nested frame sets. Candidate points are K1, K4, K8 and K16 (K2 optional). Carry the K4 → K16 confidence-escalation cascade forward as the input-adaptive candidate for T012, with its threshold fixed on validation before any test-partition evaluation.
+- **Evidence (F003, validation, `experiments/F003/README.md`):** Macro-F1 0.816 / 0.860 / 0.868 / 0.874 at K1 / K4 / K8 / K16 for 1.29 / 5.15 / 10.30 / 20.60 GFLOPs and 16.7 / 34.2 / 58.8 / 115.1 ms JPEG-pipeline latency on a GTX 1080 Ti. K4–K12 are not distinguishable from K16; K1 and K2 are significantly lower. The cascade reached 0.874 at about 6.9 GFLOPs with 11% escalation, with τ tuned on the same data.
+- **Rejected:** linear early exits on the frozen trunk (below the K curve except at K1) and lower input resolution (160 px collapses abnormal recall; 192 px trades abnormal for normal recall). K12 adds little between K8 and K16.
+- **Limits:** One checkpoint and seed, 76 abnormal validation units, and an optimistic cascade threshold. At matched compute (K4 vs F002b) TinyViT ties the static MobileNetV2 baseline. Training the shared model across several K values could lift the cheap end, but it changes the weights and would need its own decision.
+
+---
+
 # Open Decisions
 
 The following are intentionally **not decided yet**:
 
 - How well the validation-supported model and adaptive behavior generalize; OpenPOCUS remains a technical proxy rather than clinical deployment evidence.
 - Any additional biological-patient identity mapping if new provenance becomes available; D023 fixes the current T006 quality exclusions and known-group split protocol.
-- Which variable-frame configurations yield useful measured quality–cost trade-offs, and whether other bounded TinyViT dimensions add value.
+- Final acceptance of D027 (frame count as the primary axis) and the exact T010 operating points.
 - Final measured operating points beyond the preliminary F002c K4/K8/K16 evidence and mapping from active resource states to those points.
 - Compression technique.
 - Whether resource conditions beyond the accepted simulated budget states will also be measured.

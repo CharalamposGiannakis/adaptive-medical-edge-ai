@@ -105,3 +105,17 @@ MobileNetV2 static reference. The canonical shared frozen copy is
 The ignored `artifacts/F002c/tinyvit5m_seed2026/checkpoint.pt` remains raw
 experiment history, and the external archive remains archival evidence outside
 Git.
+
+## F003 — Adaptive dimensions of the D026 TinyViT (T009)
+
+Research question: which ways of changing the compute of the frozen D026 TinyViT checkpoint give useful accuracy–cost trade-offs for T010? Ran on DAS-5 on 2026-10-06, validation only, no test-partition inference. Axes: frame count K ∈ {1, 2, 4, 8, 12, 16} (nested frame sets), linear early exits fitted on train-split features of the frozen trunk, and input resolution 160/192/224 px, plus a K4 → K16 confidence cascade. Strict fvcore FLOPs with the F002 handlers and reviewed TinyViT bookkeeping; F002 §9 timing on node201 (GTX 1080 Ti, shared node, with a same-job re-timing of MobileNetV2 F002b). Commands, environment and full tables are in `experiments/F003/README.md`; outputs in ignored `artifacts/F003/`.
+
+Measured, duplicate-aware validation (254 units):
+
+- Frame count at 224 px, macro-F1 / GFLOPs / JPEG-pipeline latency: K1 0.816 / 1.29 / 16.7 ms, K2 0.830 / 2.57 / 22.6 ms, K4 0.860 / 5.15 / 34.2 ms, K8 0.868 / 10.30 / 58.8 ms, K12 0.870 / 15.45 / 86.8 ms, K16 0.874 / 20.60 / 115.1 ms. Model-only latency is about 11 ms for K1–K4, 12.2 ms at K8 and 22.9 ms at K16.
+- Paired differences to K16: K1 −0.057 and K2 −0.044 (CIs exclude 0); K4, K8 and K12 are not distinguishable from K16.
+- Same-units comparison with MobileNetV2 F002b (5.11 GFLOPs, 0.859; re-timed 11.33 ms model-only, 81.8 ms pipeline): TinyViT K4 +0.001 (95% CI −0.057 to +0.064) at 5.15 GFLOPs and 34.2 ms pipeline.
+- Early exits score below the frame-count curve except at K1, where the mid-stage-2 exit matches full K1 at 72% of its FLOPs. 160 px collapses abnormal recall to 0.49; 192 px keeps macro-F1 but lowers abnormal recall to 0.75.
+- K4 → K16 cascade, τ tuned on validation: 11% of units escalated, about 6.9 GFLOPs, macro-F1 0.874 (equal to K16).
+
+Interpretation: frame count is the primary adaptive axis, with K1/K4/K8/K16 as candidate shared-weight operating points and the K4 → K16 cascade as the input-adaptive candidate for T012. Exits and resolution are rejected without retraining. At matched compute TinyViT ties the static baseline, so the adaptive benefit must come from the cheaper points and the cascade. Single checkpoint, single seed, and a cascade threshold chosen on the scored data, so these are development results. Proposed as D027.
