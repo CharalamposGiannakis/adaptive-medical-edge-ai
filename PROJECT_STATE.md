@@ -2,7 +2,11 @@
 
 The architecture and data foundation is complete. T009/F003 is complete (PR #24
 merged); D027 selects frame count as the primary adaptive axis pending acceptance.
-T010 is next.
+T010/F004 is in review: D028 proposes K1/K2/K4/K8/K12/K16 on the unchanged
+D026 weights as the adaptive family (pending Charalampos's agreement, like D027).
+T011/F005 has results: nested structured pruning with distillation (F005b)
+passes its pre-specified rule and is proposed as the compression step (D029,
+pending agreement). T012 (policy) is next.
 F002b MobileNetV2 remains the frozen static comparison; D026 selects the F002c
 TinyViT-5M checkpoint as the model to develop adaptively. No model has run on the
 T006 held-out test partition.
@@ -55,33 +59,53 @@ At K16, TinyViT exceeded the frozen MobileNetV2 reference on validation macro-F1
 accuracy and abnormal recall, while MobileNetV2 retained higher normal recall.
 K4 and K8 also retained useful predictive quality with fewer input frames. This is
 single-seed development evidence under different training recipes, not statistical
-or universal superiority. TinyViT cost, latency and throughput still need the
-consistent measurement work in T009. Full evidence and caveats are in
+or universal superiority. F003 and F004 later measured TinyViT's cost, latency
+and throughput under one convention. Full evidence and caveats are in
 [`experiments/F002c/README.md`](experiments/F002c/README.md).
 
-## Current objective — T009
+## Current objective — T010 and T011 results, T012 next
 
-T009 empirically characterizes a useful adaptive configuration space around the
-selected TinyViT checkpoint. Frame count is already a promising dimension, so the
-first work is to measure predictive and cost behavior across useful K values under
-one consistent FLOPs/runtime/throughput convention. T009 may also run bounded
-experiments on TinyViT-supported depth or exits, spatial resolution, compression
-interactions, and input-difficulty or confidence signals when evidence justifies
-them. It does not need to implement every possible dimension.
+T009/F003 ([`experiments/F003/README.md`](experiments/F003/README.md)) found
+frame count to be the useful axis of the D026 TinyViT (D027, pending acceptance).
+T010/F004 (2026-10-07, validation only;
+[`experiments/F004/README.md`](experiments/F004/README.md)) turns it into one
+deployable family. GPU: median over three GTX 1080 Ti hosts; CPU: one Xeon
+E5-2630 v3 node, 4 threads; both model only (CPU times vary by up to ±25% between
+jobs at K12/K16). The intended deployment target is
+CPU-class edge hardware, where the FLOPs savings also save time; the desktop
+GPU is latency-bound below K8.
 
-The output is an evidence-backed choice of the configurations and adaptive axes to
-carry into T010. Exploratory work should stay reproducible, but it does not require
-a new decision-log entry or full preregistration for every small idea.
+| K | GFLOPs | Macro-F1 | Accuracy | AUROC | GPU ms | CPU ms |
+|---:|---:|---:|---:|---:|---:|---:|
+| 1 | 1.29 | 0.816 | 0.846 | 0.888 | 9.9 | 32 |
+| 2 | 2.57 | 0.829 | 0.854 | 0.918 | 10.2 | 49 |
+| 4 | 5.15 | 0.860 | 0.882 | 0.937 | 10.2 | 81 |
+| 8 | 10.30 | 0.868 | 0.890 | 0.950 | 12.1 | 201 |
+| 12 | 15.45 | 0.870 | 0.890 | 0.953 | 17.4 | 381 |
+| 16 | 20.60 | 0.874 | 0.894 | 0.952 | 22.7 | 538 |
 
-F003 (2026-10-06, validation only; [`experiments/F003/README.md`](experiments/F003/README.md))
-measured this space. Frame count is the useful axis: macro-F1 0.816 / 0.860 /
-0.868 / 0.874 at K1 / K4 / K8 / K16 for 1.29 / 5.15 / 10.30 / 20.60 GFLOPs.
-Frozen exits and lower resolution were rejected; input-driven escalation is
-unresolved. At matched FLOPs TinyViT K4 ties the static MobileNetV2 (0.860 vs
-0.859), and MobileNetV2 run at fewer frames stays level with or below TinyViT
-per FLOP. D027 proposes frame count as the primary axis and carries the measured
-K1/K2/K4/K8/K12/K16 candidates into T010, which selects the final operating
-points, pending Charalampos's agreement.
+All points run the same weights of the D026 checkpoint through
+`experiments/F004/family.py`. Nested frames let a clip move up in K by encoding
+only the added frames; warm switching between K costs at most 0.13 ms, while the
+first request at a new K after start-up costs up to about 150 ms (cuDNN tuning).
+Only K1 and K2 are resolved below K16 on validation. Running every frame of each
+clip scores 0.870 at 240 GFLOPs on average, no better than K16. Fine-tuning across
+K (F004b) failed its pre-specified rule (three seeds also stay below it), so
+the T010 family keeps D026's weights (D028). If D029 is accepted, the deployable
+weights become the pruned seed-2026 file of T011.
+
+T011/F005 ([`experiments/F005/README.md`](experiments/F005/README.md)): INT8
+dynamic quantization of all Linear layers keeps quality at every K and shrinks
+the file 3.2× (20.4 → 6.4 MB), but leaves FLOPs unchanged and is not faster on
+the CPU. Static INT8 (F005c) costs ranking quality and is slower still. F005b
+prunes hidden channels as nested widths (1.0/0.75/0.5/0.25 → 1.29/1.10/0.91/0.72
+GFLOPs per frame) with Taylor importance and distillation from D026. Over three
+seeds the widths average macro-F1 0.853/0.857/0.856/0.846 over the five trained
+K (D026: 0.849): about the unpruned quality at 29–44% fewer FLOPs per frame, in
+one weight file (D029, proposed). The 25% width is the noisiest; for the
+deployable seed 2026 it averages 0.839 and is 0.04 below D026 at K12/K16.
+Individual front points are local peaks. Epochs were selected on validation, so
+these are development numbers until T013.
 
 ## Guardrails
 
@@ -98,7 +122,7 @@ points, pending Charalampos's agreement.
 
 ## Next steps
 
-T009 characterizes adaptive dimensions → T010 selects at least three useful
-shared-model operating points → T011 integrates one compression method → T012
-implements the resource-aware policy → T013 performs the final static-versus-
-adaptive evaluation.
+T009 characterized adaptive dimensions → T010 built six shared-weight
+frame-count operating points (F004) → T011 added nested pruned widths (F005) →
+T012 implements the resource-aware policy over the width × K points → T013
+performs the final static-versus-adaptive evaluation on the test partition.

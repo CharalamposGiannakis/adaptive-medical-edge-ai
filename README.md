@@ -10,8 +10,12 @@ constraints at the edge.
 
 ## Current status
 
-The architecture and data foundation is complete, and T009 adaptive-dimension
-characterization is next. The frozen static reference remains F002b MobileNetV2
+The architecture and data foundation is complete. T009 (F003) found frame count
+to be the useful adaptive axis; T010 (F004) serves the TinyViT checkpoint at
+K = 1–16 frames as one weight file; T011 (F005) adds nested structured pruning
+with distillation, giving 4 widths × 6 K in one file. D027–D029 record these as
+proposed decisions; the resource-aware policy (T012) and the final test-split
+evaluation (T013) are next. The frozen static reference remains F002b MobileNetV2
 (D025): K16 validation macro-F1 0.859, abnormal recall 0.750 and 5.11 GFLOPs.
 Charalampos and Salo selected the F002c TinyViT-5M epoch-8 checkpoint as the
 adaptive-system backbone (D026). That same checkpoint reached validation macro-F1
@@ -36,8 +40,9 @@ The current direction is to:
 The prehospital/ambulance lung POCUS use-case design and variable-frame direction
 were accepted in TA Sudaksh's feedback. OpenPOCUS remains a technical experimental
 proxy. D025 continues to govern the MobileNetV2 static reference; D026 selects
-TinyViT for adaptive development. Adaptive operating points, compression and
-controller choices remain open. No held-out OpenPOCUS test results are claimed.
+TinyViT for adaptive development. The controller (T012) remains open, and the
+operating points and compression are proposed pending team agreement. No
+held-out OpenPOCUS test results are claimed.
 
 The current technical pathway is in [`docs/design_pathway.md`](docs/design_pathway.md).
 The independently reviewed F002 qualification and static-baseline contract is

@@ -410,15 +410,41 @@ decision timing.
 
 ---
 
+### D028 — T010 operating points: K1/K2/K4/K8/K12/K16 on the D026 weights
+
+**Date:** 2026-10-07
+**Status:** Proposed by Salo from T010/F004; needs Charalampos's agreement (builds on D027, also still proposed)
+
+- **Decision:** The adaptive family is the unchanged D026 TinyViT checkpoint served at K = 1, 2, 4, 8, 12 and 16 nested spread frames through `experiments/F004/family.py` (`AdaptiveTinyViT`, `AnytimeClip`). K adapts the input's temporal window and reuses cached frame features (lecture 4, approach families 4 and 8): each point's computation is contained in every larger point's, so a clip can continue to a larger K (anytime inference). There are no exit heads; a budget policy chooses K. The weights stay D026's; the multi-K fine-tune (F004b) is not adopted. If D029 is accepted, the deployable weights become its pruned seed-2026 file (fine-tuned across K with distillation), and this decision's family is the unpruned reference.
+- **Evidence (F004, validation):** macro-F1 0.816 / 0.829 / 0.860 / 0.868 / 0.870 / 0.874 and accuracy 0.846 / 0.854 / 0.882 / 0.890 / 0.890 / 0.894 at 1.29 / 2.57 / 5.15 / 10.30 / 15.45 / 20.60 GFLOPs, reproducing F003. Every point reads all 215 parameter tensors of one 20.4 MB file, equal to the checkpoint. K4 → K16 costs 15.45 instead of 20.60 GFLOPs; moving down encodes nothing. Warm switching between K changes per-K latency by at most 0.13 ms (three GTX 1080 Ti hosts); the first request at a new K costs up to about 150 ms (cuDNN tuning), so deployments warm up every K.
+- **Why K12 is in:** it is on the quality/FLOPs front and costs 0.75 × K16, which may match a T012 budget state; measuring it costs no training. Only K1 and K2 are resolved below K16 on validation.
+- **Rejected:** adopting the F004b multi-K fine-tune. Its pre-specified seed-2026 test failed (+0.003 mean macro-F1 over D026 against a 0.01 bar; K16 0.874 → 0.842). Over three seeds it averages +0.008 over D026 (also below the 0.01 bar) and +0.010 over a K16-only control, mostly at K1/K2, with K16 varying 0.842–0.896: a small low-K gain is possible but unproven, and the epochs were selected on validation. Revisit only with epochs selected on a split held out from validation.
+- **Consequences:** T011 compresses the one D026 weight set, which applies to every point. T012 maps budget states to these measured points and needs to define what b is a fraction of.
+- **Limits:** one checkpoint, validation reused for the checkpoint, the axis, the points and F004b's epochs; desktop GPU/CPU timing, not an edge device. Details: [`experiments/F004/README.md`](../experiments/F004/README.md).
+
+---
+
+### D029 — T011 compression: nested structured pruning with distillation
+
+**Date:** 2026-10-07
+**Status:** Proposed by Salo from T011/F005; needs Charalampos's agreement (builds on D027 and D028)
+
+- **Decision:** Compress the adaptive family by nested structured pruning of TinyViT's hidden channels (two MBConv blocks, ten transformer MLPs), ordered by first-order Taylor importance and fine-tuned from D026 with the sandwich rule and offline distillation from the frozen D026 model (F005b). Width w ∈ {1.0, 0.75, 0.5, 0.25} keeps the first w of every hidden group, so one weight file serves 4 widths × 6 K: the widths are the slimmable mechanism, K the input-adaptation mechanism. The deployable checkpoint is seed 2026 (the rule seed, fixed before results). Dynamic INT8 (F005a) is reported as a size option, not part of the family.
+- **Evidence (F005, validation, three seeds):** mean macro-F1 over the five trained K: D026 0.849; widths 100/75/50/25%: 0.853 / 0.857 / 0.856 / 0.846, at 1.29 / 1.10 / 0.91 / 0.72 GFLOPs per frame. The pre-specified rule (width 1.0 ≥ D026 − 0.01, width 0.5 ≥ D026 − 0.02) holds. The 50% width is within 0.011 of D026 at every K; the 25% width within 0.033 (seed 2026: 0.04 lower at K12/K16). AUROC is at or above the unpruned family at every cost. A model trained only at 50% scores like the nested 50% width (0.854 vs 0.856), at about a quarter of the training compute. Switching width and K per request adds no measurable latency (GPU ≤ 0.6%, CPU within repeat noise), and `NestedAnytimeClip` serves a clip across width changes exactly.
+- **Rejected:** L1 importance (train BCE 0.615 vs 0.315 for Taylor at 50% width without retraining) and a random channel order (after the same training, −0.03 macro-F1 at 75/50% width and −0.10 at 25%, three seeds each); static INT8 in ONNX Runtime (AUROC −0.01 to −0.02 and 1.5–1.8× slower on the CPU; a `reduce_range` rerun was worse, so weight saturation is not the cause); dynamic INT8 as the compression step (no FLOP change, not faster on this CPU, 3.2× smaller file).
+- **Limits:** the deployable weights are fine-tuned across K with distillation, i.e. they include the recipe F004b did not adopt on its own, accepted here under a non-inferiority rule; epochs selected on the same validation units the grid is reported on, and the front's best points are local peaks; one of 72 seed × cell McNemar tests is below 0.05 (p = 0.031), about what chance gives; part of the gain over D026 comes from the fine-tuning with distillation, not the pruning; only the MBConv conv3 BNs get per-width statistics (recalibrating all 19 downstream BNs after training lowered the narrow widths by 0.008 and was not adopted); narrow widths are noisier across K and seeds; desktop timing. Details: [`experiments/F005/README.md`](../experiments/F005/README.md).
+
+---
+
 # Open Decisions
 
 The following are intentionally **not decided yet**:
 
 - How well the validation-supported model and adaptive behavior generalize; OpenPOCUS remains a technical proxy rather than clinical deployment evidence.
 - Any additional biological-patient identity mapping if new provenance becomes available; D023 fixes the current T006 quality exclusions and known-group split protocol.
-- Final acceptance of D027 (frame count as the primary axis) and the exact T010 operating points.
-- Final measured operating points beyond the preliminary F002c K4/K8/K16 evidence and mapping from active resource states to those points.
-- Compression technique.
+- Final acceptance of D027 (frame count as the primary axis) and D028 (the T010 operating points).
+- Mapping from active resource states to the measured F004 operating points (T012), including what b = 0.25/0.50/0.75/1.00 is a fraction of.
+- Final acceptance of D029 (nested structured pruning as T011's compression).
 - Whether resource conditions beyond the accepted simulated budget states will also be measured.
 - Whether input uncertainty becomes part of the runtime policy.
 - Whether an optimization-based controller is worth implementing.

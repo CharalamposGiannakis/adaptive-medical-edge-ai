@@ -51,10 +51,14 @@ Historical acceptance criteria and evidence remain in
   evidence-backed selection of the adaptive axes and candidate configuration space
   passed to T010.
 
-## T010 — Construct shared adaptive operating points
+## T010 — Construct shared adaptive operating points (issue #12)
 
 - **Priority:** P1
-- **Owner:** Charalampos
+- **Owner:** Salo
+- **Status:** In review. F004 (2026-10-07) builds K1/K2/K4/K8/K12/K16 on the
+  D026 weights as one family and does not adopt fine-tuning across K (D028,
+  proposed); see
+  [`experiments/F004/README.md`](../experiments/F004/README.md).
 - **Dependency:** T009.
 - **Scope:** Select and implement at least three useful operating points from the
   T009 evidence, sharing the relevant TinyViT model/weights or a documented
@@ -63,10 +67,14 @@ Historical acceptance criteria and evidence remain in
   raw predictive/cost measurements are reproducible. Do not invent points merely
   to mirror the number of budget states.
 
-## T011 — Integrate one compression technique
+## T011 — Integrate one compression technique (issue #13)
 
 - **Priority:** P1
-- **Owner:** Charalampos
+- **Owner:** Salo
+- **Status:** Results in. F005b (nested structured pruning with distillation)
+  passes its pre-specified rule and is proposed as the compression step (D029);
+  F005a/F005c (INT8) give file size only. See
+  [`experiments/F005/README.md`](../experiments/F005/README.md).
 - **Dependency:** Stable operating points from T010.
 - **Scope:** Choose one technique supported by model/backend evidence and evaluate
   it against the appropriate uncompressed reference.
@@ -81,7 +89,12 @@ Historical acceptance criteria and evidence remain in
 - **Dependencies:** T010 and relevant T011 results.
 - **Scope:** Map active normalized resource states to measured operating points;
   `b = 0.00` defers inference. Compare with fixed/static alternatives under the
-  same protocol.
+  same protocol. With D028/D029 the candidates are the 4 widths × 6 K of the
+  F005b seed-2026 file: define what b is a fraction of, use only Pareto-front
+  points (some narrow-width cells score lower at larger K), and serve clips with
+  `NestedAnytimeClip` (F005), which caches features per (width, frame);
+  F004's `AnytimeClip` caches by frame only and must not be used across widths.
+  Log the chosen point per request for a runtime trace.
 - **Acceptance criteria:** Reproducible policy, scenarios and comparisons; no
   held-out-test use during policy development. A learned or optimization-based
   controller is optional research work, not required for the core.
