@@ -6,7 +6,13 @@ data/openpocus/Lung Database.zip
 data/openpocus/Lung Database.zip.aria2
 data/openpocus/.extract/
 checkpoints/*
+!checkpoints/f002b_mobilenetv2_seed2026.pt
 !checkpoints/f002c_tinyvit5m_epoch8.pt
+!checkpoints/f005b_nested_seed2026/
+checkpoints/f005b_nested_seed2026/*
+!checkpoints/f005b_nested_seed2026/checkpoint.pt
+!checkpoints/f005b_nested_seed2026/run.json
+!checkpoints/f005b_nested_seed2026/importance.pt
 artifacts/
 
 # Python caches and local environments

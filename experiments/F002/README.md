@@ -193,7 +193,9 @@ Validation macro-F1 by epoch was 0.731, 0.810, 0.785, 0.814, 0.849, 0.823,
 
 **Frozen reference for T009.** Use it unchanged:
 
-- checkpoint: `artifacts/F002/f002b/mobilenet_v2_seed2026/lr1e-4/checkpoint.pt`
+- canonical checkpoint (tracked): `checkpoints/f002b_mobilenetv2_seed2026.pt`
+  (9,150,411 bytes)
+- original raw checkpoint: `artifacts/F002/f002b/mobilenet_v2_seed2026/lr1e-4/checkpoint.pt`
   (read-only, also on DAS-5 under `/var/scratch/bde2621/amea/`)
 - checkpoint SHA-256:
   `5bad132633fd6188c0e449a75f73294612479bb1f0dc1820d8e6c459f7bdb823`

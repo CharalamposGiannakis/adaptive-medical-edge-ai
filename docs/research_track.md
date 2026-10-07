@@ -7,8 +7,8 @@ OpenPOCUS as a technical experimental proxy. D025 keeps F002b MobileNetV2 as the
 frozen static reference; D026 selects the F002c TinyViT-5M epoch-8 checkpoint as
 the adaptive-system backbone, with its canonical shared frozen copy at
 [`checkpoints/f002c_tinyvit5m_epoch8.pt`](../checkpoints/f002c_tinyvit5m_epoch8.pt).
-T009 now characterizes useful adaptive dimensions and their costs before T010
-selects operating points.
+F003 (T009) characterized the adaptive dimensions; F004 (T010) built the
+shared-weight frame-count family that T011 and T012 build on.
 
 ## Evidence so far
 
@@ -22,20 +22,22 @@ selects operating points.
   0.8602/0.8676/0.8737 at K4/K8/K16 without K-specific retraining. At K16 its
   abnormal recall was 0.8289. This supports the D026 adaptive-backbone choice but
   is single-seed development evidence under a different training recipe.
-- TinyViT FLOPs, latency and throughput have not yet been measured under the
-  consistent convention needed for final operating-point comparisons.
+- F003 measured TinyViT's FLOPs, latency and throughput and established frame
+  count as the adaptive axis (D027, accepted).
+- F004 serves K1/K2/K4/K8/K12/K16 on the D026 weights as one family with anytime
+  upgrades and per-request switching (D028, accepted). Fine-tuning across K
+  did not pass its pre-specified rule.
+- F005 compresses inference work: nested structured pruning with distillation
+  keeps macro-F1 at 29–44% fewer FLOPs per frame in one 20.4 MB weight file
+  (D029, accepted). Dynamic INT8 gives file-size reduction only on this hardware
+  and was not selected.
 
 ## Next research decision
 
-T009 should determine which bounded TinyViT configurations form a useful adaptive
-configuration space. Frame count is the first promising dimension; additional K
-values, architecture-supported depth/exits, spatial resolution, compression
-interactions or input-difficulty signals may be investigated when they can change
-the operating-point decision. Evidence should reject unnecessary complexity.
-
-T010 will select at least three measured shared-model operating points. T011 adds
-one compression method, T012 maps resource states to measured points, and T013
-performs the final static-versus-adaptive comparison. The T006 held-out test
+T012 next maps resource states to the measured width × K
+points of the F005b file and T013 performs the final static-versus-adaptive
+comparison, including a statically pruned single-width model and static TinyViT
+K16 as further fixed baselines. The T006 held-out test
 partition remains reserved until a final protocol is fixed.
 
 ## Interpretation guardrails

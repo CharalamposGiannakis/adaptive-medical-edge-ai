@@ -20,17 +20,24 @@ full history of completed work. The active pathway is in
 - **F002c:** Ran the bounded TinyViT exploration. Charalampos and Salo selected
   the epoch-8 checkpoint as the adaptive-system backbone (D026). MobileNetV2
   remains the static reference.
+- **T009:** Characterized frame count as the primary adaptive axis (F003, D027;
+  PR #24, issue #11).
+- **T010:** Built the six-point shared frame-count family on unchanged D026
+  weights (F004, D028; PR #26, issue #12).
+- **T011:** Added nested structured pruning with distillation as compute
+  compression (F005b, D029; PR #26, issue #13). The shared checkpoint stays
+  about 20.4 MB; narrower widths reduce inference FLOPs.
 
 Historical acceptance criteria and evidence remain in
 [`decision_log.md`](decision_log.md), [`experiment_log.md`](experiment_log.md),
 [`experiments/F002/README.md`](../experiments/F002/README.md) and
 [`experiments/F002c/README.md`](../experiments/F002c/README.md).
 
-## T009 — Characterize useful adaptive dimensions (issue #11)
+## T009 — Characterize useful adaptive dimensions (issue #11; completed)
 
 - **Priority:** P1
 - **Owner:** Salom
-- **Status:** Done (PR #24; issue #11 closed). F003 (2026-10-06) proposes frame
+- **Status:** Done (PR #24; issue #11 closed). F003 (2026-10-06) established frame
   count as the primary axis (D027); see [`experiments/F003/README.md`](../experiments/F003/README.md).
 - **Foundation:** Use the canonical shared frozen F002c TinyViT epoch-8 checkpoint
   at [`checkpoints/f002c_tinyvit5m_epoch8.pt`](../checkpoints/f002c_tinyvit5m_epoch8.pt),
@@ -51,10 +58,14 @@ Historical acceptance criteria and evidence remain in
   evidence-backed selection of the adaptive axes and candidate configuration space
   passed to T010.
 
-## T010 — Construct shared adaptive operating points
+## T010 — Construct shared adaptive operating points (issue #12; completed)
 
 - **Priority:** P1
-- **Owner:** Charalampos
+- **Owner:** Salo
+- **Status:** Done with PR #26. F004 (2026-10-07) builds K1/K2/K4/K8/K12/K16 on
+  the D026 weights as one family and does not adopt fine-tuning across K (D028,
+  accepted); see
+  [`experiments/F004/README.md`](../experiments/F004/README.md).
 - **Dependency:** T009.
 - **Scope:** Select and implement at least three useful operating points from the
   T009 evidence, sharing the relevant TinyViT model/weights or a documented
@@ -63,10 +74,15 @@ Historical acceptance criteria and evidence remain in
   raw predictive/cost measurements are reproducible. Do not invent points merely
   to mirror the number of budget states.
 
-## T011 — Integrate one compression technique
+## T011 — Integrate one compression technique (issue #13; completed)
 
 - **Priority:** P1
-- **Owner:** Charalampos
+- **Owner:** Salo
+- **Status:** Done with PR #26. F005b (nested structured pruning with
+  distillation) satisfies its recorded adoption rule and is the accepted compute
+  compression step (D029); F005a dynamic INT8 demonstrated file-size reduction
+  but was not selected. See
+  [`experiments/F005/README.md`](../experiments/F005/README.md).
 - **Dependency:** Stable operating points from T010.
 - **Scope:** Choose one technique supported by model/backend evidence and evaluate
   it against the appropriate uncompressed reference.
@@ -78,10 +94,20 @@ Historical acceptance criteria and evidence remain in
 
 - **Priority:** P1
 - **Owner:** Charalampos
+- **Status:** Ready; next active task after PR #26.
 - **Dependencies:** T010 and relevant T011 results.
 - **Scope:** Map active normalized resource states to measured operating points;
   `b = 0.00` defers inference. Compare with fixed/static alternatives under the
-  same protocol.
+  same protocol. D028/D029 give 4 widths × 6 K candidates from the
+  F005b seed-2026 file: define what b is a fraction of, use only Pareto-front
+  points (some narrow-width cells score lower at larger K), and serve clips with
+  `NestedAnytimeClip` (F005), which caches features per (width, frame);
+  F004's `AnytimeClip` caches by frame only and must not be used across widths.
+  Log the chosen point per request for a runtime trace. Before using CPU
+  latency to set budgets, measure the selected F005b width × K points with
+  chunked encoding in one CPU job. F004 Table 8 makes chunks of 4 a starting
+  candidate for the unpruned family; it did not measure chunked latency at
+  the pruned widths.
 - **Acceptance criteria:** Reproducible policy, scenarios and comparisons; no
   held-out-test use during policy development. A learned or optimization-based
   controller is optional research work, not required for the core.
@@ -96,7 +122,12 @@ Historical acceptance criteria and evidence remain in
 - **Acceptance criteria:** Pre-specify any held-out-test use before inference;
   report predictive metrics, consistent FLOPs, throughput and relevant latency;
   preserve raw evidence and state uncertainty, proxy-dataset limits and any
-  validation-driven selection bias.
+  validation-driven selection bias. From the T010/T011 reviews: freeze the
+  operating points and the policy on validation before touching test; add the
+  static TinyViT points (D026 at K16, the 50%-only model at a fixed K) as
+  further fixed baselines next to MobileNetV2; report one matched-accuracy and
+  one matched-FLOPs comparison with intervals; report per-device results
+  (device and label are entangled); and use CPU latencies from a single job.
 
 ## Research backlog
 

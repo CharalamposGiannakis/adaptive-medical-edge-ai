@@ -38,13 +38,13 @@ Frozen MobileNetV2 F002b static reference (D025)
                     |
 TinyViT F002c adaptive backbone (D026)
                     |
-T009 adaptive-dimension playground and cost characterization
+T009 adaptive-dimension playground and cost characterization (done)
                     |
-T010 select at least three useful shared-model operating points
+T010 select at least three useful shared-model operating points (done)
                     |
-T011 integrate one compression method
+T011 integrate one compression method (done)
                     |
-T012 implement and compare a resource-aware policy
+T012 implement and compare a resource-aware policy (next)
                     |
 T013 final static-versus-adaptive evaluation
 ```
@@ -88,14 +88,19 @@ states to configurations; that belongs to T012.
 - **T010:** Select at least three useful operating points supported by the shared
   TinyViT model/checkpoint or a documented shared-weight extension. Record exact
   configurations and raw measurements. Do not manufacture points to match the
-  number of controller states.
+  number of controller states. Done in F004: K = 1, 2, 4, 8, 12, 16 on the D026
+  weights as one family with anytime upgrades (D028, accepted).
 - **T011:** Integrate one evidence- and backend-supported compression technique and
-  compare it with the appropriate uncompressed reference. The technique remains
-  open until T009/T010 evidence supports a choice.
+  compare it with the appropriate uncompressed reference. Done in F005: nested
+  structured pruning of the hidden channels with distillation, widths 100/75/50/25%
+  in one 20.4 MB weight file (D029, accepted). This reduces inference compute,
+  not the shared file size; dynamic INT8 was measured but not adopted.
 - **T012:** Implement a simple resource-aware policy. The accepted normalized
   budget states are `b = 0.25, 0.50, 0.75, 1.00`; `b = 0.00` means defer/no
   inference. Map active states only to measured operating points and compare the
-  policy with fixed alternatives.
+  policy with fixed alternatives. D028/D029 give width × K
+  frontier points of the F005b seed-2026 file; `docs/open_tasks.md` lists the
+  requirements (define what b is a fraction of, serve with `NestedAnytimeClip`).
 - **T013:** Run the pre-specified final comparison between the frozen MobileNetV2
   static reference and the adaptive/compressed system. Report predictive metrics,
   consistent FLOPs, throughput and relevant latency, with uncertainty and dataset
@@ -105,7 +110,8 @@ states to configurations; that belongs to T012.
 ## Continuing guardrails
 
 Keep T006 and F002b immutable, keep the F002c epoch-8 checkpoint as the selected
-adaptive backbone, protect the held-out test partition during development, and use
+adaptive backbone (D029 deploys its pruned and fine-tuned descendant), protect
+the held-out test partition during development, and use
 one comparable cost/runtime convention for final candidate operating points.
 Reproducibility and clear measured-versus-interpreted reporting remain mandatory;
 the adaptive phase does not otherwise inherit arbitrary restrictions from the
