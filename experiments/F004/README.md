@@ -41,7 +41,7 @@ unseen data; the T006 test partition is reserved for T013.
   cuDNN tunes kernels per input shape; a deployment should run every K once at
   start-up (Table 4).
 - **Latency follows FLOPs on CPU but not on this GPU.** GPU model-only latency
-  is flat from K1 to K4 (about 10.2 ms) and 22.7 ms at K16. On one CPU node (4 threads) model-only latency rises with K: 32 / 49 / 81 / 201 / 381 / 538 ms, and anytime upgrades save time in proportion to the frames they skip (K4 → K16: 416 instead of 538 ms).
+  is flat from K1 to K4 (about 10.2 ms) and 22.7 ms at K16. On one CPU node (4 threads) model-only latency rises with K: 32 / 49 / 81 / 201 / 381 / 538 ms with all K frames encoded as one batch, and anytime upgrades save time in proportion to the frames they skip (K4 → K16: 416 instead of 538 ms). On this CPU one batch of 8 or more frames costs more than the same frames in batches of 4; encoded in chunks of 4, K16 takes 317–336 ms, close to 4 × K4 (Table 8).
 - **Against the static baseline.** At the baseline's own cost (5.1 GFLOPs),
   TinyViT K4 and MobileNetV2 F002b K16 tie on macro-F1 (0.860 vs 0.859) and
   nearly tie on accuracy (0.882 vs 0.886); TinyViT ranks cases better (AUROC
@@ -185,6 +185,7 @@ sbatch -p fatq -w node203 --exclusive $S benchmark --device cuda
 sbatch -w node207 --exclusive --gres=gpu:0 --time=10:00:00 $S benchmark --device cpu --threads 4
 sbatch --constraint=TitanRTX $S all-frames
 sbatch -w node201 --exclusive $S memory
+sbatch -w node207 --exclusive --gres=gpu:0 --time=03:00:00 $S chunked --threads 4   # also node209
 sbatch --gres=gpu:0 --exclusive $S export-onnx --threads 4
 python experiments/F004/run_f004.py extras                     # from saved results
 python experiments/F004/create_figures.py                      # needs matplotlib
@@ -221,7 +222,9 @@ at least one data-loader worker, so both losses draw the same flips.
 
 **Table 1. Operating points on D026 weights.** Duplicate-aware validation.
 GPU latency: median over the three hosts of each host's median (range in
-`benchmark/`); end-to-end throughput in sequences per second.
+`benchmark/`); end-to-end throughput in sequences per second. CPU columns
+encode a request's K frames as one batch; Table 8 has the faster chunked
+encoding.
 
 | K | GFLOPs | Accuracy | Macro-F1 [95% CI] | AUROC [95% CI] | Normal rec. | Abnormal rec. | GPU model-only ms | GPU end-to-end ms | GPU seq/s | CPU model-only ms | CPU end-to-end ms |
 |---:|---:|---:|---|---|---:|---:|---:|---:|---:|---:|---:|
@@ -258,7 +261,9 @@ frames already give what the whole clip gives, at a twelfth of the cost.
 | Bag-of-models alternative: six separately stored networks of this size | 122,651,862 bytes (6 × the file) |
 
 **Table 3. Anytime upgrades.** GFLOPs from fvcore on `Upgrade`; latency
-model-only, median over hosts.
+model-only, median over hosts. The new frames of an upgrade, and all frames
+from scratch, are encoded as one batch; on the CPU, moves that encode 8 or more
+frames would be faster in chunks of 4 (Table 8, not timed for upgrades).
 
 | Move | Frames encoded | GFLOPs | From scratch GFLOPs | GPU ms | GPU from scratch ms | CPU ms | CPU from scratch ms |
 |---|---:|---:|---:|---:|---:|---:|---:|
@@ -327,7 +332,8 @@ Device 0 holds 60 of the 76 abnormal units and is the hardest at every K
 (normal recall 0.78–0.85); devices 1 and 4 are almost all normal.
 
 **Table 7. Tail latency, memory and ONNX.** Latency model-only: median / p95 /
-p99 ms (GPU: median over the three hosts; CPU: node207). Memory: extra GPU
+p99 ms (GPU: median over the three hosts; CPU: node207, one batch per
+request). Memory: extra GPU
 memory one warm request allocates (job 111054, node201; weights take a further
 21 MB). ONNX: `tinyvit_family.onnx`, one graph with a variable frame axis
 (opset 17, 20.9 MB), against PyTorch on one CPU node (node218, 4
@@ -346,6 +352,39 @@ from PyTorch on random input.
 A per-frame encoder (`tinyvit_frame_encoder.onnx`, variable frame count) is
 exported too, for the anytime path; its features match PyTorch to 4e-6.
 
+**Table 8. CPU latency by encoding chunk size** (added after an outside
+review; `chunked`, median model-only ms on node207 / node209, Xeon E5-2630 v3,
+4 threads, 50 requests, 5 round-robin repeats; chunked outputs equal the batched
+ones to 5e-7). A request's K frames are encoded c frames at a time and pooled;
+"whole" is c = K, the usual single batch, so for K4 it is the same
+configuration as c = 4 and for K8 the same as c = 8.
+
+| Model | c = 1 | c = 2 | c = 4 | c = 8 | whole |
+|---|---|---|---|---|---|
+| TinyViT K4 | 127 / 129 | 103 / 97 | 82 / 78 | – | 82 / 78 |
+| TinyViT K8 | 261 / 253 | 204 / 189 | 163 / 157 | 181 / 161 | 181 / 161 |
+| TinyViT K12 | 383 / 378 | 307 / 284 | 256 / 235 | – | 326 / 253 |
+| TinyViT K16 | 509 / 506 | 405 / 378 | 336 / 317 | 373 / 326 | 451 / 340 |
+| MobileNetV2 K16 | 283 / 280 | 214 / 202 | 153 / 148 | 152 / 132 | 222 / 141 |
+
+CPU latency grows faster than linearly with the frames in one batch: K16 as
+one batch costs more than four K4 passes. Encoding in chunks of 4 is the
+fastest option at every K ≥ 8 on both nodes and makes latency close to linear
+in K (K16 at c = 4: 336 / 317 ms against 4 × K4 = 328 / 313 ms). How much
+it saves depends on the node: 26% at K16 on node207, 7% on node209. The
+variation between jobs and nodes sits in the one-batch path: one-batch K16
+took 451 ms on node207 and 340 ms on node209 in the same run, with node207's
+five repeats ranging 439–512 ms, while at c = 4 the nodes give 336 and 317 ms
+(node207 repeats 326–356 ms). Encoding one frame at a time is the slowest
+option (1.5× chunk 4). On node209, the F005a node, FP32 at c = 1 takes 129 /
+253 / 506 ms at K4 / K8 / K16, against 133 / 265 / 531 ms for F005a's
+per-frame INT8 in another job, so most of F005a's "per-frame INT8" penalty is
+the per-frame encoding, not INT8. MobileNetV2 is
+fastest in chunks of 4–8 (132–153 ms); against TinyViT K4 at the same FLOPs
+(78–82 ms) it is then about 1.8× slower rather than 3×, so batch size explains
+part of that gap and the architecture the rest. For CPU latency budgets (T012)
+the deployable setting is chunked encoding at c = 4.
+
 ## Interpretation
 
 - **The family meets T010's acceptance criteria on D026 weights.** Six points
@@ -363,7 +402,8 @@ exported too, for the anytime path; its features match PyTorch to 4e-6.
   start per new frame count (up to about 150 ms on the GPU) is a one-off that a
   start-up warm-up removes; T012's policy should assume it has been done.
 - **Target device: CPU-class edge hardware.** The FLOPs savings become time
-  savings on the CPU (32 → 538 ms from K1 to K16) and not on the desktop GPU,
+  savings on the CPU (32 → 538 ms from K1 to K16 as one batch, K16 317–336 ms
+  in chunks of 4, Table 8) and not on the desktop GPU,
   which is latency-bound below K8. An ambulance device is more likely CPU- or
   small-accelerator-class than a GTX 1080 Ti, so the CPU timings are the ones
   that represent the scenario; the GPU timings show where the savings vanish.
@@ -371,7 +411,7 @@ exported too, for the anytime path; its features match PyTorch to 4e-6.
   flat from K1 to K4 on the GTX 1080 Ti, probably because 1 to 4 frames do not
   fill the GPU (not profiled). Under a model-only GPU latency budget, K1, K2
   and K4 are the same point; they differ in FLOPs, in end-to-end time (JPEG
-  decoding scales with K) and on CPU. On CPU the cheap points do save time (32 ms at K1 against 538 ms at K16), and MobileNetV2 is slower than TinyViT K4 at about the same FLOPs (254 against 81 ms model-only), probably because its depthwise convolutions run poorly on this CPU backend (not profiled). Absolute CPU times also depend on the job, even on the same node: node207 timed the same FP32 K16 computation at 538 ms in this job and at 423 ms in the F005b job, and node209 (same CPU model) at 374 ms in F005a, while K1–K8 agree within about 10%. CPU numbers are therefore compared only within one job, and absolute CPU times carry roughly ±25% at K12/K16.
+  decoding scales with K) and on CPU. On CPU the cheap points do save time (32 ms at K1 against 538 ms at K16), and MobileNetV2 is slower than TinyViT K4 at about the same FLOPs (254 against 81 ms model-only as one batch; 132–153 against 78–82 ms with both encoded in their fastest chunk size, Table 8), so batch size explains part of that gap and the architecture the rest (not profiled). Absolute CPU times also depend on the job, even on the same node: node207 timed the same FP32 K16 computation at 538 ms in this job and at 423 ms in the F005b job, and node209 (same CPU model) at 374 ms in F005a, while K1–K8 agree within about 10%. CPU numbers are therefore compared only within one job, and absolute one-batch CPU times carry roughly ±25% at K12/K16. In chunks of 4 the two nodes of Table 8 agree within 6% at K16.
 - **Quality: the top of the range buys little on this set.** Only K1 and K2 are
   resolved below K16; K4 to K12 sit within 0.014 macro-F1 of it with intervals
   that include zero:
@@ -400,20 +440,36 @@ exported too, for the anytime path; its features match PyTorch to 4e-6.
   so the low-K gain is at least partly real ranking, not only a shifted
   threshold. A proper test would select epochs on a split held out from
   training, not on validation; that is a research-backlog item, not T010.
+- **What is adaptivity and what is the backbone.** At the baseline's cost
+  TinyViT K4 ties MobileNetV2 without any adaptivity, so a TinyViT-vs-
+  MobileNetV2 gap is a backbone comparison. What the frame-count family adds is
+  measured against TinyViT itself: one file for every K, upgrades that reuse
+  encoded frames, and (with T011) the width axis. In macro-F1 the quality range
+  resolves only from K1 to K4; above K4 the gain is in AUROC (0.937 → 0.952)
+  rather than in thresholded quality.
+- **Device and label are entangled.** Device 0 holds 60 of the 76 abnormal
+  validation units, device 1 none of its 36, device 4 eight of 73 (Table 6).
+  Part of what any model here learns may be the acquisition device rather than
+  the lung finding; per-device results belong in every final comparison (T013).
 - **Limits:** one D026 checkpoint, 76 abnormal validation units, validation
   reused for every selection, timings on desktop hardware rather than an edge
-  device.
+  device, and the device–label imbalance above.
 
 ## Passed to T011/T012
 
-| Point | GFLOPs | Macro-F1 | AUROC | GPU model-only ms | GPU end-to-end ms | CPU model-only ms | Upgrade from next smaller point |
-|---|---:|---:|---:|---:|---:|---:|---|
-| K1 | 1.29 | 0.816 | 0.888 | 9.88 | 16.0 | 32 | – |
-| K2 | 2.57 | 0.829 | 0.918 | 10.24 | 22.5 | 49 | +1.29 GFLOPs |
-| K4 | 5.15 | 0.860 | 0.937 | 10.24 | 34.3 | 81 | +2.57 GFLOPs |
-| K8 | 10.30 | 0.868 | 0.950 | 12.12 | 61.6 | 201 | +5.15 GFLOPs |
-| K12 | 15.45 | 0.870 | 0.953 | 17.39 | 89.3 | 381 | +5.15 GFLOPs |
-| K16 | 20.60 | 0.874 | 0.952 | 22.65 | 122.1 | 538 | +5.15 GFLOPs |
+| Point | GFLOPs | Macro-F1 | AUROC | GPU model-only ms | GPU end-to-end ms | CPU model-only ms, one batch | CPU model-only ms, chunks of 4 | Upgrade from next smaller point |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| K1 | 1.29 | 0.816 | 0.888 | 9.88 | 16.0 | 32 | – | – |
+| K2 | 2.57 | 0.829 | 0.918 | 10.24 | 22.5 | 49 | – | +1.29 GFLOPs |
+| K4 | 5.15 | 0.860 | 0.937 | 10.24 | 34.3 | 81 | 82 / 78 | +2.57 GFLOPs |
+| K8 | 10.30 | 0.868 | 0.950 | 12.12 | 61.6 | 201 | 163 / 157 | +5.15 GFLOPs |
+| K12 | 15.45 | 0.870 | 0.953 | 17.39 | 89.3 | 381 | 256 / 235 | +5.15 GFLOPs |
+| K16 | 20.60 | 0.874 | 0.952 | 22.65 | 122.1 | 538 | 336 / 317 | +5.15 GFLOPs |
+
+CPU one batch: node207, Table 1. Chunks of 4: node207 / node209, Table 8,
+another job; K1 and K2 have fewer than 4 frames, so their one-batch time
+applies. For CPU latency budgets T012 should use the chunked column and keep
+all CPU numbers it compares from one job.
 
 Weights: `checkpoints/f002c_tinyvit5m_epoch8.pt` (D026), served through
 `experiments/F004/family.py`. T011's compression applies to that one set of

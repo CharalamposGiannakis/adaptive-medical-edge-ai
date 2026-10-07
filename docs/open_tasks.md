@@ -94,7 +94,9 @@ Historical acceptance criteria and evidence remain in
   points (some narrow-width cells score lower at larger K), and serve clips with
   `NestedAnytimeClip` (F005), which caches features per (width, frame);
   F004's `AnytimeClip` caches by frame only and must not be used across widths.
-  Log the chosen point per request for a runtime trace.
+  Log the chosen point per request for a runtime trace. On CPU, encode frames in
+  chunks of 4 (F004 Table 8): latency is then close to linear in K, about 80 ms
+  per 4 frames at full width.
 - **Acceptance criteria:** Reproducible policy, scenarios and comparisons; no
   held-out-test use during policy development. A learned or optimization-based
   controller is optional research work, not required for the core.
@@ -109,7 +111,12 @@ Historical acceptance criteria and evidence remain in
 - **Acceptance criteria:** Pre-specify any held-out-test use before inference;
   report predictive metrics, consistent FLOPs, throughput and relevant latency;
   preserve raw evidence and state uncertainty, proxy-dataset limits and any
-  validation-driven selection bias.
+  validation-driven selection bias. From the T010/T011 reviews: freeze the
+  operating points and the policy on validation before touching test; add the
+  static TinyViT points (D026 at K16, the 50%-only model at a fixed K) as
+  further fixed baselines next to MobileNetV2; report one matched-accuracy and
+  one matched-FLOPs comparison with intervals; report per-device results
+  (device and label are entangled); and use CPU latencies from a single job.
 
 ## Research backlog
 

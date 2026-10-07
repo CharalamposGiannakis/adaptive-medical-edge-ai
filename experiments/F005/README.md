@@ -21,8 +21,10 @@ selects epochs on validation; its design and adoption rule are fixed in
   layers in INT8; 61% of the multiply-adds).
 - **Not faster on this CPU.** INT8 dynamic is 2–6% slower than FP32 with the K
   frames encoded together, and 1.06–1.62× slower one frame at a time (Table 1),
-  measured against FP32 with frames encoded together, so the per-frame number
-  mixes the batching cost with the INT8 cost (FP32 per frame was not timed).
+  measured against FP32 with frames encoded together. Most of that per-frame
+  penalty is the per-frame encoding, not INT8: FP32 one frame at a time, timed
+  later on the same node in another job (F004 Table 8), takes 129 / 253 / 506
+  ms at K4 / K8 / K16 against INT8's 133 / 265 / 531 ms.
 - **Batch-dependent unless encoded per frame.** Encoding the K frames together
   changes a frame's INT8 features with its neighbours: logits move by up to 1.9
   against per-frame encoding (1e-5 in FP32). Per-frame INT8 keeps the anytime
@@ -196,7 +198,10 @@ family (grey, open circles). (a) Accuracy and (b) macro-F1 at threshold 0.5;
 **Table 4. Latency of the widths** (seed 2026, model only, median of 5
 round-robin repeats; GPU: node201, GTX 1080 Ti, exclusive, 200 requests; CPU:
 node207, Xeon E5-2630 v3, 4 threads, 50 requests). Physical: a separately pruned
-copy; sliced: the one nested file with the width chosen at run time.
+copy; sliced: the one nested file with the width chosen at run time. All K
+frames of a request are encoded as one batch; F004 Table 8 shows that on this
+CPU chunks of 4 frames are faster at K ≥ 8 (full width, K16: 26% on node207),
+which was not timed per width.
 
 | Width | GPU physical ms, K1 / K4 / K8 / K16 | GPU sliced ms | CPU physical ms, K1 / K4 / K16 | CPU sliced ms |
 |---|---|---|---|---|
@@ -236,6 +241,13 @@ The nested file holds every width in 20.4 MB; four separate pruned copies
 would take 62.5 MB. Training cost (lecture 2's recovery cost): nested
 25 / 30 / 31 min, single-width control 7 / 6 / 6 min per seed
 on one Titan RTX.
+
+Figures 5 and 6 show seed 2026 only. It was chosen as the deployable
+checkpoint after the F005b results were in, by the convention of taking the
+first seed (as F004b's rule seed), not by its results: it is the weakest of
+the three seeds at the 50% and 25% widths (mean macro-F1 over the five trained
+K: 0.855 and 0.838, against seed means of 0.856 and 0.846) and in the middle at
+75%.
 
 **Figure 5.** The accuracy–compute frontier of the deployable seed-2026 file.
 Light markers: all 24 width × K points (colour and marker = width). Black step
@@ -297,16 +309,38 @@ optimistic.
   All of it comes from the validation units that also chose the epochs; T013
   measures it on unseen data.
 - **Two effects are mixed in "against D026".** Fine-tuning with distillation
-  alone moves the full width above D026 (100% width: +0.013 at K1, +0.014 at
-  K2, AUROC +0.01–0.02; F004b's fine-tunes also raised AUROC without pruning).
+  changes the full width too: against D026 the 100% width is +0.013 at K1 and
+  +0.014 at K2 but −0.017 at K4 (+0.004 on average over the five K), and its
+  AUROC is higher at every K, by 0.011–0.021 at K1–K4 and 0.008–0.009 at
+  K8–K16 (F004b's fine-tunes also raised AUROC
+  without pruning).
   Against its own 100% width (mean over the five K 0.853), the 75% and 50%
   widths lose nothing (0.857, 0.856) and the 25% width loses 0.007 (0.846).
   AUROC stays at or above the unpruned family at every cost, by as little as
   0.001 for 25% width at K16.
 - **The deployed weights are fine-tuned across K.** F005b trains every width
   on a loss over five K with distillation, so the deployable file carries the
-  multi-K fine-tune that F004b did not adopt on its own. It is accepted here
-  under a different, non-inferiority rule, as part of the compression step.
+  multi-K fine-tune that F004b did not adopt on its own. The two rules ask
+  different questions. F004b asked whether fine-tuning is worth changing the
+  weights at all, so it needed a gain of 0.01. F005b has to change the weights
+  to recover from pruning, so its rule asks only whether the result costs
+  quality, with a margin of 0.01–0.02. Both are margins on point estimates,
+  not statistical non-inferiority tests: paired 95% intervals per cell are
+  about ±0.03–0.05 wide, so neither rule can resolve differences of 0.01.
+- **Macro-F1 dips from K2 to K4 at the narrower widths; AUROC does not.** The
+  seed-mean macro-F1 falls from K2 to K4 at the 50% (0.862 → 0.852) and 25%
+  (0.860 → 0.842) widths and is flat at 100%, while AUROC rises from K2 to K4 at
+  every width. The unpruned D026 has no such dip. The fine-tuned model's 0.5
+  threshold falls in a different place at different K; the ranking still
+  improves with more frames. It is a threshold effect, not evidence that fewer
+  frames are better, and it is why the front's best steps (Figures 5 and 6)
+  are optimistic; the per-width curves (Figure 3) and AUROC are the more
+  reliable view.
+- **Most of the advantage over MobileNetV2 comes from the backbone.** At equal
+  cost TinyViT (unpruned, no adaptivity) already ties or beats MobileNetV2
+  (F004). What adaptivity adds is shown against TinyViT itself: one file
+  covers 4 widths × 6 K (the nested 50% width scores like a model trained only
+  at 50%), and a clip can move up in K reusing its encoded frames.
 - **A static single-width model can beat the nested file at a single point.**
   The model trained only at 50% width scores 0.839 at K1 (0.91 GFLOPs), above
   the nested file's frontier at that cost (seed 2026). What the nested file
@@ -328,6 +362,9 @@ optimistic.
   supported, "Taylor is better after training" is not tested. Stage 0 is the
   most sensitive; F005b uses one ratio for all stages and does not allocate
   sparsity by sensitivity (lecture 2, p. 50).
+- **The 10-epoch cap may bind.** Seed 2028 selected epoch 9 of 10, and the
+  random-order runs were still improving at the end, so longer training might
+  lift the narrow widths (and narrow the random-order gap).
 - **Limits of the BN handling.** Only conv3's BN in the two MBConv blocks gets
   statistics per width. The BNs after the pruned MLPs (local convolutions,
   patch merging) keep D026's statistics at every width; lecture 4 (p. 46)

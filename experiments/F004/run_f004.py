@@ -297,6 +297,75 @@ def cmd_all_frames(args) -> None:
                       "gflops": record["gflops_per_clip"], "minus_k16": record["minus_k16"]["delta"]}, indent=1))
 
 
+def cmd_chunked(args) -> None:
+    """CPU latency when the K frames of a request are encoded in chunks of c frames.
+
+    Added after external review: CPU K16 (538 ms) costs far more than 4 × K4
+    (81 ms), so batch size itself may drive CPU latency. TinyViT (D026) at K4–K16
+    and MobileNetV2 F002b at K16, every chunk size, round-robin in one job.
+    Chunk size 1 is per-frame encoding; chunk size K is the usual batched pass.
+    """
+    env = environment()
+    if not env.get("slurm_job_id"):
+        raise SystemExit("Timing must run as a SLURM job")
+    out = ART / "benchmark" / f"chunked_cpu_{env['hostname']}.json"
+    if out.exists():
+        raise SystemExit(f"{out} exists")
+    torch.set_num_threads(args.threads)
+    inputs = pipe.load_inputs()
+    requests = benchmark_request_ids(inputs["validation"])
+    by_key = {key(r): r for r in inputs["validation"]}
+    rows = [by_key[n] for n in requests["timed"][:50]]
+    order, warmup = list(range(len(rows))), list(range(5))
+    tiny = load_family()
+    tiny_seq = F003Sequences(rows, 224)
+    tiny_frames = {k: [tiny_seq.frames(i, k) for i in order] for k in (4, 8, 12, 16)}
+    _, mobile = pipe.load_checkpoint(ROOT / "artifacts/F002/f002b/mobilenet_v2_seed2026", torch.device("cpu"))
+    mobile_seq = pipe.Sequences(rows, 16)
+    mobile_frames = [mobile_seq.frames(i) for i in order]
+
+    def chunked(encode, head, frames, chunk):
+        features = torch.cat([encode(frames[s:s + chunk]) for s in range(0, len(frames), chunk)])
+        return head(features.mean(0, keepdim=True))
+
+    tiny_head = lambda f: tiny.head(f).squeeze(-1)  # noqa: E731
+    mobile_head = lambda f: mobile.head(f).squeeze(-1)  # noqa: E731
+    configs, equal = {}, {}
+    for k, chunks in ((4, (1, 2, 4)), (8, (1, 2, 4, 8)), (12, (1, 2, 4, 12)), (16, (1, 2, 4, 8, 16))):
+        for c in chunks:
+            def run(i, k=k, c=c):
+                with torch.inference_mode():
+                    chunked(tiny.encode, tiny_head, tiny_frames[k][i], c)
+            configs[f"tinyvit_k{k}_chunk{c}"] = (run, k)
+            with torch.inference_mode():
+                a = chunked(tiny.encode, tiny_head, tiny_frames[k][0], c)
+                b = tiny(tiny_frames[k][0].unsqueeze(0))
+            equal[f"tinyvit_k{k}_chunk{c}"] = float((a - b).abs().max())
+    for c in (1, 2, 4, 8, 16):
+        def run(i, c=c):
+            with torch.inference_mode():
+                chunked(mobile.encoder, mobile_head, mobile_frames[i], c)
+        configs[f"mobilenetv2_k16_chunk{c}"] = (run, 16)
+        with torch.inference_mode():
+            a = chunked(mobile.encoder, mobile_head, mobile_frames[0], c)
+            b = mobile(mobile_frames[0].unsqueeze(0))
+        equal[f"mobilenetv2_k16_chunk{c}"] = float((a - b).abs().max())
+    if max(equal.values()) > 1e-4:
+        raise RuntimeError(f"Chunked encoding changes the output: {equal}")
+    names = list(configs)
+    repeats = {n: [] for n in names}
+    for r in range(5):
+        for name in names[r % len(names):] + names[:r % len(names)]:
+            repeats[name].append(timed_pass(configs[name][0], order, warmup, lambda: None))
+        print(f"round {r + 1}/5", flush=True)
+    summary = {n: pipe.summarize_timing(repeats[n], k) | {"raw": repeats[n]} for n, (_, k) in configs.items()}
+    for n in names:
+        print(n, round(summary[n]["median_latency_ms"], 1), flush=True)
+    pipe.write_json(out, {"configs": summary, "max_abs_logit_difference_vs_batched": equal,
+                          "threads": torch.get_num_threads(), "requests": 50, "warmup": 5, "repeats": 5,
+                          "environment": env})
+
+
 def cmd_extras(args) -> None:
     """Per-device results per K and tail latency, from saved F004 results only."""
     from experiments.F003.run_f003 import device_table, unit_records
@@ -871,6 +940,9 @@ def main() -> None:
     every.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu")
     every.set_defaults(func=cmd_all_frames)
     sub.add_parser("extras").set_defaults(func=cmd_extras)
+    chunk = sub.add_parser("chunked")
+    chunk.add_argument("--threads", type=int, default=4)
+    chunk.set_defaults(func=cmd_chunked)
     sub.add_parser("memory").set_defaults(func=cmd_memory)
     onnx = sub.add_parser("export-onnx")
     onnx.add_argument("--threads", type=int, default=4)
