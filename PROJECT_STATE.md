@@ -1,12 +1,10 @@
 # Current phase
 
-The architecture and data foundation is complete. T009/F003 is complete (PR #24
-merged); D027 selects frame count as the primary adaptive axis pending acceptance.
-T010/F004 is in review: D028 proposes K1/K2/K4/K8/K12/K16 on the unchanged
-D026 weights as the adaptive family (pending Charalampos's agreement, like D027).
-T011/F005 has results: nested structured pruning with distillation (F005b)
-passes its pre-specified rule and is proposed as the compression step (D029,
-pending agreement). T012 (policy) is next.
+The architecture and data foundation is complete. T009/F003 established frame
+count as the primary adaptive axis (D027). T010/F004 completed the shared
+K1/K2/K4/K8/K12/K16 family on unchanged D026 weights (D028). T011/F005
+completed nested structured pruning with distillation as the compute-compression
+step (D029). D027–D029 are accepted; T012 (resource-aware policy) is next.
 F002b MobileNetV2 remains the frozen static comparison; D026 selects the F002c
 TinyViT-5M checkpoint as the model to develop adaptively. No model has run on the
 T006 held-out test partition.
@@ -63,10 +61,10 @@ or universal superiority. F003 and F004 later measured TinyViT's cost, latency
 and throughput under one convention. Full evidence and caveats are in
 [`experiments/F002c/README.md`](experiments/F002c/README.md).
 
-## Current objective — T010 and T011 results, T012 next
+## Current objective — T012 resource-aware policy
 
 T009/F003 ([`experiments/F003/README.md`](experiments/F003/README.md)) found
-frame count to be the useful axis of the D026 TinyViT (D027, pending acceptance).
+frame count to be the useful axis of the D026 TinyViT (D027, accepted).
 T010/F004 (2026-10-07, validation only;
 [`experiments/F004/README.md`](experiments/F004/README.md)) turns it into one
 deployable family. GPU: median over three GTX 1080 Ti hosts; CPU: one Xeon
@@ -91,8 +89,8 @@ first request at a new K after start-up costs up to about 150 ms (cuDNN tuning).
 Only K1 and K2 are resolved below K16 on validation. Running every frame of each
 clip scores 0.870 at 240 GFLOPs on average, no better than K16. Fine-tuning across
 K (F004b) failed its pre-specified rule (three seeds also stay below it), so
-the T010 family keeps D026's weights (D028). If D029 is accepted, the deployable
-weights become the pruned seed-2026 file of T011.
+the T010 family keeps D026's weights (D028). D029 makes the pruned seed-2026
+descendant the deployable family for T012; D028 remains the uncompressed reference.
 
 T011/F005 ([`experiments/F005/README.md`](experiments/F005/README.md)): INT8
 dynamic quantization of all Linear layers keeps quality at every K and shrinks
@@ -102,7 +100,9 @@ prunes hidden channels as nested widths (1.0/0.75/0.5/0.25 → 1.29/1.10/0.91/0.
 GFLOPs per frame) with Taylor importance and distillation from D026. Over three
 seeds the widths average macro-F1 0.853/0.857/0.856/0.846 over the five trained
 K (D026: 0.849): about the unpruned quality at 29–44% fewer FLOPs per frame, in
-one weight file (D029, proposed). The 25% width is the noisiest; for the
+one shared 20.4 MB weight file (D029, accepted). This is compute compression:
+the narrower widths reduce inference FLOPs, not the shared file size. The 25%
+width is the noisiest; for the
 deployable seed 2026 it averages 0.839 and is 0.04 below D026 at K12/K16.
 Individual front points are local peaks. Epochs were selected on validation, so
 these are development numbers until T013.

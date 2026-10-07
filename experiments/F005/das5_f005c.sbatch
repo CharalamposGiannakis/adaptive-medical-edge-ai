@@ -1,6 +1,7 @@
 #!/bin/bash
 # One F005c (T011) step on DAS-5; arguments go to run_f005c.py. Submit from the
-# repository root. CPU-only: submit with --gres=gpu:0 --exclusive.
+# repository root. CPU-only: submit with --gres=gpu:0 --exclusive. Create
+# artifacts/F005/logs before sbatch: Slurm opens the output first.
 #SBATCH --job-name=f005c
 #SBATCH --partition=defq
 #SBATCH --gres=gpu:1

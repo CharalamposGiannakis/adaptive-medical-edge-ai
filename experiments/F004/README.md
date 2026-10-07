@@ -170,26 +170,57 @@ comes from its nested subset.
 
 ## Commands
 
-From the repository root on DAS-5 (`myenv`, CUDA 12.6 module):
+The canonical D026 backbone is `checkpoints/f002c_tinyvit5m_epoch8.pt`.
+`benchmark` and `chunked` also use the tracked frozen F002b checkpoint
+`checkpoints/f002b_mobilenetv2_seed2026.pt` (SHA-256
+`5bad132633fd6188c0e449a75f73294612479bb1f0dc1820d8e6c459f7bdb823`);
+the loader verifies its hash and needs no ignored F002 artifact. For normal use,
+`experiments.F004.family.load_family()` loads the hash-checked D026 family and
+`AnytimeClip` serves its nested K points without rerunning F004.
+
+The following is an **optional full reproduction** on DAS-5 from the repository
+root (`myenv`, CUDA 12.6 module), with the T006 train/validation data installed.
+It writes ignored raw evidence under `artifacts/F004/`. Slurm opens the log file
+before the batch script starts, so create its parent **before any submission**.
+Each `sbatch --wait` must complete successfully before the next dependent phase;
+check the Slurm job state and exit code if a command fails.
 
 ```bash
+mkdir -p artifacts/F004/logs
 S=experiments/F004/das5_f004.sbatch
-sbatch --gres=gpu:0 $S flops
-sbatch --gres=gpu:0 $S weights
-sbatch --constraint=TitanRTX $S evaluate
+
+# Phase 1: uncompressed D026 family; evaluation is needed by compare and F005b.
+sbatch --wait --gres=gpu:0 $S flops
+sbatch --wait --gres=gpu:0 $S weights
+sbatch --wait --constraint=TitanRTX $S evaluate
+
+# Phase 2: optional expensive F004b fine-tune/control reruns; compare needs all runs.
 for seed in 2026 2027 2028; do for loss in multik k16; do
-  sbatch --constraint=TitanRTX $S train --loss $loss --seed $seed; done; done
-sbatch --gres=gpu:0 $S compare                                  # after evaluate and the trains
-sbatch -w node201 --exclusive $S benchmark --device cuda       # also node205, and
-sbatch -p fatq -w node203 --exclusive $S benchmark --device cuda
-sbatch -w node207 --exclusive --gres=gpu:0 --time=10:00:00 $S benchmark --device cpu --threads 4
-sbatch --constraint=TitanRTX $S all-frames
-sbatch -w node201 --exclusive $S memory
-sbatch -w node207 --exclusive --gres=gpu:0 --time=03:00:00 $S chunked --threads 4   # also node209
-sbatch --gres=gpu:0 --exclusive $S export-onnx --threads 4
-python experiments/F004/run_f004.py extras                     # from saved results
-python experiments/F004/create_figures.py                      # needs matplotlib
+  sbatch --wait --constraint=TitanRTX $S train --loss $loss --seed $seed
+done; done
+sbatch --wait --gres=gpu:0 $S compare
+
+# Phase 3: runtime and deployment checks; all use the completed Phase 1 evidence.
+sbatch --wait -w node201 --exclusive $S benchmark --device cuda
+sbatch --wait -w node205 --exclusive $S benchmark --device cuda
+sbatch --wait -p fatq -w node203 --exclusive $S benchmark --device cuda
+sbatch --wait -w node207 --exclusive --gres=gpu:0 --time=10:00:00 $S benchmark --device cpu --threads 4
+sbatch --wait --constraint=TitanRTX $S all-frames
+sbatch --wait -w node201 --exclusive $S memory
+sbatch --wait -w node207 --exclusive --gres=gpu:0 --time=03:00:00 $S chunked --threads 4
+sbatch --wait --gres=gpu:0 --exclusive $S export-onnx --threads 4
+python experiments/F004/run_f004.py extras
 ```
+
+`extras` reads Phase 1 predictions and Phase 3 benchmark JSONs. The optional
+figure script also needs the saved F003 MobileNetV2-at-K raw result at
+`artifacts/F003/mobilenet_k/mobilenet_k.json`, Phase 2's `comparison.json` and
+Phase 3's benchmark JSONs.
+The published figures are already tracked; if those raw inputs are present,
+regenerate figures without changing the tracked copies with
+`python experiments/F004/create_figures.py --copy-to ''`. F005b's full
+reproduction needs F004 Phase 1 `flops.json` and `evaluation.json`/predictions,
+but does not require the rejected F004b Phase 2 reruns.
 
 Tests: `python -m unittest tests.test_f004`. `benchmark` and `train` refuse to
 overwrite existing results. `train --max-batches N --max-val-rows M` is a CPU
@@ -382,8 +413,9 @@ per-frame INT8 in another job, so most of F005a's "per-frame INT8" penalty is
 the per-frame encoding, not INT8. MobileNetV2 is
 fastest in chunks of 4–8 (132–153 ms); against TinyViT K4 at the same FLOPs
 (78–82 ms) it is then about 1.8× slower rather than 3×, so batch size explains
-part of that gap and the architecture the rest. For CPU latency budgets (T012)
-the deployable setting is chunked encoding at c = 4.
+part of that gap and the architecture the rest. For the unpruned F004 family,
+chunks of 4 are the measured CPU setting. T012 must measure chunked latency for
+its selected pruned F005b width × K points before using them for CPU budgets.
 
 ## Interpretation
 
@@ -468,14 +500,17 @@ the deployable setting is chunked encoding at c = 4.
 
 CPU one batch: node207, Table 1. Chunks of 4: node207 / node209, Table 8,
 another job; K1 and K2 have fewer than 4 frames, so their one-batch time
-applies. For CPU latency budgets T012 should use the chunked column and keep
-all CPU numbers it compares from one job.
+applies. This chunked column measures only the unpruned F004 family. For T012
+CPU budgets, use it as a starting candidate, then measure the selected F005b
+width × K points with chunked encoding in one comparable CPU job.
 
 Weights: `checkpoints/f002c_tinyvit5m_epoch8.pt` (D026), served through
-`experiments/F004/family.py`. T011's compression applies to that one set of
-weights and therefore to every point at once. T012 maps budget states to these
-six points (not one per state) and should warm up every K at start-up. The
-F004b checkpoints are raw evidence only.
+`experiments/F004/family.py`. The F002b baseline for timing and chunked checks
+comes from `checkpoints/f002b_mobilenetv2_seed2026.pt`. T011's compression
+descends from the D026 weights and applies to every K point at once. T012
+chooses among the D029 width × K points (not one per resource state) and should
+warm up each supported K at start-up. F004b checkpoints are ignored raw
+evidence only.
 
 ## Artifacts
 

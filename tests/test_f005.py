@@ -3,6 +3,10 @@ import os
 os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
 
 import unittest
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import torch
 
@@ -168,6 +172,106 @@ class TrainingPieceTests(unittest.TestCase):
         teacher, target = torch.tensor([2.0]), torch.tensor([1.0])
         values = {s: float(kd_loss(torch.tensor([s]), teacher, target)) for s in (0.0, 2.0, 6.0)}
         self.assertLess(values[2.0], values[0.0])
+
+
+class CanonicalNestedBundleTests(unittest.TestCase):
+    def test_tracked_nested_bundle_loads_with_frozen_metadata_and_bn_state(self):
+        from src import f002_pipeline as pipe
+        from experiments.F005.run_f005b import (CANONICAL_NESTED,
+                                                CANONICAL_NESTED_CHECKPOINT_SHA256,
+                                                CANONICAL_NESTED_IMPORTANCE_SHA256,
+                                                load_deployable)
+
+        for name in ("checkpoint.pt", "run.json", "importance.pt"):
+            self.assertTrue((CANONICAL_NESTED / name).is_file(), name)
+        run = json.loads((CANONICAL_NESTED / "run.json").read_text(encoding="utf-8"))
+        expected_sha = "18d601e3ea04a1ba572ef99484c8681c5a3011dd7d3eb28309cb32906ff9e702"
+        expected_importance_sha = "442785dcc4e8b7caf5521d3dd3683a5a48bbbe5eb2dc4873926967af60866071"
+        self.assertEqual(CANONICAL_NESTED_CHECKPOINT_SHA256, expected_sha)
+        self.assertEqual(CANONICAL_NESTED_IMPORTANCE_SHA256, expected_importance_sha)
+        self.assertEqual(pipe.sha256_file(CANONICAL_NESTED / "checkpoint.pt"), expected_sha)
+        self.assertEqual(pipe.sha256_file(CANONICAL_NESTED / "importance.pt"), expected_importance_sha)
+        self.assertEqual(run["checkpoint_sha256"], expected_sha)
+        self.assertEqual((run["status"], run["mode"], run["seed"]), ("completed", "nested", 2026))
+        self.assertEqual((run["importance"], run["orders_criterion"]), ("taylor", "taylor"))
+        importance = torch.load(CANONICAL_NESTED / "importance.pt", map_location="cpu", weights_only=False)
+        self.assertEqual(importance["chosen"], "taylor")
+        self.assertEqual(len(importance["orders"]["taylor"]), 12)
+        model = load_deployable()
+        self.assertFalse(model.training)
+        state = model.state_dict()
+        self.assertEqual(sum(name.endswith("bn3_mean_025") for name in state), 2)
+        self.assertEqual(sum(name.endswith("bn3_var_025") for name in state), 2)
+
+    def test_canonical_loader_checks_provenance_and_restores_state(self):
+        from torch import nn
+        from src import f002_pipeline as pipe
+        from experiments.F005 import run_f005b
+
+        class TinyStub(nn.Module):
+            def __init__(self, pretrained=False):
+                super().__init__()
+                self.encoder = nn.Identity()
+                self.head = nn.Linear(1, 1)
+
+        with TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as directory:
+            bundle = Path(directory)
+            expected = TinyStub()
+            torch.save(expected.state_dict(), bundle / "checkpoint.pt")
+            digest = pipe.sha256_file(bundle / "checkpoint.pt")
+            importance = {"chosen": "taylor", "orders": {"taylor": {}, "l1": {}}}
+            torch.save(importance, bundle / "importance.pt")
+            importance_sha = pipe.sha256_file(bundle / "importance.pt")
+            run = {"status": "completed", "mode": "nested", "seed": 2026,
+                   "checkpoint_sha256": digest, "importance": "taylor",
+                   "orders_criterion": "taylor", "config": {"experiment": "F005b"},
+                   "max_batches": None}
+
+            def load(record, selected=None):
+                (bundle / "run.json").write_text(json.dumps(record), encoding="utf-8")
+                if selected is not None:
+                    torch.save(selected, bundle / "importance.pt")
+                with (patch.object(run_f005b, "CANONICAL_NESTED", bundle),
+                      patch.object(run_f005b, "CANONICAL_NESTED_CHECKPOINT_SHA256", digest),
+                      patch.object(run_f005b, "CANONICAL_NESTED_IMPORTANCE_SHA256", importance_sha),
+                      patch.object(run_f005b, "TinyViTSequence", TinyStub),
+                      patch.object(run_f005b, "make_nested") as make_nested):
+                    model = run_f005b.load_deployable()
+                    make_nested.assert_called_once_with(model.encoder, None)
+                    return model
+
+            restored = load(run)
+            self.assertFalse(restored.training)
+            for name, tensor in expected.state_dict().items():
+                self.assertTrue(torch.equal(tensor, restored.state_dict()[name]))
+
+            for change in ({"status": "running"}, {"mode": "single"}, {"seed": 2027},
+                           {"checkpoint_sha256": "0" * 64}, {"orders_criterion": "l1"},
+                           {"importance": "l1"}, {"config": {"experiment": "other"}},
+                           {"max_batches": 1}):
+                with self.subTest(change=change), self.assertRaises(ValueError):
+                    load(run | change)
+            with self.assertRaisesRegex(ValueError, "importance order differs from the frozen SHA-256"):
+                load(run, {"chosen": "taylor", "orders": {"taylor": {"tampered": torch.tensor([0])}}})
+            torch.save(importance, bundle / "importance.pt")
+            modified = TinyStub()
+            with torch.no_grad():
+                modified.head.weight.add_(1)
+            torch.save(modified.state_dict(), bundle / "checkpoint.pt")
+            with self.assertRaisesRegex(ValueError, "frozen SHA-256"):
+                load(run | {"checkpoint_sha256": pipe.sha256_file(bundle / "checkpoint.pt")})
+
+    @unittest.skipUnless(
+        (Path(__file__).resolve().parents[1] / "checkpoints/f005b_nested_seed2026/checkpoint.pt").exists() and
+        (Path(__file__).resolve().parents[1] / "artifacts/F005/train/nested_seed2026/checkpoint.pt").exists(),
+        "Canonical and raw F005b bundles must both be available locally",
+    )
+    def test_canonical_state_equals_the_raw_f005b_run(self):
+        from experiments.F005.run_f005b import load_deployable, load_trained
+        canonical, raw = load_deployable(), load_trained("nested", 2026)
+        self.assertEqual(canonical.state_dict().keys(), raw.state_dict().keys())
+        for name, tensor in raw.state_dict().items():
+            self.assertTrue(torch.equal(tensor, canonical.state_dict()[name]), name)
 
 
 if __name__ == "__main__":

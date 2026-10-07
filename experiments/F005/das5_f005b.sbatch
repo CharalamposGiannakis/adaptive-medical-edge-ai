@@ -1,6 +1,7 @@
 #!/bin/bash
 # One F005b (T011) step on DAS-5; arguments go to run_f005b.py. Submit from the
-# repository root. cache and evaluate are CPU-only (--gres=gpu:0).
+# repository root. cache and evaluate are CPU-only (--gres=gpu:0). Create
+# artifacts/F005/logs before sbatch: Slurm opens the output first.
 #SBATCH --job-name=f005b
 #SBATCH --partition=defq
 #SBATCH --gres=gpu:1

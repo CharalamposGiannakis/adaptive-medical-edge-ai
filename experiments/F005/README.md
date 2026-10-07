@@ -9,8 +9,8 @@ keeping one weight file?
 **Scope:** DAS-5, 2026-10-07, issue #13. T006 validation partition only (254
 duplicate-aware units, 76 abnormal). No test-partition inference, no
 calibration data and no training in F005a. F005b trains on the train split and
-selects epochs on validation; its design and adoption rule are fixed in
-`run_f005b.py` and below, before any F005b training result existed.
+selects epochs on validation; its code writes the recorded design and adoption
+rule into `run.json` at job start. The Git timing limitation is stated below.
 
 ## F005a summary
 
@@ -73,7 +73,7 @@ Static quantization, with activation ranges fixed on calibration data, should
 remove both the runtime overhead and the batch dependence; F005c tests it. The logit shift (median 0.5) matters for any T012 rule that uses
 confidence: thresholds tuned on FP32 do not carry over.
 
-## F005b design (fixed before training)
+## F005b recorded design
 
 - **What is pruned.** The hidden channels of the twelve TinyViT blocks that
   have them: the two stage-0 MBConv blocks (expansion channels: conv1 out,
@@ -127,6 +127,20 @@ confidence: thresholds tuned on FP32 do not carry over.
 - **Speed.** Training reads a uint8 cache of the K16 frames after resizing
   (`cache.py`, bit-identical to F002c preprocessing; `tests/test_f005.py`), so no JPEG is
   decoded during training.
+
+**Decision-recording provenance.** `run_f005b.py` writes its configuration and
+adoption rule into `run.json` at job start. The canonical `run.json` for
+completed Slurm job `111069` records that rule,
+the F005b source hashes and selected epoch 5, establishing what the recorded
+job used but not when the human decision was made. The rule and measured results
+first entered Git together in commit `4eb871f`; Git history alone therefore
+cannot independently establish that the rule was committed before training.
+This is a decision-recording provenance limitation, not evidence that the rule
+was selected post hoc. The canonical run's trainer and pruner source hashes
+match no commit in current Git refs, so their exact execution-source bytes
+cannot be reconstructed from tracked Git alone; the deployable checkpoint is
+hash-pinned in its canonical bundle. D029 records the accepted decision and
+the rule-timing limit.
 
 ## F005b results
 
@@ -290,12 +304,25 @@ kept per width are 16 BN statistic buffers (the 2 MBConv conv3 BNs × 4 widths
 weights plus per-width BN statistics", as in slimmable networks (lecture 4,
 p. 46), rather than a strict subset in every byte.
 
-**Deployable artifact.** The T011 system is the FP32 seed-2026 nested
-checkpoint (`artifacts/F005/train/nested_seed2026/checkpoint.pt`, 20.4 MB), run
-through `prune.py`'s sliced runtime at any of the 4 widths × 6 K; the physically
-pruned ONNX encoders per width are export checks, not separate deliverables.
-INT8 is not part of the deployed system: dynamic INT8 would only shrink the
-file and was measured on the unpruned family, not on the pruned file.
+**Deployable artifact.** The T011 system is the FP32 seed-2026 nested model in
+the tracked `checkpoints/f005b_nested_seed2026/` bundle: `checkpoint.pt`
+(20,451,273 bytes; SHA-256
+`18d601e3ea04a1ba572ef99484c8681c5a3011dd7d3eb28309cb32906ff9e702`),
+`run.json` (completed run and matching checkpoint SHA-256), and `importance.pt`
+(the chosen Taylor channel order). Call
+`experiments.F005.run_f005b.load_deployable(device="cpu")` to verify the bundle
+and reconstruct the exact model. T012 should serve changing width × K requests
+through `prune.py`'s `NestedAnytimeClip`, whose cache keys include both width
+and frame. For direct all-K inference without the cache, wrap the loaded model
+with `experiments.F004.family.AdaptiveTinyViT`; the underlying
+`TinyViTSequence.forward` accepts only K4/K8/K16. The original
+`artifacts/F005/train/nested_seed2026/` and
+`artifacts/F005/importance.pt` remain ignored raw experiment evidence; they are
+not needed for normal T012 inference. The physically pruned ONNX encoders per
+width are export checks, not separate deliverables. The shared nested file
+remains about 20.4 MB; selecting a narrower width reduces inference FLOPs, not
+its storage size. Dynamic INT8 shrinks the unpruned file only and is not part
+of D029's selected deployable system.
 
 **Figure 6.** Slide version: (a) validation accuracy, as the brief's Pareto
 plot asks, and (b) macro-F1, the primary metric. Each panel shows the frontier
@@ -533,41 +560,69 @@ configurations in one job, 4 threads on an exclusively allocated node.
 
 ## Commands
 
-From the repository root on DAS-5 (`myenv`). F005a, both on CPU nodes:
+The canonical D029 bundle above is the T012 handoff and can be loaded without
+rerunning F005. The commands below are **optional full raw-evidence reruns** on
+DAS-5 from the repository root (`myenv`) after installing the T006 train and
+validation data. They write only ignored `artifacts/F005/` outputs. Run F004's
+Phase 1 `flops` and `evaluate` first: F005b's `evaluate` and `extras` read its
+saved validation predictions and `evaluation.json`, and F005 figures read
+`flops.json`. Create the log directory before submitting any job, because Slurm
+opens its output file before the batch script runs. Each `sbatch --wait` must
+finish successfully before the next dependent phase; check job state and exit
+code on failure.
+
+F005a, dynamic INT8 size-only option (CPU nodes):
 
 ```bash
-sbatch -w node208 --exclusive --gres=gpu:0 --time=04:00:00 experiments/F005/das5_f005.sbatch evaluate --threads 16
-sbatch -w node209 --exclusive --gres=gpu:0 --time=04:00:00 experiments/F005/das5_f005.sbatch benchmark --threads 4
-python experiments/F005/create_figures.py                      # needs matplotlib
+mkdir -p artifacts/F005/logs
+sbatch --wait -w node208 --exclusive --gres=gpu:0 --time=04:00:00 experiments/F005/das5_f005.sbatch evaluate --threads 16
+sbatch --wait -w node209 --exclusive --gres=gpu:0 --time=04:00:00 experiments/F005/das5_f005.sbatch benchmark --threads 4
 ```
 
-F005b (`das5_f005b.sbatch`):
+F005b (`das5_f005b.sbatch`), in dependent phases. The training loop includes
+the three seeds, the single-width control and the post-review random-order
+control needed to reproduce the reported tables; it is an expensive rerun.
 
 ```bash
 S=experiments/F005/das5_f005b.sbatch
-sbatch --gres=gpu:0 $S cache --partition train
-sbatch --gres=gpu:0 $S cache --partition validation
-sbatch --constraint=TitanRTX $S importance
+
+# Phase 1: both caches before training; train cache before importance.
+sbatch --wait --gres=gpu:0 $S cache --partition train
+sbatch --wait --gres=gpu:0 $S cache --partition validation
+sbatch --wait --constraint=TitanRTX $S importance
+
+# Phase 2: training; each job must complete before Phase 3.
 for seed in 2026 2027 2028; do for mode in nested single nested_random; do
-  sbatch --constraint=TitanRTX --time=06:00:00 $S train --mode $mode --seed $seed; done; done
-sbatch --gres=gpu:0 $S evaluate                                 # after all trains
-sbatch -w node201 --exclusive $S benchmark --device cuda
-sbatch -w node207 --exclusive --gres=gpu:0 --time=06:00:00 $S benchmark --device cpu --threads 4
-sbatch -w node201 --exclusive $S switching --device cuda
-sbatch -w node207 --exclusive --gres=gpu:0 --time=04:00:00 $S switching --device cpu --threads 4
-sbatch --constraint=TitanRTX $S full-bn
-sbatch --gres=gpu:0 $S weights
-sbatch --gres=gpu:0 $S extras --threads 8
+  sbatch --wait --constraint=TitanRTX --time=06:00:00 $S train --mode $mode --seed $seed
+done; done
+
+# Phase 3: validation before full-bn; other checks use completed checkpoints.
+sbatch --wait --gres=gpu:0 $S evaluate
+sbatch --wait -w node201 --exclusive $S benchmark --device cuda
+sbatch --wait -w node207 --exclusive --gres=gpu:0 --time=06:00:00 $S benchmark --device cpu --threads 4
+sbatch --wait -w node201 --exclusive $S switching --device cuda
+sbatch --wait -w node207 --exclusive --gres=gpu:0 --time=04:00:00 $S switching --device cpu --threads 4
+sbatch --wait --constraint=TitanRTX $S full-bn
+sbatch --wait --gres=gpu:0 $S weights
+sbatch --wait --gres=gpu:0 $S extras --threads 8
 ```
 
-F005c (`das5_f005c.sbatch`, CPU nodes; `prepare` before the other two). The
-`reduce_range` rerun adds `--reduce-range` to all three:
+The tracked figures already show the measured results. If the F005a and F005b
+raw outputs, F004 `flops.json`, and F003
+`artifacts/F003/mobilenet_k/mobilenet_k.json` are present, regenerate figures
+without changing tracked copies with
+`python experiments/F005/create_figures.py --copy-to ''` (needs matplotlib).
+
+F005c is an optional static INT8 exploration (`das5_f005c.sbatch`, CPU nodes).
+It uses the Phase 1 F005b train/validation caches, and `prepare` must finish
+successfully before either downstream job. The `reduce_range` rerun repeats all
+three commands with `--reduce-range`:
 
 ```bash
 C=experiments/F005/das5_f005c.sbatch
-sbatch --gres=gpu:0 -w node208 --exclusive --mem=60G --time=03:00:00 $C prepare --model d026 --threads 8
-sbatch --gres=gpu:0 -w node208 --exclusive --time=03:00:00 $C evaluate --model d026 --threads 8
-sbatch --gres=gpu:0 -w node209 --exclusive --time=03:00:00 $C benchmark --model d026 --threads 4
+sbatch --wait --gres=gpu:0 -w node208 --exclusive --mem=60G --time=03:00:00 $C prepare --model d026 --threads 8
+sbatch --wait --gres=gpu:0 -w node208 --exclusive --time=03:00:00 $C evaluate --model d026 --threads 8
+sbatch --wait --gres=gpu:0 -w node209 --exclusive --time=03:00:00 $C benchmark --model d026 --threads 4
 ```
 
 Tests: `python -m unittest tests.test_f005`.

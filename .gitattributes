@@ -7,3 +7,6 @@ docs/adaptivity_project_notes.md -text whitespace=-blank-at-eol,-blank-at-eof,cr
 data/openpocus/split_groups.csv text eol=lf
 data/openpocus/t006/*.csv text eol=lf
 data/openpocus/t006/*.json text eol=lf
+
+# Keep the canonical F005b run record byte-identical to the measured artifact.
+checkpoints/f005b_nested_seed2026/run.json -text

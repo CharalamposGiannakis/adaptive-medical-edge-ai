@@ -1,6 +1,7 @@
 #!/bin/bash
 # One F004 (T010) step on DAS-5; arguments go to run_f004.py. Submit from the
-# repository root. The benchmark step runs on node201 (see README).
+# repository root. Create artifacts/F004/logs before sbatch: Slurm opens the
+# output file before this script can create its parent (see README).
 #SBATCH --job-name=f004
 #SBATCH --partition=defq
 #SBATCH --gres=gpu:1

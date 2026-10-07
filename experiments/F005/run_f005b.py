@@ -41,11 +41,14 @@ from experiments.F005.prune import (WIDTHS, groups, hidden_size, l1_scores, make
 
 ART = ROOT / "artifacts" / "F005"
 F004_ART = ROOT / "artifacts" / "F004"
+CANONICAL_NESTED = ROOT / "checkpoints" / "f005b_nested_seed2026"
+CANONICAL_NESTED_CHECKPOINT_SHA256 = "18d601e3ea04a1ba572ef99484c8681c5a3011dd7d3eb28309cb32906ff9e702"
+CANONICAL_NESTED_IMPORTANCE_SHA256 = "442785dcc4e8b7caf5521d3dd3683a5a48bbbe5eb2dc4873926967af60866071"
 SOURCES = ("experiments/F005/prune.py", "experiments/F005/cache.py", "experiments/F005/run_f005b.py",
            "experiments/F004/family.py", "experiments/F004/run_f004.py", "experiments/F002c/model.py")
 SEEDS = (2026, 2027, 2028)
 
-# Fixed before the importance and training jobs ran.
+# Recorded job configuration; source-timing provenance is documented in the README.
 IMPORTANCE_CONFIG = {
     "train_rows_shuffle_seed": 2026, "taylor_rows": 256, "calibration_rows": 32, "zero_shot_rows": 300,
     "criteria": ["l1", "taylor"], "zero_shot_k": 16, "zero_shot_widths": [0.75, 0.5, 0.25],
@@ -412,19 +415,43 @@ class _Holder(nn.Module):
         self.encoder, self.head = encoder, head
 
 
-def load_trained(mode: str, seed: int, device="cpu") -> TinyViTSequence:
-    run = read(run_dir(mode, seed) / "run.json")
-    path = run_dir(mode, seed) / "checkpoint.pt"
-    if run["status"] != "completed" or pipe.sha256_file(path) != run["checkpoint_sha256"]:
+def _load_trained_bundle(directory: Path, importance_path: Path, mode: str, seed: int,
+                         device, *, canonical: bool = False) -> TinyViTSequence:
+    """Reconstruct a trained nested model from either the raw or frozen bundle."""
+    run = read(directory / "run.json")
+    path = directory / "checkpoint.pt"
+    if (run.get("status") != "completed" or run.get("mode") != mode or run.get("seed") != seed or
+            not run.get("checkpoint_sha256") or pipe.sha256_file(path) != run["checkpoint_sha256"]):
         raise ValueError(f"{mode} seed {seed} is not a completed run with a matching checkpoint")
-    importance = torch.load(ART / "importance.pt", map_location="cpu", weights_only=False)
+    if canonical and (run["checkpoint_sha256"] != CANONICAL_NESTED_CHECKPOINT_SHA256 or
+                      pipe.sha256_file(importance_path) != CANONICAL_NESTED_IMPORTANCE_SHA256):
+        raise ValueError("Canonical F005b checkpoint or importance order differs from the frozen SHA-256")
+    importance = torch.load(importance_path, map_location="cpu", weights_only=False)
+    chosen = importance.get("chosen")
+    expected = "random" if mode == "nested_random" else chosen
+    if (chosen not in importance.get("orders", {}) or run.get("importance") != chosen or
+            run.get("orders_criterion") != expected):
+        raise ValueError("Checkpoint and importance file disagree")
+    if canonical and (mode != "nested" or seed != 2026 or chosen != "taylor" or
+                      run.get("config", {}).get("experiment") != "F005b" or
+                      run.get("max_batches") is not None):
+        raise ValueError("Canonical F005b must be the completed seed-2026 Taylor nested run")
     model = TinyViTSequence(pretrained=False)
     make_nested(model.encoder, None)  # buffers for every width; weights already reordered
     model.load_state_dict(torch.load(path, map_location="cpu", weights_only=True))
-    expected = "random" if mode == "nested_random" else importance["chosen"]
-    if run["orders_criterion"] != expected:
-        raise ValueError("Checkpoint and importance file disagree")
     return model.to(device).eval()
+
+
+def load_trained(mode: str, seed: int, device="cpu") -> TinyViTSequence:
+    """Load an F005b raw training artifact for evidence and comparisons."""
+    return _load_trained_bundle(run_dir(mode, seed), ART / "importance.pt", mode, seed, device)
+
+
+def load_deployable(device="cpu", bundle_dir: Path | None = None) -> TinyViTSequence:
+    """Load the frozen D029 model for T012 from its canonical three-file bundle."""
+    directory = CANONICAL_NESTED if bundle_dir is None else Path(bundle_dir)
+    return _load_trained_bundle(directory, directory / "importance.pt", "nested", 2026, device,
+                                canonical=True)
 
 
 def cmd_evaluate(args) -> None:

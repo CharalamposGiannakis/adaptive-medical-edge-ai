@@ -3,16 +3,22 @@ import os
 os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
 
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import torch
+from torch import nn
 
+from src import f002_pipeline as pipe
 from src.f002_protocol import nested_frame_indices
 from experiments.F003.adaptive import (ExitSequenceModel, count_flops, frame_indices, load_backbone,
                                        positions_in_k16)
 from experiments.F004.family import (OPERATING_POINTS, AdaptiveTinyViT, AnytimeClip, Upgrade,
                                      read_parameters)
-from experiments.F004.run_f004 import (ADOPTION_RULE, TRAIN_KS, adoption, better, k16_loader,
-                                       per_k_logits, summarize_epoch)
+from experiments.F004.run_f004 import (ADOPTION_RULE, F002B_SHA256, TRAIN_KS, adoption, better,
+                                       k16_loader, load_static_f002b, per_k_logits, summarize_epoch)
+from experiments.F004 import run_f004
 
 
 class FamilyTests(unittest.TestCase):
@@ -114,6 +120,47 @@ class SelectionTests(unittest.TestCase):
         self.assertFalse(adoption(base | {"multik": 0.87}, {"d026": 0.87, "multik": 0.85})["propose_multik"])
         self.assertFalse(adoption({"d026": 0.85, "k16": 0.865, "multik": 0.87},
                                   {"d026": 0.87, "multik": 0.87})["propose_multik"])
+
+
+class CanonicalStaticReferenceTests(unittest.TestCase):
+    def test_tracked_f002b_checkpoint_loads_at_the_frozen_hash(self):
+        self.assertTrue(run_f004.F002B_CHECKPOINT.is_file())
+        self.assertEqual(pipe.sha256_file(run_f004.F002B_CHECKPOINT), F002B_SHA256)
+        model = load_static_f002b()
+        self.assertFalse(model.training)
+        self.assertEqual(len(model.state_dict()), 314)
+
+    def test_canonical_loader_requires_frozen_hash_and_mobilenet_architecture(self):
+        with TemporaryDirectory(dir=run_f004.ROOT) as directory:
+            checkpoint = Path(directory) / "checkpoint.pt"
+            expected = nn.Linear(1, 1)
+            torch.save(expected.state_dict(), checkpoint)
+            digest = pipe.sha256_file(checkpoint)
+            with (patch.object(run_f004, "F002B_CHECKPOINT", checkpoint),
+                  patch.object(run_f004, "F002B_SHA256", digest),
+                  patch("src.f002_flops.build_sequence_model", return_value=nn.Linear(1, 1)) as build):
+                loaded = load_static_f002b()
+                build.assert_called_once_with("mobilenet_v2", pretrained=False)
+                self.assertFalse(loaded.training)
+                for name, tensor in expected.state_dict().items():
+                    self.assertTrue(torch.equal(tensor, loaded.state_dict()[name]))
+            with (patch.object(run_f004, "F002B_CHECKPOINT", checkpoint),
+                  patch.object(run_f004, "F002B_SHA256", "0" * 64)):
+                with self.assertRaisesRegex(ValueError, "frozen D025 SHA-256"):
+                    load_static_f002b()
+
+    @unittest.skipUnless(
+        run_f004.F002B_CHECKPOINT.exists() and
+        (run_f004.ROOT / "artifacts/F002/f002b/mobilenet_v2_seed2026/run.json").exists(),
+        "Canonical and raw F002b bundles must both be available locally",
+    )
+    def test_canonical_state_equals_the_raw_f002b_run(self):
+        _, raw = pipe.load_checkpoint(
+            run_f004.ROOT / "artifacts/F002/f002b/mobilenet_v2_seed2026", torch.device("cpu"))
+        canonical = load_static_f002b()
+        self.assertEqual(raw.state_dict().keys(), canonical.state_dict().keys())
+        for name, tensor in raw.state_dict().items():
+            self.assertTrue(torch.equal(tensor, canonical.state_dict()[name]), name)
 
 
 if __name__ == "__main__":

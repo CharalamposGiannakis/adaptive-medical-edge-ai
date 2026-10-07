@@ -22,18 +22,19 @@ shared-weight frame-count family that T011 and T012 build on.
   0.8602/0.8676/0.8737 at K4/K8/K16 without K-specific retraining. At K16 its
   abnormal recall was 0.8289. This supports the D026 adaptive-backbone choice but
   is single-seed development evidence under a different training recipe.
-- F003 measured TinyViT's FLOPs, latency and throughput and proposed frame count
-  as the adaptive axis (D027).
+- F003 measured TinyViT's FLOPs, latency and throughput and established frame
+  count as the adaptive axis (D027, accepted).
 - F004 serves K1/K2/K4/K8/K12/K16 on the D026 weights as one family with anytime
-  upgrades and per-request switching (D028, proposed). Fine-tuning across K
+  upgrades and per-request switching (D028, accepted). Fine-tuning across K
   did not pass its pre-specified rule.
-- F005 compresses the family: nested structured pruning with distillation keeps
-  macro-F1 at 29–44% fewer FLOPs per frame in one weight file (D029, proposed);
-  INT8 gives file size only on this hardware.
+- F005 compresses inference work: nested structured pruning with distillation
+  keeps macro-F1 at 29–44% fewer FLOPs per frame in one 20.4 MB weight file
+  (D029, accepted). Dynamic INT8 gives file-size reduction only on this hardware
+  and was not selected.
 
 ## Next research decision
 
-Once D027–D029 are accepted, T012 maps resource states to the measured width × K
+T012 next maps resource states to the measured width × K
 points of the F005b file and T013 performs the final static-versus-adaptive
 comparison, including a statically pruned single-width model and static TinyViT
 K16 as further fixed baselines. The T006 held-out test

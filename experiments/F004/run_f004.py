@@ -40,6 +40,8 @@ from experiments.F004.family import (FEATURES, OPERATING_POINTS, AnytimeClip,
 
 ART = ROOT / "artifacts" / "F004"
 F003_ART = ROOT / "artifacts" / "F003"
+F002B_CHECKPOINT = ROOT / "checkpoints" / "f002b_mobilenetv2_seed2026.pt"
+F002B_SHA256 = "5bad132633fd6188c0e449a75f73294612479bb1f0dc1820d8e6c459f7bdb823"
 SOURCES = ("experiments/F004/family.py", "experiments/F004/run_f004.py",
            "experiments/F003/adaptive.py", "experiments/F002c/model.py")
 # The one-step chain, then the larger jumps a budget change can ask for.
@@ -90,6 +92,17 @@ def environment() -> dict:
 
 def read(path: Path):
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_static_f002b(device="cpu"):
+    """Load the frozen D025 static reference from its canonical tracked copy."""
+    from src.f002_flops import build_sequence_model
+
+    if pipe.sha256_file(F002B_CHECKPOINT) != F002B_SHA256:
+        raise ValueError("Canonical F002b checkpoint differs from the frozen D025 SHA-256")
+    model = build_sequence_model("mobilenet_v2", pretrained=False)
+    model.load_state_dict(torch.load(F002B_CHECKPOINT, map_location="cpu", weights_only=True))
+    return model.to(device).eval()
 
 
 # ---------------------------------------------------------------- flops
@@ -320,7 +333,7 @@ def cmd_chunked(args) -> None:
     tiny = load_family()
     tiny_seq = F003Sequences(rows, 224)
     tiny_frames = {k: [tiny_seq.frames(i, k) for i in order] for k in (4, 8, 12, 16)}
-    _, mobile = pipe.load_checkpoint(ROOT / "artifacts/F002/f002b/mobilenet_v2_seed2026", torch.device("cpu"))
+    mobile = load_static_f002b(torch.device("cpu"))
     mobile_seq = pipe.Sequences(rows, 16)
     mobile_frames = [mobile_seq.frames(i) for i in order]
 
@@ -532,7 +545,7 @@ def cmd_benchmark(args) -> None:
     added = {(s, l): [torch.tensor(sorted(set(positions_in_k16(counts[i], l)) -
                                          set(positions_in_k16(counts[i], s))), device=device)
                       for i in order] for s, l in UPGRADES}
-    f002b_run, f002b = pipe.load_checkpoint(ROOT / "artifacts/F002/f002b/mobilenet_v2_seed2026", device)
+    f002b = load_static_f002b(device)
     f002b_sequences = pipe.Sequences(rows, 16)
     f002b_frames = [f002b_sequences.frames(i).unsqueeze(0).to(device) for i in order]
     for i in order:  # untimed warm-cache decode pass (every K's frames are in K16)
@@ -598,7 +611,7 @@ def cmd_benchmark(args) -> None:
               "request_ids": [f"{e}/{z}" for e, z in requests["timed"][:protocol["timed"]]],
               "protocol": protocol, "device": device.type,
               "torch_threads": torch.get_num_threads(), "attention": "unfused", "precision": "float32",
-              "f002b_checkpoint_sha256": f002b_run["checkpoint_sha256"],
+              "f002b_checkpoint_sha256": F002B_SHA256,
               "frame_slicing": "each request selects its K frames from preloaded K16 inputs with "
                                "index_select inside the timed region, for points, upgrades and switching",
               "environment": env}
