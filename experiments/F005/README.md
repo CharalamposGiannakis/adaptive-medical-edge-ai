@@ -49,6 +49,18 @@ of 5 round-robin repeats.
 FP32 on CPU reproduces the F004 GPU logits to 4.6e-5. Per-frame and batched
 FP32 agree to 1.1e-5.
 
+**Figure 1.** F005a validation quality against cost: (a) accuracy and (b)
+macro-F1 at threshold 0.5, (c) AUROC, for FP32 and dynamic INT8 with the K
+frames encoded one at a time or together. Band: FP32's 95% interval (accuracy:
+Wilson; macro-F1 and AUROC: unit bootstrap). Quantization leaves the FLOPs
+unchanged, so the curves share their x positions.
+![Figure 1](figures/fig1_quality_vs_flops.png)
+
+**Figure 2.** F005a cost on the CPU: (a) median model-only latency per K
+(node209, 4 threads; bars: range over the 5 repeats), (b) size of the one
+weight file that serves all six K.
+![Figure 2](figures/fig2_cpu_latency_and_size.png)
+
 **Interpretation (F005a).** Dynamic INT8 is a working compression step for
 memory: the same family in a third of the space, with no measurable quality
 change. It is the wrong tool for latency here. Lecture 3 (part 2, slide 25)
@@ -536,14 +548,26 @@ S=experiments/F005/das5_f005b.sbatch
 sbatch --gres=gpu:0 $S cache --partition train
 sbatch --gres=gpu:0 $S cache --partition validation
 sbatch --constraint=TitanRTX $S importance
-for seed in 2026 2027 2028; do for mode in nested single; do
+for seed in 2026 2027 2028; do for mode in nested single nested_random; do
   sbatch --constraint=TitanRTX --time=06:00:00 $S train --mode $mode --seed $seed; done; done
-sbatch --gres=gpu:0 $S evaluate
+sbatch --gres=gpu:0 $S evaluate                                 # after all trains
 sbatch -w node201 --exclusive $S benchmark --device cuda
 sbatch -w node207 --exclusive --gres=gpu:0 --time=06:00:00 $S benchmark --device cpu --threads 4
+sbatch -w node201 --exclusive $S switching --device cuda
+sbatch -w node207 --exclusive --gres=gpu:0 --time=04:00:00 $S switching --device cpu --threads 4
+sbatch --constraint=TitanRTX $S full-bn
+sbatch --gres=gpu:0 $S weights
+sbatch --gres=gpu:0 $S extras --threads 8
 ```
 
-F005c (`das5_f005c.sbatch`, CPU nodes): `prepare`, `evaluate` and `benchmark`
-with `--model d026`.
+F005c (`das5_f005c.sbatch`, CPU nodes; `prepare` before the other two). The
+`reduce_range` rerun adds `--reduce-range` to all three:
+
+```bash
+C=experiments/F005/das5_f005c.sbatch
+sbatch --gres=gpu:0 -w node208 --exclusive --mem=60G --time=03:00:00 $C prepare --model d026 --threads 8
+sbatch --gres=gpu:0 -w node208 --exclusive --time=03:00:00 $C evaluate --model d026 --threads 8
+sbatch --gres=gpu:0 -w node209 --exclusive --time=03:00:00 $C benchmark --model d026 --threads 4
+```
 
 Tests: `python -m unittest tests.test_f005`.
