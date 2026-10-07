@@ -71,7 +71,7 @@ Historical acceptance criteria and evidence remain in
 
 - **Priority:** P1
 - **Owner:** Salo
-- **Status:** Results in. F005b (nested structured pruning with distillation)
+- **Status:** In review. F005b (nested structured pruning with distillation)
   passes its pre-specified rule and is proposed as the compression step (D029);
   F005a/F005c (INT8) give file size only. See
   [`experiments/F005/README.md`](../experiments/F005/README.md).
