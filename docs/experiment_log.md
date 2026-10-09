@@ -125,3 +125,23 @@ Interpretation: the D026 family meets T010's criteria. Fine-tuning across K is n
 ## F005 — Compressing the shared frame-count family (T011)
 
 F005a (2026-10-07, validation, CPU): INT8 dynamic quantization of the 41 Linear layers of the F004 family. Macro-F1 within −0.009/+0.008 of FP32 at every K (all paired intervals include zero), file 20.4 → 6.4 MB, FLOPs unchanged, CPU latency 2–6% slower (1.06–1.62× slower when frames are encoded one at a time, the mode that keeps anytime upgrades exact, measured against batched FP32). F005b: nested structured pruning of the hidden channels (Taylor importance, chosen over L1 by a recorded train-split rule) at widths 100/75/50/25% (1.29/1.10/0.91/0.72 GFLOPs per frame), fine-tuned from D026 with the sandwich rule and distillation, three seeds plus a 50%-only control. Mean macro-F1 over five K: 0.853/0.857/0.856/0.846 (D026 0.849; control 0.854); the recorded adoption rule holds (D029, accepted as compute compression). The shared nested checkpoint remains 20.4 MB. AUROC at or above the unpruned family at every cost. F005c: static INT8 in ONNX Runtime, matrix operators only, Percentile calibration: AUROC 0.01–0.02 lower and 1.5–1.8× slower than FP32 on the CPU, and worse with `reduce_range`; not kept. Follow-ups after review: width × K switching per request costs nothing measurable (GPU ≤ 0.6%); a width-aware anytime cache (`NestedAnytimeClip`) is tested; recalibrating all 19 downstream BNs per width after training lowered the narrow widths by 0.008 (not adopted); ONNX export of every width matches to 8e-6; nested file 20.4 MB vs 62.5 MB for four copies; calibration (ECE) unchanged by pruning; a random channel order trained the same way scores 0.03 (75/50%) to 0.10 (25% width) lower than Taylor order, three seeds each. Details: `experiments/F005/README.md`; outputs in ignored `artifacts/F005/`.
+
+## F006a — Resource-aware controller design (T012a)
+
+Question: Which operating configurations of the deployed F005b seed-2026
+checkpoint should a deterministic FLOP-budget controller consider? Validation-
+only analysis of all 24 width × K cells, using full-precision selected-epoch
+macro-F1/accuracy from its canonical run and strict fvcore counts recomputed
+from the canonical checkpoint. The original raw per-unit predictions and exact
+AUROC are absent locally; AUROC is reported only at the three-decimal precision
+in F005 Table 3b. No training, runtime simulation, or test-image inference.
+
+Measured/reconstructed: nine cells are strict macro-F1/FLOPs Pareto points and
+15 are dominated. With proposed `Cmax = full-width K16 = 20.596068563`
+GFLOPs, the provisional max-F1-under-budget rule maps b = 0.25/0.50/0.75/1.00
+to 0.50×K2 / 0.75×K8 / 0.75×K8 / 1.00×K16. The proposal and cheap-near-best
+and cost-aware sensitivity grids are in
+`experiments/F006a/README.md`, with reproducible tables and a figure. These
+small validation differences do not establish pairwise superiority; the
+normalization and selection rule await Charalampos and Salo's acceptance
+before T012b.

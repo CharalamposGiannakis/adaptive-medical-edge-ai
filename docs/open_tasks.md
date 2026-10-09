@@ -90,27 +90,42 @@ Historical acceptance criteria and evidence remain in
   effects measured under the same convention. INT8 post-training quantization and
   structured pruning remain candidates, not commitments.
 
-## T012 — Implement a resource-aware policy
+## T012a — Design resource-aware controller configurations
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Status:** Ready; next active task after PR #26.
+- **Status:** Draft analysis ready for review on
+  `T012a-resource-aware-controller-design`; the
+  [`F006a design analysis`](../experiments/F006a/README.md) is a proposal
+  awaiting Charalampos and Salo's review, not an accepted policy decision.
 - **Dependencies:** T010 and relevant T011 results.
-- **Scope:** Map active normalized resource states to measured operating points;
-  `b = 0.00` defers inference. Compare with fixed/static alternatives under the
-  same protocol. D028/D029 give 4 widths × 6 K candidates from the
-  F005b seed-2026 file: define what b is a fraction of, use only Pareto-front
-  points (some narrow-width cells score lower at larger K), and serve clips with
-  `NestedAnytimeClip` (F005), which caches features per (width, frame);
-  F004's `AnytimeClip` caches by frame only and must not be used across widths.
-  Log the chosen point per request for a runtime trace. Before using CPU
-  latency to set budgets, measure the selected F005b width × K points with
-  chunked encoding in one CPU job. F004 Table 8 makes chunks of 4 a starting
-  candidate for the unpruned family; it did not measure chunked latency at
-  the pruned widths.
-- **Acceptance criteria:** Reproducible policy, scenarios and comparisons; no
-  held-out-test use during policy development. A learned or optimization-based
-  controller is optional research work, not required for the core.
+- **Scope:** Analyze all 24 configurations of the actual deployable F005b
+  seed-2026 checkpoint. Report strict macro-F1/FLOPs dominance, practical
+  trade-offs, uncertainty, and candidate deterministic mappings for accepted
+  states `b = 0.25/0.50/0.75/1.00`; `b = 0.00` defers inference. Propose what
+  b measures, but do not freeze the normalization or the rule without human
+  acceptance. Use validation only; no training or runtime controller here.
+- **Acceptance criteria:** Reproducible source-backed comparison table, Pareto
+  figure, rule sensitivity and proposed state mapping; focused logic tests;
+  exact unavailable evidence and human decisions stated.
+
+## T012b — Implement and simulate the approved controller
+
+- **Priority:** P1
+- **Owner:** Charalampos
+- **Status:** Awaiting acceptance of T012a's budget normalization, configuration
+  set and selection rule.
+- **Dependencies:** T012a's reviewed design and accepted decision.
+- **Scope:** Implement a deterministic policy over the selected Pareto points
+  and compare with fixed/static alternatives under the same protocol. Use F005's
+  `NestedAnytimeClip`, whose cache keys include both width and frame; F004's
+  `AnytimeClip` is not suitable across widths. Log the selected point per request
+  for a runtime trace. Before setting CPU latency budgets, measure the selected
+  F005b width × K points with chunked encoding in one comparable CPU job. F004
+  Table 8 measured chunks of four only for the unpruned family.
+- **Acceptance criteria:** Reproducible simulation, scenarios and comparisons;
+  no held-out-test use during development. Learned or optimization-based control
+  is optional research work, not required for the core.
 
 ## T013 — Final static-versus-adaptive evaluation
 

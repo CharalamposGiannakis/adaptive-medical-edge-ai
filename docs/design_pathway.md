@@ -44,7 +44,9 @@ T010 select at least three useful shared-model operating points (done)
                     |
 T011 integrate one compression method (done)
                     |
-T012 implement and compare a resource-aware policy (next)
+T012a design the resource-aware policy from validation evidence (next)
+                    |
+T012b implement and simulate the accepted policy
                     |
 T013 final static-versus-adaptive evaluation
 ```
@@ -95,12 +97,16 @@ states to configurations; that belongs to T012.
   structured pruning of the hidden channels with distillation, widths 100/75/50/25%
   in one 20.4 MB weight file (D029, accepted). This reduces inference compute,
   not the shared file size; dynamic INT8 was measured but not adopted.
-- **T012:** Implement a simple resource-aware policy. The accepted normalized
-  budget states are `b = 0.25, 0.50, 0.75, 1.00`; `b = 0.00` means defer/no
-  inference. Map active states only to measured operating points and compare the
-  policy with fixed alternatives. D028/D029 give width × K
-  frontier points of the F005b seed-2026 file; `docs/open_tasks.md` lists the
-  requirements (define what b is a fraction of, serve with `NestedAnytimeClip`).
+- **T012a:** Analyze the actual deployable F005b seed-2026 width × K grid and
+  propose the FLOP-budget definition, useful configurations and deterministic
+  selection rule. The accepted normalized states are `b = 0.25, 0.50, 0.75,
+  1.00`; `b = 0.00` means defer/no inference. The proposed normalization and
+  rule in [`experiments/F006a/README.md`](../experiments/F006a/README.md)
+  require human acceptance; this analysis does not implement the controller.
+- **T012b:** Implement and simulate the accepted policy over measured frontier
+  points, serve width changes with `NestedAnytimeClip`, and compare fixed
+  alternatives. Measure chunked CPU latency for the selected pruned width × K
+  points before turning FLOPs into latency budgets.
 - **T013:** Run the pre-specified final comparison between the frozen MobileNetV2
   static reference and the adaptive/compressed system. Report predictive metrics,
   consistent FLOPs, throughput and relevant latency, with uncertainty and dataset
