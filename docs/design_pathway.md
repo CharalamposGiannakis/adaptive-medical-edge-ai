@@ -44,9 +44,9 @@ T010 select at least three useful shared-model operating points (done)
                     |
 T011 integrate one compression method (done)
                     |
-T012a screen quality, then design the resource-aware policy (in progress)
+T012a screen quality, then design the resource-aware policy (draft complete)
                     |
-T012b implement and simulate the accepted policy
+T012b provisional implementation and simulation complete; review pending
                     |
 T013 final static-versus-adaptive evaluation
 ```
@@ -109,10 +109,15 @@ states to configurations; that belongs to T012.
   [`F006a_2`](../experiments/F006a_2/README.md) leave the normalization,
   quality requirements, configuration set and rule for human acceptance; neither
   implements the controller.
-- **T012b:** Implement and simulate the accepted policy over approved
-  configurations, serve width changes with `NestedAnytimeClip`, and compare fixed
-  alternatives. Measure chunked CPU latency for the selected pruned width × K
-  points before turning FLOPs into latency budgets.
+- **T012b:** The user-directed provisional quality-first, recall-priority
+  policy over continuous `b` was implemented and simulated in
+  [`F006b`](../experiments/F006b/README.md). It keeps D021's five states in
+  the comparison; continuous support is a proposed generalization, not a
+  change to D021. It serves width changes with `NestedAnytimeClip`, compares
+  fixed alternatives and measures selected pruned width × K points in one
+  comparable local chunked CPU job. FLOPs remain the resource constraint;
+  final quality limits, normalization and policy mapping still need
+  Charalampos and Salo's acceptance.
 - **T013:** Run the pre-specified final comparison between the frozen MobileNetV2
   static reference and the adaptive/compressed system. Report predictive metrics,
   consistent FLOPs, throughput and relevant latency, with uncertainty and dataset

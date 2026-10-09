@@ -31,14 +31,19 @@ shared-weight frame-count family that T011 and T012 build on.
   keeps macro-F1 at 29–44% fewer FLOPs per frame in one 20.4 MB weight file
   (D029, accepted). Dynamic INT8 gives file-size reduction only on this hardware
   and was not selected.
+- F006a and F006a_2 (T012a) analyze all 24 deployable F005b width × K cells
+  and screen them against provisional validation quality requirements anchored
+  to the frozen F002b reference. F006b (T012b) implements and evaluates a
+  user-directed, recall-priority controller over continuous normalized FLOP
+  budgets. Its numerical requirements and rule remain provisional.
 
 ## Next research decision
 
-T012 next maps resource states to the measured width × K
-points of the F005b file and T013 performs the final static-versus-adaptive
-comparison, including a statically pruned single-width model and static TinyViT
-K16 as further fixed baselines. The T006 held-out test
-partition remains reserved until a final protocol is fixed.
+Charalampos and Salo next review the T012b policy, operating points and CPU
+evidence before freezing any T013 protocol. T013 then compares the adaptive
+system with frozen F002b MobileNetV2, a statically pruned single-width model
+and static TinyViT K16 as fixed baselines. The T006 held-out test partition
+remains reserved until that final protocol is fixed.
 
 ## Interpretation guardrails
 

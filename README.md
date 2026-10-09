@@ -14,8 +14,9 @@ The architecture and data foundation is complete. T009 (F003) found frame count
 to be the useful adaptive axis; T010 (F004) serves the TinyViT checkpoint at
 K = 1–16 frames as one weight file; T011 (F005) adds nested structured pruning
 with distillation, giving 4 widths × 6 K in one file. D027–D029 record these as
-accepted decisions. T010 and T011 are complete; the resource-aware policy (T012)
-is next, followed by the final test-split evaluation (T013). The frozen static
+accepted decisions. T010 and T011 are complete; T012b has implemented and
+evaluated a provisional resource-aware controller. Team review and a frozen
+protocol must precede the final test-split evaluation (T013). The frozen static
 reference remains F002b MobileNetV2 (D025): K16 validation macro-F1 0.859,
 abnormal recall 0.750 and 5.11 GFLOPs.
 Charalampos and Salo selected the F002c TinyViT-5M epoch-8 checkpoint as the
@@ -35,8 +36,8 @@ evaluation:
 
 1. characterize useful adaptive dimensions and costs around the selected TinyViT checkpoint (T009, complete);
 2. construct measured shared-model operating points (T010, complete);
-3. integrate compute compression (T011, complete) and a resource-aware policy (T012, next);
-4. study how the system behaves under simulated edge constraints;
+3. integrate compute compression (T011, complete) and evaluate a provisional resource-aware policy (T012b, draft complete);
+4. review how the system behaves under simulated edge constraints;
 5. compare the final adaptive system with the frozen MobileNetV2 static reference (T013, later).
 
 The prehospital/ambulance lung POCUS use-case design and variable-frame direction
@@ -44,8 +45,9 @@ were accepted in TA Sudaksh's feedback. OpenPOCUS remains a technical experiment
 proxy. D025 continues to govern the MobileNetV2 static reference; D026 selects
 TinyViT for adaptive development. D027–D029 accept the frame-count family and
 nested structured pruning as compute compression. Its shared checkpoint remains
-about 20.4 MB; narrower widths reduce inference work. The controller (T012)
-remains open. No held-out OpenPOCUS test results are claimed.
+about 20.4 MB; narrower widths reduce inference work. The T012b controller
+policy remains provisional pending Charalampos and Salo's review. No held-out
+OpenPOCUS test results are claimed.
 
 The current technical pathway is in [`docs/design_pathway.md`](docs/design_pathway.md).
 The independently reviewed F002 qualification and static-baseline contract is

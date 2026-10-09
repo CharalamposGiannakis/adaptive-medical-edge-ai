@@ -1,0 +1,13 @@
+scenario,policy,requests,inferences,deferrals,selection_changes_including_defer,active_model_switches,budget_violations,budget_blocked_requests,total_full_configuration_flops,mean_full_flops_per_request,total_incremental_modeled_flops,mean_incremental_flops_per_request,encoded_frames,reused_frames,selected_configurations,measured_mixed_policy_macro_f1
+decreasing,recall_priority,5,4,1,4,3,0,0,48157729820,9631545964,22412644540,4482528908,18,20,w1.0_k16;w1.0_k12;w1.0_k8;w0.5_k2,
+decreasing,minimum_quality,5,4,1,1,0,0,0,7266301196,1453260239.2,1816576316,363315263.2,2,6,w0.5_k2,
+decreasing,f006a_rule_a,5,4,1,3,2,0,0,39976978492,7995395698.4,31194811516,6238962303.2,26,8,w1.0_k16;w0.75_k8;w0.5_k2,
+decreasing,fixed_full_k16,5,1,4,1,0,0,3,20596068563,4119213712.6,20596068563,4119213712.6,16,0,w1.0_k16,
+increasing,recall_priority,5,4,1,4,3,0,0,48157729820,9631545964,22412644540,4482528908,18,20,w0.5_k2;w1.0_k8;w1.0_k12;w1.0_k16,
+increasing,minimum_quality,5,4,1,1,0,0,0,7266301196,1453260239.2,1816576316,363315263.2,2,6,w0.5_k2,
+increasing,f006a_rule_a,5,4,1,3,2,0,0,39976978492,7995395698.4,31194811516,6238962303.2,26,8,w0.5_k2;w0.75_k8;w1.0_k16,
+increasing,fixed_full_k16,5,1,4,1,0,0,3,20596068563,4119213712.6,20596068563,4119213712.6,16,0,w1.0_k16,
+fluctuating,recall_priority,5,5,0,4,4,0,0,49974305119,9994861023.8,22412644879,4482528975.8,18,22,w1.0_k12;w0.5_k2;w1.0_k8;w1.0_k16,
+fluctuating,minimum_quality,5,5,0,0,0,0,0,9082876495,1816575299,1816576655,363315331,2,8,w0.5_k2,
+fluctuating,f006a_rule_a,5,5,0,4,4,0,0,48759145807,9751829161.4,31194811855,6238962371,26,16,w0.75_k8;w0.5_k2;w1.0_k16,
+fluctuating,fixed_full_k16,5,1,4,2,0,0,4,20596068563,4119213712.6,20596068563,4119213712.6,16,0,w1.0_k16,

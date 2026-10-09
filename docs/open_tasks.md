@@ -94,10 +94,9 @@ Historical acceptance criteria and evidence remain in
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Status:** Draft analyses ready for review on
-  `T012a-resource-aware-controller-design`; the
-  [`F006a design analysis`](../experiments/F006a/README.md) and
-  [`F006a_2 quality screen`](../experiments/F006a_2/README.md) await
+- **Status:** F006a and F006a_2 analyses completed as draft T012a evidence;
+  the [`F006a design analysis`](../experiments/F006a/README.md) and
+  [`F006a_2 quality screen`](../experiments/F006a_2/README.md) still await
   Charalampos and Salo's review. No controller policy or final quality threshold
   has been accepted.
 - **Dependencies:** T010 and relevant T011 results.
@@ -116,23 +115,31 @@ Historical acceptance criteria and evidence remain in
   proposed state mapping; focused logic tests; exact unavailable evidence and
   human decisions stated.
 
-## T012b — Implement and simulate the approved controller
+## T012b — Implement and simulate the provisional controller
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Status:** Awaiting acceptance of T012a's provisional quality requirements,
-  budget normalization, configuration set and selection rule.
-- **Dependencies:** T012a's reviewed design and accepted decision.
-- **Scope:** Implement a deterministic policy over the approved configurations
-  and compare with fixed/static alternatives under the same protocol. Use F005's
-  `NestedAnytimeClip`, whose cache keys include both width and frame; F004's
-  `AnytimeClip` is not suitable across widths. Log the selected point per request
-  for a runtime trace. Before setting CPU latency budgets, measure the selected
-  F005b width × K points with chunked encoding in one comparable CPU job. F004
-  Table 8 measured chunks of four only for the unpruned family.
-- **Acceptance criteria:** Reproducible simulation, scenarios and comparisons;
-  no held-out-test use during development. Learned or optimization-based control
-  is optional research work, not required for the core.
+- **Status:** Provisional implementation and validation-only evaluation
+  completed in [`F006b`](../experiments/F006b/README.md), pending Charalampos
+  and Salo's review. T012b policy acceptance and the T013 protocol remain
+  open; the quality requirements, continuous-budget normalization and
+  recall-first rule are not accepted final project policy.
+- **Dependencies:** T012a's F006a and F006a_2 analyses; final team decision
+  before T013.
+- **Scope:** Implement a deterministic policy over all 24 measured F005b cells:
+  apply the three provisional F002b-referenced quality requirements, then an
+  exact `b × Cmax` FLOP budget, then prefer abnormal recall, lower FLOPs and a
+  stable tie-breaker. Support continuous `b` while retaining D021's accepted
+  `0/0.25/0.50/0.75/1.00` demonstration states. Use F005's
+  `NestedAnytimeClip`, whose cache keys include width and frame; compare with
+  minimum-compute, F006a Rule A and fixed full-width K16 policies. Log
+  selections, deferrals, configuration changes and cached incremental work.
+  Measure selected pruned points with chunked encoding in one comparable CPU
+  job before making CPU-latency claims; FLOPs remain the resource constraint.
+- **Acceptance criteria:** Reproducible simulation, scenarios, comparisons and
+  CPU evidence or executable commands where the job is unavailable; no
+  held-out-test use. Team review is required before treating this policy as
+  fixed for T013. Learned control is optional research, not required here.
 
 ## T013 — Final static-versus-adaptive evaluation
 

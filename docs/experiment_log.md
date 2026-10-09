@@ -179,3 +179,55 @@ budget choices still require Charalampos and Salo's review before T012b.
 Tables, script, reproduction and limitations:
 [`experiments/F006a_2/README.md`](../experiments/F006a_2/README.md). No
 training, runtime controller or T006 test-image inference occurred.
+
+## F006b — Provisional resource-aware controller (T012b)
+
+Question: Can the accepted F005b seed-2026 shared-weight checkpoint serve a
+deterministic controller across continuous normalized FLOP budgets while the
+three F006a_2 quality requirements are enforced? The user-directed
+**provisional** rule filters all 24 cells by exact F002b-referenced validation
+accuracy, macro-F1 and abnormal recall, then `B(b) = b × 20,596,068,563`
+integer FLOPs. Among qualified and feasible cells it prioritizes abnormal
+recall, then lower FLOPs, then a stable tie-breaker; otherwise it defers.
+This extends the accepted D021 demonstration states without replacing them.
+Implementing this testable prototype before team acceptance does not
+retroactively change the T012a analysis records or accept their proposals.
+
+Reconstructed from the tracked selected-run counts and checkpoint-derived
+costs: four points are selected over the continuous range, at exact threshold
+fractions `1,816,575,299/Cmax`, `10,298,034,451/Cmax`,
+`15,447,051,507/Cmax` and `1`. They are `w0.5_k2`, `w1.0_k8`,
+`w1.0_k12` and `w1.0_k16`, respectively, and are nondominated on FLOPs,
+macro-F1 and abnormal recall jointly. F006a's earlier two-dimensional
+macro-F1/FLOPs frontier therefore cannot filter the recall-priority choices.
+At D021 `b = 0/0.25/0.50/0.75/1`, the choices are DEFER, `w0.5_k2`,
+`w0.5_k2`, `w1.0_k8`, `w1.0_k16`; exact costs put full-width K8 and K12
+just above nominal half- and three-quarter-budget boundaries.
+
+In three deterministic five-request resource traces (decreasing, increasing,
+fluctuating), the recall-priority policy makes 4/4/5 inferences and 1/1/0
+deferrals, with 3/3/4 active model switches. Summed full configuration work
+is 48.158/48.158/49.974 GFLOPs; modeled incremental work after same-clip
+feature reuse is 22.413 GFLOPs in each case (rounded). All 12 scenario ×
+policy comparison rows, including minimum-compute, F006a Rule A and fixed
+full-width K16, have zero attempted budget violations. Fixed K16 can run
+only at `b = 1` in each trace (four deferrals). These are policy/cost
+simulations, not measured mixed-policy macro-F1.
+
+Actual local serving on three distinct validation-group clips saved 60 trace
+rows: 42 non-DEFER predictions, all matching direct logits exactly in the
+saved trace. These three repeated clips are insufficient for a mixed-policy
+quality estimate. One comparable local CPU job (Windows 11 Ryzen AI 9 HX 370,
+four threads, 50 validation requests, five warm-ups and five repeats) found
+chunk-4 median model-only latency of 31.66/168.62/249.80/333.01 ms for the
+four selected points in cost order. Their direct/chunked logits matched
+exactly; interleaved-minus-grouped switching deltas ranged from −0.85 to
++2.74 ms, with no consistent positive penalty. This is supporting local
+latency evidence, not a FLOP-budget substitute or a DAS-5/edge-device result.
+
+The reproducible runtime traces, comparison with deterministic alternatives,
+CPU evidence and limitations are in
+[`experiments/F006b/README.md`](../experiments/F006b/README.md).
+This is a validation-stage policy implementation, not team acceptance of the
+quality thresholds or controller and not held-out test evidence. No checkpoint
+or baseline was retrained or changed.
