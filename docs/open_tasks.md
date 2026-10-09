@@ -94,29 +94,36 @@ Historical acceptance criteria and evidence remain in
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Status:** Draft analysis ready for review on
+- **Status:** Draft analyses ready for review on
   `T012a-resource-aware-controller-design`; the
-  [`F006a design analysis`](../experiments/F006a/README.md) is a proposal
-  awaiting Charalampos and Salo's review, not an accepted policy decision.
+  [`F006a design analysis`](../experiments/F006a/README.md) and
+  [`F006a_2 quality screen`](../experiments/F006a_2/README.md) await
+  Charalampos and Salo's review. No controller policy or final quality threshold
+  has been accepted.
 - **Dependencies:** T010 and relevant T011 results.
 - **Scope:** Analyze all 24 configurations of the actual deployable F005b
   seed-2026 checkpoint. Report strict macro-F1/FLOPs dominance, practical
   trade-offs, uncertainty, and candidate deterministic mappings for accepted
-  states `b = 0.25/0.50/0.75/1.00`; `b = 0.00` defers inference. Propose what
-  b measures, but do not freeze the normalization or the rule without human
-  acceptance. Use validation only; no training or runtime controller here.
+  states `b = 0.25/0.50/0.75/1.00`; `b = 0.00` defers inference. Screen all
+  24 cells against provisional quality requirements anchored to the frozen
+  MobileNetV2 validation reference before comparing compute among qualified
+  cells. This is a research benchmark, not a clinical safety threshold. Propose
+  what b measures, but do not freeze quality thresholds, normalization or the
+  rule without human acceptance. Use validation only; no training or runtime
+  controller here.
 - **Acceptance criteria:** Reproducible source-backed comparison table, Pareto
-  figure, rule sensitivity and proposed state mapping; focused logic tests;
-  exact unavailable evidence and human decisions stated.
+  figure, full 24-cell quality screen, budget feasibility, sensitivity and
+  proposed state mapping; focused logic tests; exact unavailable evidence and
+  human decisions stated.
 
 ## T012b — Implement and simulate the approved controller
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Status:** Awaiting acceptance of T012a's budget normalization, configuration
-  set and selection rule.
+- **Status:** Awaiting acceptance of T012a's provisional quality requirements,
+  budget normalization, configuration set and selection rule.
 - **Dependencies:** T012a's reviewed design and accepted decision.
-- **Scope:** Implement a deterministic policy over the selected Pareto points
+- **Scope:** Implement a deterministic policy over the approved configurations
   and compare with fixed/static alternatives under the same protocol. Use F005's
   `NestedAnytimeClip`, whose cache keys include both width and frame; F004's
   `AnytimeClip` is not suitable across widths. Log the selected point per request

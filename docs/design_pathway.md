@@ -44,7 +44,7 @@ T010 select at least three useful shared-model operating points (done)
                     |
 T011 integrate one compression method (done)
                     |
-T012a design the resource-aware policy from validation evidence (next)
+T012a screen quality, then design the resource-aware policy (in progress)
                     |
 T012b implement and simulate the accepted policy
                     |
@@ -98,13 +98,19 @@ states to configurations; that belongs to T012.
   in one 20.4 MB weight file (D029, accepted). This reduces inference compute,
   not the shared file size; dynamic INT8 was measured but not adopted.
 - **T012a:** Analyze the actual deployable F005b seed-2026 width × K grid and
-  propose the FLOP-budget definition, useful configurations and deterministic
-  selection rule. The accepted normalized states are `b = 0.25, 0.50, 0.75,
-  1.00`; `b = 0.00` means defer/no inference. The proposed normalization and
-  rule in [`experiments/F006a/README.md`](../experiments/F006a/README.md)
-  require human acceptance; this analysis does not implement the controller.
-- **T012b:** Implement and simulate the accepted policy over measured frontier
-  points, serve width changes with `NestedAnytimeClip`, and compare fixed
+  propose the FLOP-budget definition and deterministic selection rule. F006a
+  records the 24-cell macro-F1/FLOPs frontier; F006a_2 screens **all 24 cells**
+  against provisional accuracy, macro-F1 and abnormal-recall requirements from
+  the frozen F002b MobileNetV2 validation reference, then compares costs among
+  qualified cells. This quality-first research direction does not make the
+  MobileNetV2 values clinical safety thresholds. The accepted normalized states
+  are `b = 0.25, 0.50, 0.75, 1.00`; `b = 0.00` means defer/no inference.
+  The analyses in [`F006a`](../experiments/F006a/README.md) and
+  [`F006a_2`](../experiments/F006a_2/README.md) leave the normalization,
+  quality requirements, configuration set and rule for human acceptance; neither
+  implements the controller.
+- **T012b:** Implement and simulate the accepted policy over approved
+  configurations, serve width changes with `NestedAnytimeClip`, and compare fixed
   alternatives. Measure chunked CPU latency for the selected pruned width × K
   points before turning FLOPs into latency budgets.
 - **T013:** Run the pre-specified final comparison between the frozen MobileNetV2

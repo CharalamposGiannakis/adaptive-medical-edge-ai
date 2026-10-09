@@ -145,3 +145,37 @@ and cost-aware sensitivity grids are in
 small validation differences do not establish pairwise superiority; the
 normalization and selection rule await Charalampos and Salo's acceptance
 before T012b.
+
+## F006a_2 — Quality screen against frozen MobileNetV2 (T012a)
+
+Question: Which of the **24** deployable F005b seed-2026 width × K cells meet
+initial predictive-quality requirements before comparing compute? This
+validation-only analysis uses the same selected-epoch F005b confusion counts
+and strict checkpoint-derived FLOPs as F006a. It reconstructs the frozen F002b
+MobileNetV2 reference from its documented 254 duplicate-aware validation units:
+168/178 normal and 57/76 abnormal correct, giving accuracy 225/254 =
+0.885827, macro-F1 0.858875 and abnormal recall 57/76 = 0.750. The three
+inclusive screening conditions use these exact values, not the rounded README
+figures. They are provisional empirical requirements, **not clinical safety
+thresholds** or an accepted controller policy.
+
+Measured/reconstructed: 12 cells meet accuracy, 10 macro-F1, 14 abnormal
+recall, and 10 all three. The cheapest qualifying cell is 50% width × K2 at
+1.816575299 GFLOPs: accuracy 227/254, macro-F1 0.869706, abnormal recall
+59/76 and normal recall 168/178. Full width × K16 costs 20.596068563 GFLOPs
+and detects 64/76 abnormal units, five more than that cheaper cell; efficiency
+alone does not resolve the quality trade-off. Under the **proposed**, still
+unapproved `B(b) = b × Cmax` normalization, the counts meeting both compute
+and quality at b = 0.25/0.50/0.75/1.00 are 1/3/7/10; b = 0.00 defers by
+definition. Tightening the accuracy requirement by three correct units makes
+b = 0.25 infeasible; tightening abnormal recall by three detected units makes
+b = 0.25 and 0.50 infeasible. No requirement was relaxed to force inference.
+
+The selected-run confusion counts give exact threshold metrics but not paired
+unit-level comparisons with F002b; AUROC is available only to three decimals
+from F005's published table. F005's three-seed summaries are secondary
+robustness context, not the deployable checkpoint's scores. All screening and
+budget choices still require Charalampos and Salo's review before T012b.
+Tables, script, reproduction and limitations:
+[`experiments/F006a_2/README.md`](../experiments/F006a_2/README.md). No
+training, runtime controller or T006 test-image inference occurred.
