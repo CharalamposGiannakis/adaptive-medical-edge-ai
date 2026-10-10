@@ -44,7 +44,9 @@ T010 select at least three useful shared-model operating points (done)
                     |
 T011 integrate one compression method (done)
                     |
-T012 implement and compare a resource-aware policy (next)
+T012a screen quality, then design the resource-aware policy (draft complete)
+                    |
+T012b provisional implementation and simulation complete; review pending
                     |
 T013 final static-versus-adaptive evaluation
 ```
@@ -95,12 +97,27 @@ states to configurations; that belongs to T012.
   structured pruning of the hidden channels with distillation, widths 100/75/50/25%
   in one 20.4 MB weight file (D029, accepted). This reduces inference compute,
   not the shared file size; dynamic INT8 was measured but not adopted.
-- **T012:** Implement a simple resource-aware policy. The accepted normalized
-  budget states are `b = 0.25, 0.50, 0.75, 1.00`; `b = 0.00` means defer/no
-  inference. Map active states only to measured operating points and compare the
-  policy with fixed alternatives. D028/D029 give width × K
-  frontier points of the F005b seed-2026 file; `docs/open_tasks.md` lists the
-  requirements (define what b is a fraction of, serve with `NestedAnytimeClip`).
+- **T012a:** Analyze the actual deployable F005b seed-2026 width × K grid and
+  propose the FLOP-budget definition and deterministic selection rule. F006a
+  records the 24-cell macro-F1/FLOPs frontier; F006a_2 screens **all 24 cells**
+  against provisional accuracy, macro-F1 and abnormal-recall requirements from
+  the frozen F002b MobileNetV2 validation reference, then compares costs among
+  qualified cells. This quality-first research direction does not make the
+  MobileNetV2 values clinical safety thresholds. The accepted normalized states
+  are `b = 0.25, 0.50, 0.75, 1.00`; `b = 0.00` means defer/no inference.
+  The analyses in [`F006a`](../experiments/F006a/README.md) and
+  [`F006a_2`](../experiments/F006a_2/README.md) leave the normalization,
+  quality requirements, configuration set and rule for human acceptance; neither
+  implements the controller.
+- **T012b:** The user-directed provisional quality-first, recall-priority
+  policy over continuous `b` was implemented and simulated in
+  [`F006b`](../experiments/F006b/README.md). It keeps D021's five states in
+  the comparison; continuous support is a proposed generalization, not a
+  change to D021. It serves width changes with `NestedAnytimeClip`, compares
+  fixed alternatives and measures selected pruned width × K points in one
+  comparable local chunked CPU job. FLOPs remain the resource constraint;
+  final quality limits, normalization and policy mapping still need
+  Charalampos and Salo's acceptance.
 - **T013:** Run the pre-specified final comparison between the frozen MobileNetV2
   static reference and the adaptive/compressed system. Report predictive metrics,
   consistent FLOPs, throughput and relevant latency, with uncertainty and dataset

@@ -1,0 +1,91 @@
+{
+  "cmax_flops": 20596068563,
+  "f002b_checkpoint_sha256": "5bad132633fd6188c0e449a75f73294612479bb1f0dc1820d8e6c459f7bdb823",
+  "f005b_checkpoint_sha256": "18d601e3ea04a1ba572ef99484c8681c5a3011dd7d3eb28309cb32906ff9e702",
+  "f005b_importance_sha256": "442785dcc4e8b7caf5521d3dd3683a5a48bbbe5eb2dc4873926967af60866071",
+  "f005b_run_sha256": "47710bc9f918576b5698d2f0eeaa3f6f1c7de127b483cd7c3e387f735e131bec",
+  "mixed_policy_quality": "not computed: the deterministic trace has no unit predictions",
+  "policy": "quality-qualified; maximize abnormal recall; lower FLOPs; name",
+  "scenarios": {
+    "decreasing": [
+      "1.00",
+      "0.83",
+      "0.67",
+      "0.25",
+      "0"
+    ],
+    "fluctuating": [
+      "0.83",
+      "0.25",
+      "0.67",
+      "1.00",
+      "0.50"
+    ],
+    "increasing": [
+      "0",
+      "0.25",
+      "0.67",
+      "0.83",
+      "1.00"
+    ]
+  },
+  "selected": [
+    {
+      "abnormal_recall": "0.7763157894736842",
+      "configuration": "w0.5_k2",
+      "flops": 1816575299,
+      "macro_f1": "0.8697064690795099",
+      "three_dimensional_dominators": [],
+      "threshold_b_decimal": "0.08820009961820596",
+      "threshold_b_fraction": "259510757/2942295509"
+    },
+    {
+      "abnormal_recall": "0.7894736842105263",
+      "configuration": "w1.0_k8",
+      "flops": 10298034451,
+      "macro_f1": "0.870767143422466",
+      "three_dimensional_dominators": [],
+      "threshold_b_decimal": "0.5000000082297259",
+      "threshold_b_fraction": "10298034451/20596068563"
+    },
+    {
+      "abnormal_recall": "0.8157894736842105",
+      "configuration": "w1.0_k12",
+      "flops": 15447051507,
+      "macro_f1": "0.8643836877473994",
+      "three_dimensional_dominators": [],
+      "threshold_b_decimal": "0.750000004114863",
+      "threshold_b_fraction": "15447051507/20596068563"
+    },
+    {
+      "abnormal_recall": "0.8421052631578947",
+      "configuration": "w1.0_k16",
+      "flops": 20596068563,
+      "macro_f1": "0.8830893859891374",
+      "three_dimensional_dominators": [],
+      "threshold_b_decimal": "1.0",
+      "threshold_b_fraction": "1"
+    }
+  ],
+  "validation_clips": [
+    {
+      "clip_id": "Pt121:z1",
+      "frame_count": 143,
+      "scenario": "decreasing",
+      "split_group": "Pt121"
+    },
+    {
+      "clip_id": "Pt123:z1",
+      "frame_count": 143,
+      "scenario": "increasing",
+      "split_group": "Pt123"
+    },
+    {
+      "clip_id": "Pt132:z1",
+      "frame_count": 143,
+      "scenario": "fluctuating",
+      "split_group": "Pt132"
+    }
+  ],
+  "validation_manifest_sha256": "6caec3e7c4ce3809e3859a291a8f7d75c4c756b6030da0be1ddeaf2c965960e2"
+}

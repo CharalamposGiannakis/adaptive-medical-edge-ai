@@ -1,0 +1,5 @@
+requirement,minimum,passing_of_24,failing_of_24
+accuracy,0.8858267716535433,12,12
+macro_f1,0.8588753712041384,10,14
+abnormal_recall,0.75,14,10
+all,,10,14

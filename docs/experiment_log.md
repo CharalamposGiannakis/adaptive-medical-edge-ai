@@ -125,3 +125,109 @@ Interpretation: the D026 family meets T010's criteria. Fine-tuning across K is n
 ## F005 — Compressing the shared frame-count family (T011)
 
 F005a (2026-10-07, validation, CPU): INT8 dynamic quantization of the 41 Linear layers of the F004 family. Macro-F1 within −0.009/+0.008 of FP32 at every K (all paired intervals include zero), file 20.4 → 6.4 MB, FLOPs unchanged, CPU latency 2–6% slower (1.06–1.62× slower when frames are encoded one at a time, the mode that keeps anytime upgrades exact, measured against batched FP32). F005b: nested structured pruning of the hidden channels (Taylor importance, chosen over L1 by a recorded train-split rule) at widths 100/75/50/25% (1.29/1.10/0.91/0.72 GFLOPs per frame), fine-tuned from D026 with the sandwich rule and distillation, three seeds plus a 50%-only control. Mean macro-F1 over five K: 0.853/0.857/0.856/0.846 (D026 0.849; control 0.854); the recorded adoption rule holds (D029, accepted as compute compression). The shared nested checkpoint remains 20.4 MB. AUROC at or above the unpruned family at every cost. F005c: static INT8 in ONNX Runtime, matrix operators only, Percentile calibration: AUROC 0.01–0.02 lower and 1.5–1.8× slower than FP32 on the CPU, and worse with `reduce_range`; not kept. Follow-ups after review: width × K switching per request costs nothing measurable (GPU ≤ 0.6%); a width-aware anytime cache (`NestedAnytimeClip`) is tested; recalibrating all 19 downstream BNs per width after training lowered the narrow widths by 0.008 (not adopted); ONNX export of every width matches to 8e-6; nested file 20.4 MB vs 62.5 MB for four copies; calibration (ECE) unchanged by pruning; a random channel order trained the same way scores 0.03 (75/50%) to 0.10 (25% width) lower than Taylor order, three seeds each. Details: `experiments/F005/README.md`; outputs in ignored `artifacts/F005/`.
+
+## F006a — Resource-aware controller design (T012a)
+
+Question: Which operating configurations of the deployed F005b seed-2026
+checkpoint should a deterministic FLOP-budget controller consider? Validation-
+only analysis of all 24 width × K cells, using full-precision selected-epoch
+macro-F1/accuracy from its canonical run and strict fvcore counts recomputed
+from the canonical checkpoint. The original raw per-unit predictions and exact
+AUROC are absent locally; AUROC is reported only at the three-decimal precision
+in F005 Table 3b. No training, runtime simulation, or test-image inference.
+
+Measured/reconstructed: nine cells are strict macro-F1/FLOPs Pareto points and
+15 are dominated. With proposed `Cmax = full-width K16 = 20.596068563`
+GFLOPs, the provisional max-F1-under-budget rule maps b = 0.25/0.50/0.75/1.00
+to 0.50×K2 / 0.75×K8 / 0.75×K8 / 1.00×K16. The proposal and cheap-near-best
+and cost-aware sensitivity grids are in
+`experiments/F006a/README.md`, with reproducible tables and a figure. These
+small validation differences do not establish pairwise superiority; the
+normalization and selection rule await Charalampos and Salo's acceptance
+before T012b.
+
+## F006a_2 — Quality screen against frozen MobileNetV2 (T012a)
+
+Question: Which of the **24** deployable F005b seed-2026 width × K cells meet
+initial predictive-quality requirements before comparing compute? This
+validation-only analysis uses the same selected-epoch F005b confusion counts
+and strict checkpoint-derived FLOPs as F006a. It reconstructs the frozen F002b
+MobileNetV2 reference from its documented 254 duplicate-aware validation units:
+168/178 normal and 57/76 abnormal correct, giving accuracy 225/254 =
+0.885827, macro-F1 0.858875 and abnormal recall 57/76 = 0.750. The three
+inclusive screening conditions use these exact values, not the rounded README
+figures. They are provisional empirical requirements, **not clinical safety
+thresholds** or an accepted controller policy.
+
+Measured/reconstructed: 12 cells meet accuracy, 10 macro-F1, 14 abnormal
+recall, and 10 all three. The cheapest qualifying cell is 50% width × K2 at
+1.816575299 GFLOPs: accuracy 227/254, macro-F1 0.869706, abnormal recall
+59/76 and normal recall 168/178. Full width × K16 costs 20.596068563 GFLOPs
+and detects 64/76 abnormal units, five more than that cheaper cell; efficiency
+alone does not resolve the quality trade-off. Under the **proposed**, still
+unapproved `B(b) = b × Cmax` normalization, the counts meeting both compute
+and quality at b = 0.25/0.50/0.75/1.00 are 1/3/7/10; b = 0.00 defers by
+definition. Tightening the accuracy requirement by three correct units makes
+b = 0.25 infeasible; tightening abnormal recall by three detected units makes
+b = 0.25 and 0.50 infeasible. No requirement was relaxed to force inference.
+
+The selected-run confusion counts give exact threshold metrics but not paired
+unit-level comparisons with F002b; AUROC is available only to three decimals
+from F005's published table. F005's three-seed summaries are secondary
+robustness context, not the deployable checkpoint's scores. All screening and
+budget choices still require Charalampos and Salo's review before T012b.
+Tables, script, reproduction and limitations:
+[`experiments/F006a_2/README.md`](../experiments/F006a_2/README.md). No
+training, runtime controller or T006 test-image inference occurred.
+
+## F006b — Provisional resource-aware controller (T012b)
+
+Question: Can the accepted F005b seed-2026 shared-weight checkpoint serve a
+deterministic controller across continuous normalized FLOP budgets while the
+three F006a_2 quality requirements are enforced? The user-directed
+**provisional** rule filters all 24 cells by exact F002b-referenced validation
+accuracy, macro-F1 and abnormal recall, then `B(b) = b × 20,596,068,563`
+integer FLOPs. Among qualified and feasible cells it prioritizes abnormal
+recall, then lower FLOPs, then a stable tie-breaker; otherwise it defers.
+This extends the accepted D021 demonstration states without replacing them.
+Implementing this testable prototype before team acceptance does not
+retroactively change the T012a analysis records or accept their proposals.
+
+Reconstructed from the tracked selected-run counts and checkpoint-derived
+costs: four points are selected over the continuous range, at exact threshold
+fractions `1,816,575,299/Cmax`, `10,298,034,451/Cmax`,
+`15,447,051,507/Cmax` and `1`. They are `w0.5_k2`, `w1.0_k8`,
+`w1.0_k12` and `w1.0_k16`, respectively, and are nondominated on FLOPs,
+macro-F1 and abnormal recall jointly. F006a's earlier two-dimensional
+macro-F1/FLOPs frontier therefore cannot filter the recall-priority choices.
+At D021 `b = 0/0.25/0.50/0.75/1`, the choices are DEFER, `w0.5_k2`,
+`w0.5_k2`, `w1.0_k8`, `w1.0_k16`; exact costs put full-width K8 and K12
+just above nominal half- and three-quarter-budget boundaries.
+
+In three deterministic five-request resource traces (decreasing, increasing,
+fluctuating), the recall-priority policy makes 4/4/5 inferences and 1/1/0
+deferrals, with 3/3/4 active model switches. Summed full configuration work
+is 48.158/48.158/49.974 GFLOPs; modeled incremental work after same-clip
+feature reuse is 22.413 GFLOPs in each case (rounded). All 12 scenario ×
+policy comparison rows, including minimum-compute, F006a Rule A and fixed
+full-width K16, have zero attempted budget violations. Fixed K16 can run
+only at `b = 1` in each trace (four deferrals). These are policy/cost
+simulations, not measured mixed-policy macro-F1.
+
+Actual local serving on three distinct validation-group clips saved 60 trace
+rows: 42 non-DEFER predictions, all matching direct logits exactly in the
+saved trace. These three repeated clips are insufficient for a mixed-policy
+quality estimate. One comparable local CPU job (Windows 11 Ryzen AI 9 HX 370,
+four threads, 50 validation requests, five warm-ups and five repeats) found
+chunk-4 median model-only latency of 31.66/168.62/249.80/333.01 ms for the
+four selected points in cost order. Their direct/chunked logits matched
+exactly; interleaved-minus-grouped switching deltas ranged from −0.85 to
++2.74 ms, with no consistent positive penalty. This is supporting local
+latency evidence, not a FLOP-budget substitute or a DAS-5/edge-device result.
+
+The reproducible runtime traces, comparison with deterministic alternatives,
+CPU evidence and limitations are in
+[`experiments/F006b/README.md`](../experiments/F006b/README.md).
+This is a validation-stage policy implementation, not team acceptance of the
+quality thresholds or controller and not held-out test evidence. No checkpoint
+or baseline was retrained or changed.

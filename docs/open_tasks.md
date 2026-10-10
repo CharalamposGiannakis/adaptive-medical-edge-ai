@@ -90,27 +90,56 @@ Historical acceptance criteria and evidence remain in
   effects measured under the same convention. INT8 post-training quantization and
   structured pruning remain candidates, not commitments.
 
-## T012 — Implement a resource-aware policy
+## T012a — Design resource-aware controller configurations
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Status:** Ready; next active task after PR #26.
+- **Status:** F006a and F006a_2 analyses completed as draft T012a evidence;
+  the [`F006a design analysis`](../experiments/F006a/README.md) and
+  [`F006a_2 quality screen`](../experiments/F006a_2/README.md) still await
+  Charalampos and Salo's review. No controller policy or final quality threshold
+  has been accepted.
 - **Dependencies:** T010 and relevant T011 results.
-- **Scope:** Map active normalized resource states to measured operating points;
-  `b = 0.00` defers inference. Compare with fixed/static alternatives under the
-  same protocol. D028/D029 give 4 widths × 6 K candidates from the
-  F005b seed-2026 file: define what b is a fraction of, use only Pareto-front
-  points (some narrow-width cells score lower at larger K), and serve clips with
-  `NestedAnytimeClip` (F005), which caches features per (width, frame);
-  F004's `AnytimeClip` caches by frame only and must not be used across widths.
-  Log the chosen point per request for a runtime trace. Before using CPU
-  latency to set budgets, measure the selected F005b width × K points with
-  chunked encoding in one CPU job. F004 Table 8 makes chunks of 4 a starting
-  candidate for the unpruned family; it did not measure chunked latency at
-  the pruned widths.
-- **Acceptance criteria:** Reproducible policy, scenarios and comparisons; no
-  held-out-test use during policy development. A learned or optimization-based
-  controller is optional research work, not required for the core.
+- **Scope:** Analyze all 24 configurations of the actual deployable F005b
+  seed-2026 checkpoint. Report strict macro-F1/FLOPs dominance, practical
+  trade-offs, uncertainty, and candidate deterministic mappings for accepted
+  states `b = 0.25/0.50/0.75/1.00`; `b = 0.00` defers inference. Screen all
+  24 cells against provisional quality requirements anchored to the frozen
+  MobileNetV2 validation reference before comparing compute among qualified
+  cells. This is a research benchmark, not a clinical safety threshold. Propose
+  what b measures, but do not freeze quality thresholds, normalization or the
+  rule without human acceptance. Use validation only; no training or runtime
+  controller here.
+- **Acceptance criteria:** Reproducible source-backed comparison table, Pareto
+  figure, full 24-cell quality screen, budget feasibility, sensitivity and
+  proposed state mapping; focused logic tests; exact unavailable evidence and
+  human decisions stated.
+
+## T012b — Implement and simulate the provisional controller
+
+- **Priority:** P1
+- **Owner:** Charalampos
+- **Status:** Provisional implementation and validation-only evaluation
+  completed in [`F006b`](../experiments/F006b/README.md), pending Charalampos
+  and Salo's review. T012b policy acceptance and the T013 protocol remain
+  open; the quality requirements, continuous-budget normalization and
+  recall-first rule are not accepted final project policy.
+- **Dependencies:** T012a's F006a and F006a_2 analyses; final team decision
+  before T013.
+- **Scope:** Implement a deterministic policy over all 24 measured F005b cells:
+  apply the three provisional F002b-referenced quality requirements, then an
+  exact `b × Cmax` FLOP budget, then prefer abnormal recall, lower FLOPs and a
+  stable tie-breaker. Support continuous `b` while retaining D021's accepted
+  `0/0.25/0.50/0.75/1.00` demonstration states. Use F005's
+  `NestedAnytimeClip`, whose cache keys include width and frame; compare with
+  minimum-compute, F006a Rule A and fixed full-width K16 policies. Log
+  selections, deferrals, configuration changes and cached incremental work.
+  Measure selected pruned points with chunked encoding in one comparable CPU
+  job before making CPU-latency claims; FLOPs remain the resource constraint.
+- **Acceptance criteria:** Reproducible simulation, scenarios, comparisons and
+  CPU evidence or executable commands where the job is unavailable; no
+  held-out-test use. Team review is required before treating this policy as
+  fixed for T013. Learned control is optional research, not required here.
 
 ## T013 — Final static-versus-adaptive evaluation
 

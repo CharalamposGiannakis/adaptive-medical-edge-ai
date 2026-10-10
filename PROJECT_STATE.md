@@ -4,7 +4,11 @@ The architecture and data foundation is complete. T009/F003 established frame
 count as the primary adaptive axis (D027). T010/F004 completed the shared
 K1/K2/K4/K8/K12/K16 family on unchanged D026 weights (D028). T011/F005
 completed nested structured pruning with distillation as the compute-compression
-step (D029). D027–D029 are accepted; T012 (resource-aware policy) is next.
+step (D029). D027–D029 are accepted. T012a has screened the deployable F005b
+width × K configurations against provisional quality requirements. T012b has
+implemented and evaluated a provisional resource-aware controller in F006b;
+its numerical requirements and selection rule still await Charalampos and
+Salo's review.
 F002b MobileNetV2 remains the frozen static comparison; D026 selects the F002c
 TinyViT-5M checkpoint as the model to develop adaptively. No model has run on the
 T006 held-out test partition.
@@ -62,6 +66,20 @@ and throughput under one convention. Full evidence and caveats are in
 [`experiments/F002c/README.md`](experiments/F002c/README.md).
 
 ## Current objective — T012 resource-aware policy
+
+The validation-only [`F006a`](experiments/F006a/README.md) analysis maps the
+24 F005b configurations by macro-F1 and FLOPs. The follow-up
+[`F006a_2`](experiments/F006a_2/README.md) screens all 24 against initial
+accuracy, macro-F1 and abnormal-recall requirements anchored to frozen F002b
+MobileNetV2, then compares compute among qualifying cells. These are empirical
+research requirements, not clinically validated safety thresholds. T012b's
+[`F006b`](experiments/F006b/README.md) implements and simulates the
+user-directed provisional rule: within an exact FLOP budget, maximize abnormal
+recall among quality-qualified configurations, then prefer lower FLOPs. The
+team has not approved final thresholds, budget normalization, operating points
+or controller rule. Continuous `b` extends the accepted D021 demonstration
+states without replacing them. T013 remains pending a separately frozen final
+protocol.
 
 T009/F003 ([`experiments/F003/README.md`](experiments/F003/README.md)) found
 frame count to be the useful axis of the D026 TinyViT (D027, accepted).
@@ -124,5 +142,7 @@ these are development numbers until T013.
 
 T009 characterized adaptive dimensions → T010 built six shared-weight
 frame-count operating points (F004) → T011 added nested pruned widths (F005) →
-T012 implements the resource-aware policy over the width × K points → T013
-performs the final static-versus-adaptive evaluation on the test partition.
+T012a screened quality and cost across width × K points → T012b implemented and
+simulated a provisional resource-aware policy for team review → T013 performs
+the final static-versus-adaptive evaluation after the policy and test protocol
+are fixed.
