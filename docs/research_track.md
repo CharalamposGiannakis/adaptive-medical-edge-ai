@@ -40,10 +40,12 @@ shared-weight frame-count family that T011 and T012 build on.
 ## Next research decision
 
 Charalampos and Salo next review the T012b policy, operating points and CPU
-evidence before freezing any T013 protocol. T013 then compares the adaptive
-system with frozen F002b MobileNetV2, a statically pruned single-width model
-and static TinyViT K16 as fixed baselines. The T006 held-out test partition
-remains reserved until that final protocol is fixed.
+evidence. T013a's proposed [`F007 protocol`](../experiments/F007/README.md)
+then needs independent review and explicit team approval before T013b. It
+plans matched comparisons against frozen F002b MobileNetV2, original static
+TinyViT K16 and a fixed width-0.5 slice of the canonical nested F005b bundle;
+the separately trained 50%-only control is not the proposed static handoff.
+The T006 held-out test partition remains reserved until both gates are fixed.
 
 ## Interpretation guardrails
 

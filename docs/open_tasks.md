@@ -141,22 +141,40 @@ Historical acceptance criteria and evidence remain in
   held-out-test use. Team review is required before treating this policy as
   fixed for T013. Learned control is optional research, not required here.
 
-## T013 — Final static-versus-adaptive evaluation
+## T013a — Propose the final evaluation protocol
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Dependencies:** T010–T012 and a frozen final evaluation protocol.
-- **Scope:** Compare the frozen F002b MobileNetV2 static reference with the selected
-  TinyViT adaptive/compressed system.
-- **Acceptance criteria:** Pre-specify any held-out-test use before inference;
-  report predictive metrics, consistent FLOPs, throughput and relevant latency;
-  preserve raw evidence and state uncertainty, proxy-dataset limits and any
-  validation-driven selection bias. From the T010/T011 reviews: freeze the
-  operating points and the policy on validation before touching test; add the
-  static TinyViT points (D026 at K16, the 50%-only model at a fixed K) as
-  further fixed baselines next to MobileNetV2; report one matched-accuracy and
-  one matched-FLOPs comparison with intervals; report per-device results
-  (device and label are entangled); and use CPU latencies from a single job.
+- **Status:** [`F007`](../experiments/F007/README.md) is a proposed
+  preregistration on a branch based on the T012 PR #27 work. No T006 test
+  labels, images or predictions have been accessed for T013a. T012 policy and
+  this protocol both await review and Charalampos/Salo approval.
+- **Scope:** Fix six primary systems, the D021 resource states and a
+  test-independent mixed schedule, duplicate-aware prediction/coverage and
+  cost rules, one same-job CPU benchmark, group-cluster uncertainty, a
+  validation-selected matched-quality pair and a preselected matched-FLOP
+  diagnostic before any final-test access. The static width-0.5 comparator in
+  the proposal is the **canonical nested F005b** width slice at validation-
+  selected K8, not the separate historical 50%-only training control.
+- **Acceptance criteria:** Independent review and explicit team approval of
+  the T012 controller and F007 protocol, including quality margins and
+  budget assignment; record the accepted version in the repository before
+  T013b execution. Do not treat this proposal as held-out evidence.
+
+## T013b — Execute the accepted final comparison
+
+- **Priority:** P1
+- **Owner:** Charalampos
+- **Status:** Blocked on T012 review/policy acceptance and T013a protocol
+  review/approval. The final-test execution guard is not yet implemented.
+- **Dependencies:** Frozen T006/F002b/F002c/F005b handoffs and accepted F007
+  protocol.
+- **Acceptance criteria:** Use the approved six-system matched requests;
+  report quality **with coverage**, exact full/incremental FLOPs, same-job CPU
+  latency and throughput, dependency-group intervals, the matched-quality and
+  matched-FLOP comparisons, and descriptive per-device results. Keep raw
+  evidence ignored and document proxy-dataset, validation-selection and
+  device/label limitations. No test-driven retuning or comparison changes.
 
 ## Research backlog
 

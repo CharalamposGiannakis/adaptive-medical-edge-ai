@@ -8,7 +8,8 @@ step (D029). D027–D029 are accepted. T012a has screened the deployable F005b
 width × K configurations against provisional quality requirements. T012b has
 implemented and evaluated a provisional resource-aware controller in F006b;
 its numerical requirements and selection rule still await Charalampos and
-Salo's review.
+Salo's review. T013a has a proposed, unapproved F007 final-evaluation
+protocol; no held-out test access has occurred.
 F002b MobileNetV2 remains the frozen static comparison; D026 selects the F002c
 TinyViT-5M checkpoint as the model to develop adaptively. No model has run on the
 T006 held-out test partition.
@@ -65,7 +66,14 @@ or universal superiority. F003 and F004 later measured TinyViT's cost, latency
 and throughput under one convention. Full evidence and caveats are in
 [`experiments/F002c/README.md`](experiments/F002c/README.md).
 
-## Current objective — T012 resource-aware policy
+## Current objective — T013a final-evaluation protocol
+
+The proposed [`F007 protocol`](experiments/F007/README.md) specifies the six
+static and adaptive systems, matched resource requests, duplicate-aware
+quality and coverage, exact cost, one comparable CPU job, dependency-group
+uncertainty and preselected matched comparisons. It is conditional on review
+of T012 PR #27 and explicit team approval before T013b can access test data.
+It contains no held-out results.
 
 The validation-only [`F006a`](experiments/F006a/README.md) analysis maps the
 24 F005b configurations by macro-F1 and FLOPs. The follow-up
@@ -143,6 +151,6 @@ these are development numbers until T013.
 T009 characterized adaptive dimensions → T010 built six shared-weight
 frame-count operating points (F004) → T011 added nested pruned widths (F005) →
 T012a screened quality and cost across width × K points → T012b implemented and
-simulated a provisional resource-aware policy for team review → T013 performs
-the final static-versus-adaptive evaluation after the policy and test protocol
-are fixed.
+simulated a provisional resource-aware policy for team review → T013a proposes
+the final comparison protocol → T013b can run it only after the controller and
+protocol are reviewed and accepted.

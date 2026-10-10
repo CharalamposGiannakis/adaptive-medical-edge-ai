@@ -231,3 +231,17 @@ CPU evidence and limitations are in
 This is a validation-stage policy implementation, not team acceptance of the
 quality thresholds or controller and not held-out test evidence. No checkpoint
 or baseline was retrained or changed.
+
+## F007 — Proposed final comparison protocol (T013a; no measured result)
+
+Question: Does the adaptive TinyViT family provide a useful quality,
+coverage and cost trade-off against frozen static alternatives, and under
+which resource states? [`experiments/F007/README.md`](../experiments/F007/README.md)
+is a **proposed preregistration**, not an accepted decision or executed
+experiment. It preselects six systems, D021 statewise and test-independent
+mixed-budget comparisons, duplicate-aware unit metrics with explicit
+deferrals, exact FLOPs, a single comparable CPU benchmark, known-group paired
+intervals, matched-cost/quality contrasts and test-leakage guards. T012 PR
+#27 is still under review, and the policy, quality margins and final protocol
+require Charalampos and Salo's approval before T013b. No held-out test
+images, labels or predictions were accessed; no raw F007 results exist.

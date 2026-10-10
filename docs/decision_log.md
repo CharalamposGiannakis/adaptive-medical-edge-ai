@@ -443,12 +443,18 @@ The following are intentionally **not decided yet**:
 
 - How well the validation-supported model and adaptive behavior generalize; OpenPOCUS remains a technical proxy rather than clinical deployment evidence.
 - Any additional biological-patient identity mapping if new provenance becomes available; D023 fixes the current T006 quality exclusions and known-group split protocol.
-- Mapping from active resource states to the measured D029 width × K frontier (T012), including what b = 0.25/0.50/0.75/1.00 is a fraction of.
-- Whether resource conditions beyond the accepted simulated budget states will also be measured.
+- Final acceptance of T012's proposed F006b mapping from active resource states
+  to the D029 width × K frontier, including the quality limits, `Cmax`
+  normalization and recall-priority rule (PR #27 remains under review).
+- Whether resource conditions beyond the accepted simulated budget states will
+  also be measured; [`F007`](../experiments/F007/README.md) proposes a
+  separately labeled sensitivity set.
 - Whether input uncertainty becomes part of the runtime policy.
 - Whether an optimization-based controller is worth implementing.
 - Final scenario-specific utility / global performance measure.
 - Exact latency, battery, thermal, and network assumptions.
-- Final held-out test protocol.
+- Final held-out test protocol; the T013a
+  [`F007 proposal`](../experiments/F007/README.md) awaits independent review
+  and Charalampos/Salo approval before any test access.
 - Whether restricted FAST/pneumothorax data become available.
 - Any later teaching-team clarification of throughput presentation; D024 specifies reporting both frames/s and completed zone-sequence predictions/s.
