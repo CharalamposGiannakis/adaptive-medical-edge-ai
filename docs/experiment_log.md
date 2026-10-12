@@ -142,9 +142,10 @@ GFLOPs, the provisional max-F1-under-budget rule maps b = 0.25/0.50/0.75/1.00
 to 0.50×K2 / 0.75×K8 / 0.75×K8 / 1.00×K16. The proposal and cheap-near-best
 and cost-aware sensitivity grids are in
 `experiments/F006a/README.md`, with reproducible tables and a figure. These
-small validation differences do not establish pairwise superiority; the
-normalization and selection rule await Charalampos and Salo's acceptance
-before T012b.
+small validation differences do not establish pairwise superiority; at this
+stage the normalization and selection rule awaited human acceptance. T012b
+subsequently implemented a provisional rule, and D030 records the current
+proposed F007 choices.
 
 ## F006a_2 — Quality screen against frozen MobileNetV2 (T012a)
 
@@ -244,7 +245,9 @@ deferrals, exact FLOPs, a single comparable CPU benchmark, known-group paired
 intervals, fixed descriptive cost/quality contrasts and test-leakage guards.
 PR #27 merged the historical T012 implementation. D030 subsequently proposes
 10% simulated budget headroom for F007 only and removes formal predictive
-noninferiority margins; Charalampos approved the direction, Salo's explicit
-policy approval and independent F007 review remain pending before T013b.
-No held-out test images, labels or predictions were accessed; no raw F007
-results exist.
+noninferiority margins; Charalampos approved the direction and reports that
+Salo delegated completion of the remaining work to him. D030/F007 remain
+proposed pending final independent PR re-review and his recorded sign-off
+before T013b. Canonical T006 test-manifest metadata underwent structural
+verification; no held-out test images were decoded for evaluation, no test
+inference or predictive evaluation occurred, and no raw F007 results exist.

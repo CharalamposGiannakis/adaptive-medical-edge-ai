@@ -1,12 +1,14 @@
 # F007 — final static-versus-adaptive evaluation (T013a protocol proposal)
 
 **Status: proposed, not approved or executable.** This records the T013a design
-before any held-out T006 test labels, images or predictions are accessed. PR #27
-merged the T012 implementation and validation evidence; that merge did not
-accept its numerical controller policy. Charalampos approved the proposed
-F007 direction in D030; Salo's explicit approval, an independent F007 review,
-and a frozen team decision are still required before T013b. No F007 result or
-raw test artifact exists yet.
+before held-out test-image inference or predictive evaluation. The canonical
+`verify_t006()` has already parsed the frozen test manifest for structural
+counts and fingerprints; this is permitted provenance verification, not model
+evaluation. PR #27 merged the T012 implementation and validation evidence;
+that merge did not accept its numerical controller policy. Charalampos reports
+that Salo delegated completion of the remaining work to him. D030 and F007
+remain proposed pending final independent PR review and Charalampos's sign-off
+under that delegation. No F007 prediction or raw test-result artifact exists.
 
 **Question.** Does the shared-weight adaptive TinyViT system provide a useful
 predictive-quality, coverage and computational-cost trade-off against frozen
@@ -20,7 +22,14 @@ Use the unchanged D019 binary normal (0) versus definite abnormal (1) target,
 the D023 T006 cohort/split, and the D024 duplicate-aware evaluation unit. Do
 not retrain, retune a decision threshold, select a checkpoint, or change the
 T006 manifests. All predictions use the relevant canonical model loader and
-`probability >= 0.5` for abnormal. The three checkpoint identities are:
+`probability >= 0.5` for abnormal.
+
+The canonical `test.csv` SHA-256 in
+[`configs/f002_protocol.json`](../../configs/f002_protocol.json) is
+`439315130efb419032d1a686c1a871f0b60443e635a0845e03ebf4325db55c38`.
+The proposed [`F007 machine-readable protocol`](../../configs/f007_protocol.json)
+pins and references that F002 protocol's T006 fingerprints; it does not define
+a second test-manifest hash. The three checkpoint identities are:
 
 | Bundle | Frozen SHA-256 | Input path |
 |---|---|---|
@@ -55,8 +64,9 @@ D, E and F use their tracked validation-derived selection algorithms with no
 test-derived quality table. D/F's three inclusive validation requirements are
 accuracy `>=225/254`, exact F002b macro-F1
 `>=(336/365 + 114/143)/2`, and abnormal recall `>=57/76`. These limits and
-F's recall-priority rule remain **provisional** pending Salo's explicit
-approval. F006b historically used `Cmax = Cmodel = 20,596,068,563` FLOPs,
+F's recall-priority rule remain **provisional** pending independent PR re-review
+and Charalampos's recorded final sign-off under the reported delegation.
+F006b historically used `Cmax = Cmodel = 20,596,068,563` FLOPs,
 the full-width K16 cost. D030 proposes a subsequent F007-only budget scale:
 `Ccapacity = (11/10) × Cmodel = 22,655,675,419.3` FLOPs. This 10% headroom
 is a **simulated per-request allowance**, not measured hardware capacity,
@@ -113,8 +123,11 @@ states, confirms the effect of normalization without image inference:
 | 20% | DEFER | `w0.5_k2` | `w1.0_k8` | `w1.0_k12` | `w1.0_k16` |
 
 The mapping is stable across 5–20% headroom **at these states**. This does
-not establish physical device headroom. Every selected point is within its
-exact budget. The `w1.0_k12` choice is validation-sensitive: its TN=163,
+not establish physical device headroom. Across the examined 0%, 5%, 10% and
+20% assumptions, A/B/C static feasibility and E's maximum-validation-F1
+mapping stay unchanged at the five states; the headroom changes **F's**
+evaluated mapping at `b=0.50/0.75`. Every selected point is within its exact
+budget. The `w1.0_k12` choice is validation-sensitive: its TN=163,
 FP=15, normal recall=163/178 and accuracy=225/254 place accuracy exactly at
 the provisional threshold. Requiring one more correct validation unit would
 disqualify it. Relative to `w1.0_k8`, it detects two more abnormal units but
@@ -153,6 +166,13 @@ separately. At each system/state and for the heterogeneous schedule report:
 No prediction metric is assigned to a zero-coverage cell. DEFER is not an
 incorrect classification. Do not hide deferrals by calculating only selective
 accuracy. A separate clinical utility for deferral is not asserted here.
+Because each policy depends on `b` and frozen validation profiles, factorial
+coverage is deterministically 0 or 1 for every system × state. A structural
+coverage interval of `[0,0]` or `[1,1]` adds no statistical information;
+report the exact value without a bootstrap interval. Mixed-schedule coverage
+differs by system; show requested/completed unit counts, class support and
+the completed-unit denominator beside **every** predictive metric. Its AUROC
+is descriptive because it mixes predictions from different configurations.
 
 ## 3. Prediction aggregation and cost
 
@@ -164,9 +184,11 @@ agreement within every unit and exact row coverage. Compute TN/FP/FN/TP,
 accuracy, macro-F1 and both recalls with
 the frozen `binary_metrics` formulas; calculate AUROC from unit targets and
 mean probabilities only when both classes occur. For zero completed units,
-all predictive metrics are unavailable. For a class absent in a descriptive
-stratum, show that class's recall, macro-F1 and AUROC as unavailable in the report,
-along with the confusion counts; never infer class performance from a zero
+all predictive metrics are unavailable. T013b must wrap `binary_metrics` with
+an explicit class-support check: when one class is absent, retain defined
+accuracy and present-class recall but return unavailable for the absent-class
+recall, macro-F1 and AUROC instead of the helper's zero placeholder. Show
+confusion counts and support; never infer class performance from a zero
 denominator. Adaptive metrics come from actual routed per-unit predictions,
 never averages of configuration-level F1 values.
 
@@ -192,11 +214,20 @@ cost in the primary comparison. FLOPs are not energy, battery life or latency.
 
 ## 4. Comparable CPU latency and throughput
 
-Run **one** CPU benchmark job for the union of A/B/C, every distinct D/E/F
-configuration reached in the five states, and the supplementary original
-F002c K4 point below. This union includes nested F005b full-width K16.
-Preload the same 200 frozen D024 validation timing
-IDs on each model's canonical preprocessing path; use D024's first 50 warm-up
+Run **one** CPU benchmark job for exactly these nine preselected points:
+
+1. F002b MobileNetV2 K16 (A).
+2. Original F002c TinyViT K16 (B).
+3. Original F002c TinyViT K4 (near-matched FLOP diagnostic).
+4. Nested F005b `w0.5_k8` (C).
+5. Nested F005b `w0.5_k2` (D and F/E at `b=0.25`).
+6. Nested F005b `w0.75_k8` (E at `b=0.50/0.75`).
+7. Nested F005b `w1.0_k8` (F at `b=0.50`).
+8. Nested F005b `w1.0_k12` (F at `b=0.75`).
+9. Nested F005b `w1.0_k16` (F/E at `b=1`; secondary equal-FLOP pair).
+
+Preload the same 200 frozen D024 validation timing IDs on each model's
+canonical preprocessing path; use D024's first 50 warm-up
 IDs, then all 200 timed IDs, for five repeats per point. Use one named CPU,
 one process and fixed four threads; record CPU model/node, OS, library
 versions, torch interop threads and the exact request IDs/order. Rotate point
@@ -207,16 +238,27 @@ within `1e-4` and no threshold-class change on all timed requests; otherwise
 stop and seek a documented methodology decision. F002b receives bilinear
 tensors, while TinyViT systems receive bicubic tensors from the same raw IDs.
 
-Time frame selection, width setting, encoding, pooling and head, with already
-decoded/normalized tensors; exclude JPEG decode and preprocessing from this
-**model-only** clock. Report median and p95 per-request latency, raw repeats,
-completed zone-sequence predictions/s and processed frames/s using timed-pass
-wall time. Measure routing overhead and grouped-versus-interleaved switching
-on an identical point × request multiset, with cache reset between clips.
+For each point, the **model-only** clock starts with frame selection from
+already decoded/normalized tensors and ends when its probability is ready;
+it includes width setting, encoding, pooling and head, and excludes JPEG
+decode, preprocessing and policy lookup. Report median and p95 per-request
+latency, raw repeats, completed zone-sequence predictions/s and processed
+frames/s using timed-pass
+wall time. Separately time routing from receipt of a budget and policy ID to
+the selected point or DEFER result, without image decoding or model work.
+For served requests, also time routing plus model work from that same start
+to probability ready; for DEFER, stop when the decision is returned and do
+not decode or infer. Grouped-versus-interleaved switching uses the identical
+point × request multiset of the **six nested configurations**
+`w0.5_k2`, `w0.5_k8`, `w0.75_k8`, `w1.0_k8`, `w1.0_k12` and `w1.0_k16`,
+with cache reset between clips. It excludes the two separate static
+backbones and DEFER, whose routing time is reported separately.
 Run a **separate** practical JPEG decode/resize/normalize/model path on the
 same frozen 200 timed IDs and 50 warm-up IDs, five repeats, host and thread
-settings, after an untimed read pass, and label its latency/throughput
-end-to-end. Deferral overhead and completed throughput accompany coverage.
+settings, after an untimed read pass. Its clock starts at budget/policy receipt
+before JPEG decode and ends at probability ready, or at an early DEFER decision;
+label its latency/throughput end-to-end. Deferral overhead and completed
+throughput accompany coverage.
 Existing F002 DAS-5, F004 Xeon and F006b Ryzen absolute times are context,
 not a controlled cross-system comparison.
 
@@ -226,17 +268,19 @@ First aggregate alias probabilities into one record per duplicate-aware unit,
 retaining that unit's alias-row costs and frozen split_group. Resample the
 **test split_group dependency groups**, not alias rows or the five repeated
 states, with replacement for 5,000 paired bootstrap draws using NumPy PCG64
-seed `13013`. Each draw carries all member unit records, budget states and
-predictions, preserving multiplicity when a group is drawn twice; use
-identical sampled groups for compared systems. Report point estimates and
+seed `13013`. Sort dependency-group IDs, generate the group-index draws
+**once**, and reuse the same indices across every system, state and contrast.
+Each draw carries all member unit records, budget states and predictions,
+preserving multiplicity when a group is drawn twice. Report point estimates and
 2.5/97.5 percentile intervals for coverage, accuracy, macro-F1, both recalls,
 AUROC where defined, mean full FLOPs/request, and prespecified paired quality
 differences. A draw without
 both classes is invalid for class-dependent metrics; report valid-draw counts,
 and suppress an interval with fewer than 4,000 valid draws. These intervals
 reflect known-group sampling uncertainty on this proxy dataset, not
-biological-patient independence or model-seed uncertainty. No unadjusted
-multiple-comparison p-values determine a winner.
+biological-patient independence or model-seed uncertainty. These are
+approximate, unadjusted per-comparison 95% intervals; multiple comparisons
+are not familywise corrected, and no p-value determines a winner.
 
 **Near-matched computation (supplementary, chosen before test):** accept at
 most a 1% relative difference in exact full FLOPs, measured against A's cost.
@@ -264,12 +308,37 @@ causal mechanism or add a seventh primary system.
 `b = {0.25, 0.50, 0.75, 1.00}` and the secondary heterogeneous schedule,
 report paired F-minus-D and F-minus-E differences in coverage, completed-unit
 accuracy, macro-F1, abnormal and normal recall, AUROC where supported, and
-mean full FLOPs per requested row. Predictive differences use common completed
-units, with that denominator shown; coverage and cost use all matched
-requests. Report these jointly with bootstrap intervals and configurations;
+mean full FLOPs per requested row. Predictive differences and paired
+common-request cost use common completed units, with that denominator shown;
+coverage and total cost use all assigned requests. Report these jointly with
+bootstrap intervals and configurations;
 do not select favorable states after seeing test results. At `b=0`, all
 systems defer, so report the common zero coverage/cost without a predictive
 contrast. No single winner rule is specified.
+
+**Adaptive versus static contrasts (preselected):** compare F with every
+static system that serves at the same D021 state:
+
+| State | F comparisons on common completed units |
+|---:|---|
+| `b=0.25` | F−A |
+| `b=0.50` | F−A, F−C |
+| `b=0.75` | F−A, F−C |
+| `b=1.00` | F−A, F−B, F−C |
+
+In the predefined heterogeneous schedule, compare F with A, B and C on
+each pair's common completed units. For every contrast report F-minus-static
+accuracy, macro-F1, abnormal recall, normal recall and AUROC differences
+where supported, plus the common-unit denominator, both systems' coverage and
+their coverage difference,
+full FLOPs difference on those common requests and paired dependency-group
+bootstrap intervals. Also report total full FLOPs over all assigned requests
+beside coverage so deferrals remain visible. The same prediction and cost
+rules apply to F−D and F−E. No new winner rule or post-test pair selection
+is permitted. F, D and E all select `w0.5_k2` at `b=0.25`; F and E both
+select `w1.0_k16` at `b=1.00`. With the same checkpoint, frames and input
+path, these pairs have identical predictions by construction. State the
+identity and cost directly; do not run redundant statistical tests for it.
 
 **Fixed cost–quality comparison (chosen on validation):** compare A
 against D's `w0.5_k2` at `b=0.25`; both pass the exact cap. Validation
@@ -307,19 +376,18 @@ value in selection, DEFER records and boundary checks, retaining historical
 `Cmodel` as the F006b default. T013b must pass the approved `Ccapacity` for
 D/E/F and use that same value for A/B/C feasibility. Preserve F006b's original
 behavior, tests, simulation and measured outputs. The future command must
-first verify (1) Charalampos and Salo accepted the numerical quality filter,
-recall-priority rule, F007 headroom and continuous-budget interpretation in
-the repository, (2) they approved the six systems, five-state schedule,
-descriptive comparisons, CPU path and entire F007 protocol after independent
-review, and (3) frozen source/protocol/checkpoint hashes match. Only after
-those gates
-may it read the held-out test manifest **as bytes solely to check its frozen
-hash**, without parsing rows or labels. A manifest-hash mismatch fails closed.
-Only after that check may it parse labels or images and run inference. No
-model/threshold fitting, post-test configuration selection, budget
-reassignment or metric-driven rerun is allowed. A technical failure may be
-rerun with the
-identical frozen configuration and all attempts retained.
+strictly validate the **accepted committed** F007 JSON protocol and frozen
+source/checkpoint identities. Structural T006 verification may occur before
+final sign-off: canonical `verify_t006()` hashes and parses test-manifest
+metadata, checks counts and fingerprints against `configs/f002_protocol.json`,
+and must fail closed on mismatch. That check does not authorize predictive
+evaluation. Before **any test-image decoding for evaluation, model inference,
+test-derived predictive metric or raw result**, require completed independent
+PR review and Charalampos's recorded final sign-off under the reported Salo
+delegation. No test predictions may choose a model or configuration, and no
+threshold, budget assignment or protocol rule may be retuned from held-out
+evidence. A technical failure may be rerun with the identical frozen
+configuration and all attempts retained.
 
 The available identifiers protect only known family/shared-recording
 dependencies, not biological patients. One test split and one selected seed

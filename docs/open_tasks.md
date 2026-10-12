@@ -97,7 +97,8 @@ Historical acceptance criteria and evidence remain in
 - **Status:** F006a and F006a_2 analyses were included in the independently
   reviewed and merged T012 PR #27. Their measured validation evidence is
   historical; final numerical controller-policy acceptance remains pending
-  from Salo (D030).
+  independent PR re-review and Charalampos's recorded sign-off under the
+  reported Salo delegation (D030).
 - **Dependencies:** T010 and relevant T011 results.
 - **Scope:** Analyze all 24 configurations of the actual deployable F005b
   seed-2026 checkpoint. Report strict macro-F1/FLOPs dominance, practical
@@ -122,7 +123,8 @@ Historical acceptance criteria and evidence remain in
   completed in [`F006b`](../experiments/F006b/README.md) and merged in PR #27.
   Merge did not accept the numerical policy. D030 proposes F007 headroom and
   retains the quality filter and recall-first rule; Charalampos approved that
-  direction, while Salo's explicit approval remains pending.
+  direction; independent PR re-review and Charalampos's recorded final sign-off
+  under the reported Salo delegation remain pending.
 - **Dependencies:** T012a's F006a and F006a_2 analyses; final team decision
   before T013.
 - **Scope:** Implement a deterministic policy over all 24 measured F005b cells:
@@ -145,17 +147,23 @@ Historical acceptance criteria and evidence remain in
 - **Priority:** P1
 - **Owner:** Charalampos
 - **Status:** [`F007`](../experiments/F007/README.md) is a proposed
-  preregistration based on the merged T012 implementation. No T006 test
-  labels, images or predictions have been accessed for T013a. D030 awaits
-  Salo's explicit approval; F007 needs independent review and team approval.
+  preregistration based on the merged T012 implementation. Canonical
+  `verify_t006()` has structurally verified test-manifest metadata; no held-out
+  test images have been decoded for evaluation and no test-image inference or
+  predictive evaluation has occurred. The first independent review's two
+  documentation blockers have been addressed locally; D030 and F007 await
+  final independent PR re-review and Charalampos's recorded sign-off under
+  the reported Salo delegation.
 - **Scope:** Fix six primary systems, the D021 resource states and a
   test-independent mixed schedule, duplicate-aware prediction/coverage and
   cost rules, one same-job CPU benchmark, group-cluster uncertainty, a fixed
   descriptive MobileNetV2-versus-`w0.5_k2` comparison and preselected
-  matched-FLOP diagnostics before any final-test access. The static width-0.5
+  matched-FLOP diagnostics before any predictive final-test access. The static
+  width-0.5
   comparator is the **canonical nested F005b** width slice at validation-
   selected K8, not the separate historical 50%-only training control.
-- **Acceptance criteria:** Independent review and explicit team approval of
+- **Acceptance criteria:** Independent PR review and Charalampos's recorded
+  final sign-off under the reported Salo delegation on
   D030's numerical policy and the F007 protocol, including simulated budget
   assignment and descriptive comparison rules; record the accepted version
   in the repository before T013b execution. Do not treat this proposal as
@@ -165,8 +173,9 @@ Historical acceptance criteria and evidence remain in
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Status:** Blocked on Salo's D030 policy acceptance and T013a protocol
-  review/approval. The final-test execution guard is not yet implemented.
+- **Status:** Blocked on final independent PR review and Charalampos's recorded
+  D030/F007 sign-off under the reported Salo delegation. The final-test
+  execution guard is not yet implemented.
 - **Dependencies:** Frozen T006/F002b/F002c/F005b handoffs and accepted F007
   protocol.
 - **Acceptance criteria:** Use the approved six-system matched requests;

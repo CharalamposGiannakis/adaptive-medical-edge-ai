@@ -1,0 +1,143 @@
+{
+  "schema_version": 1,
+  "experiment": "F007",
+  "status": "proposed_pending_team_approval",
+  "authorizes_test_inference": false,
+  "decision_record": "D030",
+  "frozen_t006": {
+    "canonical_protocol": "configs/f002_protocol.json",
+    "canonical_protocol_sha256": "39f08186bd7dac4e3d85891ec4304c895f74f2fe7a9981714e6b86d91b70bda0",
+    "input_fingerprints_json_pointer": "/t006_sha256",
+    "expected_counts_json_pointer": "/t006_expected",
+    "test_manifest_sha256_json_pointer": "/t006_sha256/test.csv",
+    "verification": "src.f002_protocol.verify_t006",
+    "structural_manifest_verification_allowed_before_approval": true
+  },
+  "checkpoints": {
+    "f002b_mobilenetv2": {
+      "path": "checkpoints/f002b_mobilenetv2_seed2026.pt",
+      "sha256": "5bad132633fd6188c0e449a75f73294612479bb1f0dc1820d8e6c459f7bdb823",
+      "seed": 2026,
+      "input_path": "D024_RGB224_bilinear_ImageNet_normalization"
+    },
+    "f002c_original_tinyvit": {
+      "path": "checkpoints/f002c_tinyvit5m_epoch8.pt",
+      "sha256": "30b70734426e84f429b83011abca04511540149d1fc3e416274c6fbcb14853b2",
+      "selected_epoch": 8,
+      "input_path": "F003_F004_RGB224_bicubic_ImageNet_normalization"
+    },
+    "f005b_nested_tinyvit": {
+      "bundle": "checkpoints/f005b_nested_seed2026",
+      "checkpoint_sha256": "18d601e3ea04a1ba572ef99484c8681c5a3011dd7d3eb28309cb32906ff9e702",
+      "run_json_sha256": "47710bc9f918576b5698d2f0eeaa3f6f1c7de127b483cd7c3e387f735e131bec",
+      "importance_sha256": "442785dcc4e8b7caf5521d3dd3683a5a48bbbe5eb2dc4873926967af60866071",
+      "seed": 2026,
+      "input_path": "F003_F005_RGB224_bicubic_ImageNet_normalization"
+    }
+  },
+  "binary_task": {
+    "normal": 0,
+    "definite_abnormal": 1,
+    "threshold": "1/2",
+    "unit": "D024_retained_shared_recording_component_else_singleton",
+    "unit_probability": "arithmetic_mean_of_alias_probabilities_then_threshold"
+  },
+  "quality_requirements": {
+    "source": "F006a_2_frozen_F002b_validation_reference",
+    "validation_profile_path": "experiments/F006a_2/quality_screen.csv",
+    "validation_profile_sha256": "726038faa90e86a405367fb1cfdd5043be68fe8672cb2bd248a7b2205447027d",
+    "accuracy_min": {"numerator": 225, "denominator": 254},
+    "macro_f1_min": {"numerator": 44829, "denominator": 52195},
+    "abnormal_recall_min": {"numerator": 57, "denominator": 76},
+    "all_three_inclusive": true,
+    "clinical_safety_thresholds": false
+  },
+  "resource": {
+    "variable": "b",
+    "continuous_domain_inclusive": ["0", "1"],
+    "cmodel_flops": 20596068563,
+    "headroom_ratio": {"numerator": 11, "denominator": 10},
+    "ccapacity_flops": {"numerator": 226556754193, "denominator": 10},
+    "per_alias_request_budget": "b_times_ccapacity_exact_rational_no_tolerance",
+    "interpretation": "simulated_model_work_allowance_not_measured_hardware_or_energy",
+    "historical_f006b_capacity_unchanged": true
+  },
+  "resource_states": ["0", "0.25", "0.50", "0.75", "1.00"],
+  "systems": {
+    "A": {"checkpoint": "f002b_mobilenetv2", "static_k": 16, "flops": 5107788033},
+    "B": {"checkpoint": "f002c_original_tinyvit", "static_k": 16, "flops": 20596068563},
+    "C": {"checkpoint": "f005b_nested_tinyvit", "static_width": "0.5", "static_k": 8, "flops": 7266300179},
+    "D": {"checkpoint": "f005b_nested_tinyvit", "policy": "minimum_quality", "fixed_point": "w0.5_k2"},
+    "E": {"checkpoint": "f005b_nested_tinyvit", "policy": "f006a_rule_a"},
+    "F": {"checkpoint": "f005b_nested_tinyvit", "policy": "recall_priority"}
+  },
+  "heterogeneous_schedule": {
+    "unit": "frozen_duplicate_aware_unit_id",
+    "assignment_uses_labels_or_predictions": false,
+    "sort_key": "SHA256_UTF8_salt_plus_unit_id_then_unit_id",
+    "salt": "F007-T013a-v1\n",
+    "state_by_sorted_rank": "resource_states[i_mod_5]",
+    "request_order": "frozen_test_manifest_order",
+    "same_state_for_all_aliases_of_unit": true
+  },
+  "comparisons": {
+    "adaptive_vs_static_by_state": {
+      "0.25": ["F-A"],
+      "0.50": ["F-A", "F-C"],
+      "0.75": ["F-A", "F-C"],
+      "1.00": ["F-A", "F-B", "F-C"]
+    },
+    "adaptive_vs_static_heterogeneous": ["F-A", "F-B", "F-C"],
+    "adaptive_policy_by_state": ["F-D", "F-E"],
+    "adaptive_policy_states": ["0.25", "0.50", "0.75", "1.00", "heterogeneous"],
+    "fixed_cost_quality": {"pair": "D-A", "state": "0.25", "formal_noninferiority_margin": null},
+    "near_matched_flops": {"pair": "A-f002c_original_k4", "state": "0.25", "maximum_relative_flops_gap": "1/100"},
+    "equal_flops_training_recipe": {"pair": "B-f005b_nested_w1.0_k16", "state": "1.00"},
+    "identical_prediction_pairs": [
+      {"state": "0.25", "systems": ["D", "E", "F"]},
+      {"state": "1.00", "systems": ["E", "F"]}
+    ],
+    "predictive_and_paired_cost_unit_set": "common_completed_units_only",
+    "coverage_and_total_cost_unit_set": "all_assigned_requests",
+    "winner_rule": null
+  },
+  "metrics": {
+    "classification": ["accuracy", "macro_f1", "abnormal_recall", "normal_recall", "auroc_where_supported"],
+    "paired_differences": "first_system_minus_second_system",
+    "missing_class_wrapper": "absent_class_recall_macro_f1_auroc_unavailable_not_zero",
+    "mixed_auroc": "descriptive_across_routed_configurations",
+    "factorial_coverage": "deterministic_0_or_1_without_bootstrap_interval",
+    "show_completed_unit_denominator_for_every_mixed_metric": true
+  },
+  "bootstrap": {
+    "group": "frozen_test_split_group",
+    "group_order": "sorted_dependency_group_ids",
+    "generator": "numpy_PCG64",
+    "seed": 13013,
+    "draws": 5000,
+    "reuse_group_indices_across_systems_states_and_contrasts": true,
+    "interval": "approximate_unadjusted_per_comparison_percentile_95",
+    "percentiles": [2.5, 97.5],
+    "minimum_valid_draws": 4000
+  },
+  "cpu_benchmark": {
+    "points": ["f002b_mobilenetv2_k16", "f002c_original_k16", "f002c_original_k4", "f005b_w0.5_k8", "f005b_w0.5_k2", "f005b_w0.75_k8", "f005b_w1.0_k8", "f005b_w1.0_k12", "f005b_w1.0_k16"],
+    "switching_nested_points": ["w0.5_k2", "w0.5_k8", "w0.75_k8", "w1.0_k8", "w1.0_k12", "w1.0_k16"],
+    "validation_timed_requests": 200,
+    "warmup_requests": 50,
+    "repeats": 5,
+    "cpu_threads": 4,
+    "frame_encoder_chunk_max": 4,
+    "model_only_clock": "frame_selection_from_preprocessed_tensors_to_probability_excludes_routing_and_decode",
+    "routing_clock": "budget_and_policy_receipt_to_configuration_or_defer_decision",
+    "served_policy_clock": "budget_and_policy_receipt_to_probability_ready",
+    "defer_clock": "budget_and_policy_receipt_to_defer_result_no_decode_or_inference",
+    "end_to_end_clock": "budget_and_policy_receipt_before_jpeg_decode_to_probability_or_early_defer"
+  },
+  "execution_gate": {
+    "before_final_signoff": "structural_verify_t006_metadata_allowed_only",
+    "requires": ["independent_PR_review", "recorded_Charalampos_final_signoff_under_reported_delegation", "accepted_committed_F007_protocol", "frozen_hash_validation"],
+    "before_requirements_forbidden": ["test_image_decoding_for_evaluation", "test_model_inference", "test_predictive_metrics", "test_prediction_driven_selection_or_retuning"],
+    "technical_failure_rerun": "identical_frozen_configuration_preserve_all_attempts"
+  }
+}

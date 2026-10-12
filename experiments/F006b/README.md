@@ -3,8 +3,9 @@
 **Question.** Can one deployable F005b shared-weight checkpoint serve a
 deterministic, quality-screened width × frame-count policy as a continuous
 model-work budget changes? F006b implements and simulates a **provisional**
-validation-stage policy. Charalampos and Salo have not accepted its numerical
-quality limits, budget normalization or selection rule as final T013 policy.
+validation-stage policy. Its numerical quality limits, budget normalization
+and selection rule are not yet accepted as final T013 policy; D030 records the
+current proposed F007 choices and sign-off gate.
 The frozen F002b MobileNetV2 remains the static reference; no model is trained
 or changed here, and the T006 test partition is not used.
 
@@ -250,10 +251,10 @@ decoding and do not measure energy, battery, thermal load or clinical safety.
 
 ## Team decisions before T013
 
-Charalampos and Salo must approve or revise the three empirical quality
-requirements, `Cmax` normalization and continuous-budget semantics, the
-recall-first selection/tie-break rule and final operating points. They must
-also choose the final static-versus-adaptive evaluation protocol, including
-how validation-driven selection, duplicate-aware units and hardware timing
-are reported, **before** any held-out T006 test inference. This experiment
-records a reproducible proposed policy, not a new accepted decision.
+At this experiment's completion these choices remained open. D030 now proposes
+the F007 quality requirements, simulated capacity normalization, selection
+rule and operating points. Charalampos reports Salo delegated completion of
+the remaining work to him. Independent PR re-review and his recorded final
+sign-off on D030 and the static-versus-adaptive F007 protocol remain required
+**before** held-out T006 test inference. This experiment records the historical
+provisional policy, not a new accepted decision.

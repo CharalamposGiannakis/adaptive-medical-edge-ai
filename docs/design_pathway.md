@@ -118,18 +118,21 @@ states to configurations; that belongs to T012.
   change to D021. It serves width changes with `NestedAnytimeClip`, compares
   fixed alternatives and measures selected pruned width × K points in one
   comparable local chunked CPU job. FLOPs remain the resource constraint;
-  final numerical policy acceptance remains pending from Salo. D030 proposes
-  10% simulated capacity headroom for F007 only; F006b's original normalization
+  final numerical policy acceptance remains pending independent PR re-review
+  and Charalampos's recorded sign-off under the reported Salo delegation.
+  D030 proposes 10% simulated capacity headroom for F007 only; F006b's original normalization
   and evidence remain historical.
 - **T013a:** [`F007`](../experiments/F007/README.md) proposes the six-system
   final comparison: matched resource requests, prediction quality alongside
   coverage/deferrals, exact FLOPs, one comparable CPU job, dependency-group
   uncertainty and preselected cost–quality contrasts. It is not an
   accepted protocol or a held-out result. T012 PR #27 merged its implementation;
-  D030's proposed numerical policy still awaits Salo's explicit approval.
-- **T013b:** Execute only after Charalampos and Salo accept the controller and
-  reviewed F007 protocol in the repository. Then compare frozen MobileNetV2,
-  original TinyViT, a static nested-width point and adaptive policies without
+  D030's proposed numerical policy still awaits final independent PR re-review
+  and Charalampos's recorded sign-off under the reported Salo delegation.
+- **T013b:** Execute only after independent PR review and Charalampos's recorded
+  acceptance of the controller policy and F007 protocol in the repository.
+  Then compare frozen MobileNetV2, original TinyViT, a static nested-width
+  point and adaptive policies without
   test-driven retuning. Report throughput, latency, uncertainty and the dataset
   limits. The held-out T006 partition remains protected until that gate.
 

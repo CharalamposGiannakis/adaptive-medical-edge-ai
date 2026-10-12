@@ -441,8 +441,10 @@ decision timing.
 
 **Date:** 2026-10-12
 **Status:** Proposed for F007; Charalampos approved this direction in the T013a
-revision request. Salo's explicit approval remains pending. This is not yet an
-accepted team decision.
+revision request. Charalampos reports that Salo delegated completion of the
+remaining project work to him. This is not a claim that Salo individually
+approved these numerical choices. Independent PR re-review and Charalampos's
+recorded final sign-off remain pending; D030 is not yet accepted.
 
 - **Proposed policy:** Keep F006b's provisional three inclusive,
   F002b-referenced validation quality requirements and its recall-priority,
@@ -471,14 +473,24 @@ accepted team decision.
   remove unsupported formal noninferiority margins. Add a secondary original
   TinyViT K16 versus nested full-width K16 comparison at equal inference
   FLOPs; different training recipes prevent attribution to pruning alone.
+- **Independent-review corrections:** The first F007 review requested (B1)
+  explicit F-versus-A/B/C contrasts at every jointly served state and on the
+  fixed mixed schedule, and (B2) an accurate test-access gate. F007 now fixes
+  those contrasts before inference and allows canonical structural
+  `verify_t006()` metadata/fingerprint checks while prohibiting test-image
+  decoding, inference and predictive evaluation until final sign-off. The
+  proposed machine-readable contract is
+  [`configs/f007_protocol.json`](../configs/f007_protocol.json). Normal task
+  branches, pull requests and independent review remain required.
 - **Limits and consequences:** `w1.0_k12` has validation TN=163, FP=15,
   normal recall 163/178 and accuracy exactly 225/254; a one-unit higher
   accuracy requirement would disqualify it. Recall priority can increase
   false positives and computation and is not a clinical safety rule. F006b's
   original `Cmax = Cmodel` behavior, simulation, tests and measurements remain
-  historical. T013b must parameterize capacity without changing that behavior and
-  cannot access held-out test data until Salo accepts the policy and the
-  entire F007 protocol receives independent review and team approval.
+  historical. T013b must parameterize capacity without changing that behavior.
+  No held-out test-image decoding or predictive evaluation is permitted until
+  an independent final PR review and Charalampos's recorded sign-off under
+  the reported delegation.
 
 ---
 
@@ -488,14 +500,15 @@ The following are intentionally **not decided yet**:
 
 - How well the validation-supported model and adaptive behavior generalize; OpenPOCUS remains a technical proxy rather than clinical deployment evidence.
 - Any additional biological-patient identity mapping if new provenance becomes available; D023 fixes the current T006 quality exclusions and known-group split protocol.
-- Salo's explicit acceptance of D030's F007 quality filter, recall-priority
-  rule, simulated 10% capacity headroom and final operating-point mapping.
+- Charalampos's recorded final sign-off on D030's F007 quality filter,
+  recall-priority rule, simulated 10% capacity headroom and operating-point
+  mapping under the reported Salo delegation, after independent PR review.
 - Whether input uncertainty becomes part of the runtime policy.
 - Whether an optimization-based controller is worth implementing.
 - Final scenario-specific utility / global performance measure.
 - Exact latency, battery, thermal, and network assumptions.
 - Final held-out test protocol; the T013a
   [`F007 proposal`](../experiments/F007/README.md) awaits independent review
-  and explicit team approval before any test access.
+  and Charalampos's final sign-off before predictive test access.
 - Whether restricted FAST/pneumothorax data become available.
 - Any later teaching-team clarification of throughput presentation; D024 specifies reporting both frames/s and completed zone-sequence predictions/s.

@@ -41,9 +41,10 @@ shared-weight frame-count family that T011 and T012 build on.
 ## Next research decision
 
 Charalampos approved D030's proposed F007 10% simulated capacity headroom and
-recall-priority direction; Salo's explicit policy approval remains pending.
-T013a's proposed [`F007 protocol`](../experiments/F007/README.md) needs
-independent review and team approval before T013b. It
+recall-priority direction. He reports that Salo delegated completion of the
+remaining project work to him; D030 and T013a's proposed
+[`F007 protocol`](../experiments/F007/README.md) need final independent PR
+re-review and his recorded sign-off before T013b. It
 plans matched comparisons against frozen F002b MobileNetV2, original static
 TinyViT K16 and a fixed width-0.5 slice of the canonical nested F005b bundle;
 the separately trained 50%-only control is not the proposed static handoff.

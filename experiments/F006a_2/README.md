@@ -7,7 +7,8 @@ which use the least model compute, and which remain feasible under the proposed
 resource states? This is validation-only T012a analysis. The team agreed to
 assess quality before optimizing compute; the numerical requirements and the
 controller policy still need human approval. The F002b values are an **empirical
-research reference, not clinical safety thresholds**.
+research reference, not clinical safety thresholds**. D030 now records the
+proposed F007 numerical policy and its pending independent-review/sign-off gate.
 
 ## Evidence and reproduction
 
@@ -167,14 +168,15 @@ within the reused validation set are fragile; checkpoint selection and this
 screen both use validation. The proxy dataset and lack of per-unit paired
 predictions prevent clinical, significance, or generalization claims.
 
-## Human decisions before T012b
+## Human decisions identified at this stage
 
-Charalampos and Salo must approve or revise (1) which empirical quality
+This analysis identified decisions about (1) which empirical quality
 requirements to use, including treatment of normal recall and uncertainty;
 (2) the `Cmax` normalization, active-state budget semantics and DEFER rule;
 and (3) the selection/tie-breaking rule among qualified feasible points,
 considering the abnormal-recall trade-off rather than minimizing FLOPs alone.
-T012b must then measure comparable chunked CPU runtime for the pruned points
-before treating FLOPs as latency and implement/simulate the accepted rule.
-T013's held-out evaluation requires a separately fixed protocol. This
-experiment does not accept a controller or alter D025–D029.
+T012b subsequently measured comparable chunked CPU runtime and implemented a
+provisional controller. D030 and F007 now propose the final numerical policy
+and held-out protocol; independent review and Charalampos's recorded sign-off
+under the reported Salo delegation remain pending. This experiment does not
+accept a controller or alter D025–D029.

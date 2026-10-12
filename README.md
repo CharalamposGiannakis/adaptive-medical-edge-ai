@@ -16,12 +16,12 @@ K = 1–16 frames as one weight file; T011 (F005) adds nested structured pruning
 with distillation, giving 4 widths × 6 K in one file. D027–D029 record these as
 accepted decisions. T010 and T011 are complete; T012b's provisional
 resource-aware controller was implemented and merged in PR #27. D030 proposes
-10% simulated budget headroom for F007; Charalampos approved the direction,
-and Salo's explicit policy approval remains pending. T013a now proposes the
-[`F007 final-evaluation protocol`](experiments/F007/README.md). Team review
-and acceptance of the numerical policy and that protocol must precede held-out
-test evaluation (T013b). The frozen static reference remains F002b MobileNetV2
-(D025): K16 validation macro-F1 0.859,
+10% simulated budget headroom for F007. Charalampos reports Salo delegated
+completion of the remaining work to him; D030 and the
+[`F007 final-evaluation protocol`](experiments/F007/README.md) remain proposed
+until independent PR re-review and his recorded final sign-off. T013b cannot
+run held-out predictive evaluation before then. The frozen static reference
+remains F002b MobileNetV2 (D025): K16 validation macro-F1 0.859,
 abnormal recall 0.750 and 5.11 GFLOPs.
 Charalampos and Salo selected the F002c TinyViT-5M epoch-8 checkpoint as the
 adaptive-system backbone (D026). That same checkpoint reached validation macro-F1
@@ -30,8 +30,9 @@ shared frozen copy is
 [`checkpoints/f002c_tinyvit5m_epoch8.pt`](checkpoints/f002c_tinyvit5m_epoch8.pt).
 
 These are validation development results, not clinical performance or a claim of
-universal architecture superiority. The T006 held-out test partition remains
-untouched.
+universal architecture superiority. The frozen T006 test manifest has undergone
+structural verification; no held-out test-image inference or predictive
+evaluation has occurred.
 
 ## Project direction
 
@@ -50,9 +51,9 @@ proxy. D025 continues to govern the MobileNetV2 static reference; D026 selects
 TinyViT for adaptive development. D027–D029 accept the frame-count family and
 nested structured pruning as compute compression. Its shared checkpoint remains
 about 20.4 MB; narrower widths reduce inference work. The T012b controller
-policy remains provisional pending Salo's explicit approval of D030. F007 also
-needs independent review and team approval. No held-out OpenPOCUS test results
-are claimed.
+policy and D030 remain provisional pending independent PR re-review and
+Charalampos's final sign-off under the reported delegation. No held-out
+OpenPOCUS predictive results are claimed.
 
 The current technical pathway is in [`docs/design_pathway.md`](docs/design_pathway.md).
 The independently reviewed F002 qualification and static-baseline contract is
