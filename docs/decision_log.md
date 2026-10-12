@@ -482,6 +482,13 @@ recorded final sign-off remain pending; D030 is not yet accepted.
   proposed machine-readable contract is
   [`configs/f007_protocol.json`](../configs/f007_protocol.json). Normal task
   branches, pull requests and independent review remain required.
+- **Cross-platform provenance correction:** The proposed F007 contract now
+  pins the canonical Git LF SHA-256 of `configs/f002_protocol.json`, rather
+  than a Windows CRLF checkout hash. The exact future accepted JSON status is
+  `accepted_final_protocol`; its current status remains proposed and
+  `authorizes_test_inference=false`. The F007 README governs methodology
+  details not duplicated in the JSON. This correction changes no model,
+  resource budget, checkpoint or held-out evaluation rule.
 - **Limits and consequences:** `w1.0_k12` has validation TN=163, FP=15,
   normal recall 163/178 and accuracy exactly 225/254; a one-unit higher
   accuracy requirement would disqualify it. Recall priority can increase

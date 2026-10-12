@@ -150,10 +150,10 @@ Historical acceptance criteria and evidence remain in
   preregistration based on the merged T012 implementation. Canonical
   `verify_t006()` has structurally verified test-manifest metadata; no held-out
   test images have been decoded for evaluation and no test-image inference or
-  predictive evaluation has occurred. The first independent review's two
-  documentation blockers have been addressed locally; D030 and F007 await
-  final independent PR re-review and Charalampos's recorded sign-off under
-  the reported Salo delegation.
+  predictive evaluation has occurred. B1/B2 from the first independent review
+  and the later cross-platform protocol-hash blocker have been addressed in
+  the proposed docs/config; D030 and F007 await final independent PR re-review
+  and Charalampos's recorded sign-off under the reported Salo delegation.
 - **Scope:** Fix six primary systems, the D021 resource states and a
   test-independent mixed schedule, duplicate-aware prediction/coverage and
   cost rules, one same-job CPU benchmark, group-cluster uncertainty, a fixed

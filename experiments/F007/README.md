@@ -9,6 +9,11 @@ that merge did not accept its numerical controller policy. Charalampos reports
 that Salo delegated completion of the remaining work to him. D030 and F007
 remain proposed pending final independent PR review and Charalampos's sign-off
 under that delegation. No F007 prediction or raw test-result artifact exists.
+The JSON status required for a future accepted final protocol is
+`accepted_final_protocol`; the current proposed status and
+`authorizes_test_inference=false` grant no test-inference authorization.
+This README governs methodology details not duplicated in the compact JSON
+contract. Resolve any disagreement before accepting the protocol.
 
 **Question.** Does the shared-weight adaptive TinyViT system provide a useful
 predictive-quality, coverage and computational-cost trade-off against frozen
@@ -29,7 +34,15 @@ The canonical `test.csv` SHA-256 in
 `439315130efb419032d1a686c1a871f0b60443e635a0845e03ebf4325db55c38`.
 The proposed [`F007 machine-readable protocol`](../../configs/f007_protocol.json)
 pins and references that F002 protocol's T006 fingerprints; it does not define
-a second test-manifest hash. The three checkpoint identities are:
+a second test-manifest hash. Its F002 protocol-file SHA-256 is
+`84762d37e9de78fb906a05f8f9a5b7daeb65226d59821393db6517a1e4faa70f`,
+computed from the canonical LF bytes stored in Git. Verify against the Git
+blob at the committed F007 revision selected for execution rather than raw
+checkout bytes, which can have CRLF on an existing Windows checkout. Compare
+a local copy after CRLF-to-LF
+normalization against that blob to detect other changes. `.gitattributes`
+requires LF for protocol JSON on future checkouts. The three checkpoint
+identities are:
 
 | Bundle | Frozen SHA-256 | Input path |
 |---|---|---|
@@ -134,9 +147,16 @@ disqualify it. Relative to `w1.0_k8`, it detects two more abnormal units but
 adds four false positives and roughly 50% more FLOPs. Recall priority is not
 a clinical safety guarantee.
 
-One **secondary heterogeneous schedule** uses each test unit once. Construct
-unit IDs from the frozen T006 shared-recording graph without using labels for
-assignment. Sort them by `(SHA256(UTF-8("F007-T013a-v1\n" + unit_id)), unit_id)`;
+One **secondary heterogeneous schedule** uses each test unit once. Obtain
+`unit_id` from `src.f002_protocol.recording_units` for every retained row.
+For a verified shared-recording component, it is `shared:` followed by the
+first 16 lowercase hex characters of SHA-256 over the UTF-8 string formed by
+sorting **all** component `(exam_id, zone_id)` nodes (including excluded
+aliases), formatting each as `exam_id/zone_id`, and joining them with `|`.
+For a singleton it is `singleton:exam_id/zone_id`. The same returned ID is
+used for all retained aliases of one component; do not derive a different ID
+from the retained subset. Assignment uses IDs only, never labels or scores.
+Sort units by `(SHA256(UTF-8("F007-T013a-v1\n" + unit_id)), unit_id)`;
 give sorted rank `i` the state in `(0, 0.25, 0.50, 0.75, 1.00)[i mod 5]`.
 State counts therefore differ by at most one. Process requests in frozen
 manifest order, applying one unit's state to every retained alias row in that
@@ -376,9 +396,12 @@ value in selection, DEFER records and boundary checks, retaining historical
 `Cmodel` as the F006b default. T013b must pass the approved `Ccapacity` for
 D/E/F and use that same value for A/B/C feasibility. Preserve F006b's original
 behavior, tests, simulation and measured outputs. The future command must
-strictly validate the **accepted committed** F007 JSON protocol and frozen
-source/checkpoint identities. Structural T006 verification may occur before
-final sign-off: canonical `verify_t006()` hashes and parses test-manifest
+strictly require F007 JSON `status == "accepted_final_protocol"` and
+`authorizes_test_inference=true`, the accepted committed protocol and frozen
+source/checkpoint identities. The proposed JSON currently has
+`authorizes_test_inference=false`; changing its status alone is insufficient.
+Structural T006 verification may occur before final sign-off: canonical
+`verify_t006()` hashes and parses test-manifest
 metadata, checks counts and fingerprints against `configs/f002_protocol.json`,
 and must fail closed on mismatch. That check does not authorize predictive
 evaluation. Before **any test-image decoding for evaluation, model inference,

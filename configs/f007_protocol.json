@@ -2,11 +2,14 @@
   "schema_version": 1,
   "experiment": "F007",
   "status": "proposed_pending_team_approval",
+  "accepted_status_value": "accepted_final_protocol",
   "authorizes_test_inference": false,
   "decision_record": "D030",
+  "methodology_details": "experiments/F007/README.md",
   "frozen_t006": {
     "canonical_protocol": "configs/f002_protocol.json",
-    "canonical_protocol_sha256": "39f08186bd7dac4e3d85891ec4304c895f74f2fe7a9981714e6b86d91b70bda0",
+    "canonical_protocol_sha256": "84762d37e9de78fb906a05f8f9a5b7daeb65226d59821393db6517a1e4faa70f",
+    "canonical_protocol_sha256_basis": "SHA256_of_canonical_Git_LF_blob_bytes",
     "input_fingerprints_json_pointer": "/t006_sha256",
     "expected_counts_json_pointer": "/t006_expected",
     "test_manifest_sha256_json_pointer": "/t006_sha256/test.csv",
@@ -72,7 +75,9 @@
     "F": {"checkpoint": "f005b_nested_tinyvit", "policy": "recall_priority"}
   },
   "heterogeneous_schedule": {
-    "unit": "frozen_duplicate_aware_unit_id",
+    "unit": "src.f002_protocol.recording_units_unit_id",
+    "shared_unit_id_format": "shared:<first_16_lowercase_hex_SHA256_UTF8_of_pipe_joined_sorted_full_component_exam_id/zone_id_nodes>",
+    "singleton_unit_id_format": "singleton:<exam_id>/<zone_id>",
     "assignment_uses_labels_or_predictions": false,
     "sort_key": "SHA256_UTF8_salt_plus_unit_id_then_unit_id",
     "salt": "F007-T013a-v1\n",
@@ -136,6 +141,7 @@
   },
   "execution_gate": {
     "before_final_signoff": "structural_verify_t006_metadata_allowed_only",
+    "requires_authorizes_test_inference_true": true,
     "requires": ["independent_PR_review", "recorded_Charalampos_final_signoff_under_reported_delegation", "accepted_committed_F007_protocol", "frozen_hash_validation"],
     "before_requirements_forbidden": ["test_image_decoding_for_evaluation", "test_model_inference", "test_predictive_metrics", "test_prediction_driven_selection_or_retuning"],
     "technical_failure_rerun": "identical_frozen_configuration_preserve_all_attempts"
