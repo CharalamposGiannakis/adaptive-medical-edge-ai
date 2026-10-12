@@ -69,7 +69,7 @@ or universal superiority. F003 and F004 later measured TinyViT's cost, latency
 and throughput under one convention. Full evidence and caveats are in
 [`experiments/F002c/README.md`](experiments/F002c/README.md).
 
-## Current objective — T013b Phase A1 validation infrastructure
+## Current objective — T013b Phase A2 validation evaluation machinery
 
 The proposed [`F007 protocol`](experiments/F007/README.md) specifies the six
 static and adaptive systems, matched resource requests, duplicate-aware
@@ -82,7 +82,13 @@ T013b Phase A1 now has exact-capacity routing, six canonical model paths,
 duplicate-aware request/unit records, and a fail-closed execution gate. A
 bounded two-row validation smoke exercised all six systems at full resource
 and at zero resource; it is a plumbing check, not final quality evidence.
-Phase A2 analysis and CPU benchmarking remain open. The F007 JSON remains
+Phase A2 now implements the fixed group bootstrap, preselected paired
+comparisons, reproducible validation reports, separate cache diagnostics and
+the nine-point CPU benchmark runner. A bounded two-unit validation diagnostic
+covered all five budget states plus the heterogeneous schedule. A one-unit cache
+diagnostic and one-request CPU runner diagnostic also completed; neither is
+official F007 evidence. Full validation evidence, the official 200-request CPU
+job, independent review and final sign-off remain open. The F007 JSON remains
 proposed and test inference remains unauthorized.
 
 The validation-only [`F006a`](experiments/F006a/README.md) analysis maps the

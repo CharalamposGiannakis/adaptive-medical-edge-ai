@@ -2,7 +2,7 @@
 
 This module has no held-out execution command. A caller asking to evaluate the
 test partition must pass the protocol gate before any predictor or image loader
-is constructed. Phase A2 will add intervals, comparisons and CPU benchmarks.
+is constructed. Phase A2 uses these validation request and unit records.
 """
 from __future__ import annotations
 
@@ -341,8 +341,8 @@ class CanonicalModels:
                 new_frames = plan.k
             else:
                 sequence = F003Sequences([row], 224)
-                if plan.system == "B":
-                    logit = model(sequence.frames(0, 16).unsqueeze(0).to(self.device)).float().item()
+                if plan.checkpoint_key == "f002c_original_tinyvit":
+                    logit = model(sequence.frames(0, plan.k).unsqueeze(0).to(self.device)).float().item()
                     new_frames = plan.k
                 else:
                     clip = NestedAnytimeClip(model, int(row["frame_count"]),

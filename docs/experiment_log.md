@@ -233,7 +233,7 @@ This is a validation-stage policy implementation, not team acceptance of the
 quality thresholds or controller and not held-out test evidence. No checkpoint
 or baseline was retrained or changed.
 
-## F007 — Proposed final comparison protocol and Phase A1 validation smoke
+## F007 — Proposed final comparison protocol and validation-only infrastructure
 
 Question: Does the adaptive TinyViT family provide a useful quality,
 coverage and cost trade-off against frozen static alternatives, and under
@@ -257,3 +257,18 @@ their exact budgets and all 12 zero-resource requests deferred. Raw diagnostic
 records are ignored under `artifacts/F007/`. This small smoke confirms model
 loading, preprocessing, routing and evidence plumbing only; it is not a
 predictive-quality estimate or a final scientific comparison.
+
+Phase A2 added the fixed 5,000-draw dependency-group bootstrap, all 24
+prespecified contrast entries (including identity-by-construction pairs),
+validation-only reports, a separate within-clip cache diagnostic, and the
+nine-point comparable CPU runner. A bounded real-validation diagnostic used
+two units across all five resource states and the heterogeneous schedule: 76
+alias requests, 48 served, 38 report cells and all 24 prespecified contrasts.
+Both selected units were normal, so this subset does not estimate two-class
+predictive performance. A one-unit cache diagnostic served 24 of 30
+within-clip requests with exact cached work accounting and maximum
+cached/direct logit difference 0. A
+one-request, one-repeat CPU diagnostic passed nine-point direct/chunk4 parity
+with maximum absolute logit difference 0. These generated records are ignored
+under `artifacts/F007/`; the full official 200-request, five-repeat CPU job
+has not run. None of these diagnostics is held-out evidence.
