@@ -5,10 +5,14 @@ count as the primary adaptive axis (D027). T010/F004 completed the shared
 K1/K2/K4/K8/K12/K16 family on unchanged D026 weights (D028). T011/F005
 completed nested structured pruning with distillation as the compute-compression
 step (D029). D027–D029 are accepted. T012a has screened the deployable F005b
-width × K configurations against provisional quality requirements. T012b has
-implemented and evaluated a provisional resource-aware controller in F006b;
-its numerical requirements and selection rule still await Charalampos and
-Salo's review.
+width × K configurations against provisional quality requirements. T012b's
+provisional F006b controller implementation and validation evidence merged in
+PR #27. D030 proposes F007's simulated 10% budget headroom and retains the
+quality filter and recall-priority rule. Charalampos reports that Salo
+delegated completion of the remaining work to him; D030 and F007 remain
+proposed pending independent PR re-review and his recorded final sign-off.
+The frozen test manifest has been structurally verified, but no test images
+have been decoded for evaluation and no held-out predictive results exist.
 F002b MobileNetV2 remains the frozen static comparison; D026 selects the F002c
 TinyViT-5M checkpoint as the model to develop adaptively. No model has run on the
 T006 held-out test partition.
@@ -65,7 +69,15 @@ or universal superiority. F003 and F004 later measured TinyViT's cost, latency
 and throughput under one convention. Full evidence and caveats are in
 [`experiments/F002c/README.md`](experiments/F002c/README.md).
 
-## Current objective — T012 resource-aware policy
+## Current objective — T013a final-evaluation protocol
+
+The proposed [`F007 protocol`](experiments/F007/README.md) specifies the six
+static and adaptive systems, matched resource requests, duplicate-aware
+quality and coverage, exact cost, one comparable CPU job, dependency-group
+uncertainty and preselected adaptive-versus-static comparisons. T013b needs
+independent PR re-review and Charalampos's recorded final sign-off on D030
+and F007 before test-image inference.
+It contains no held-out results.
 
 The validation-only [`F006a`](experiments/F006a/README.md) analysis maps the
 24 F005b configurations by macro-F1 and FLOPs. The follow-up
@@ -75,10 +87,10 @@ MobileNetV2, then compares compute among qualifying cells. These are empirical
 research requirements, not clinically validated safety thresholds. T012b's
 [`F006b`](experiments/F006b/README.md) implements and simulates the
 user-directed provisional rule: within an exact FLOP budget, maximize abnormal
-recall among quality-qualified configurations, then prefer lower FLOPs. The
-team has not approved final thresholds, budget normalization, operating points
-or controller rule. Continuous `b` extends the accepted D021 demonstration
-states without replacing them. T013 remains pending a separately frozen final
+recall among quality-qualified configurations, then prefer lower FLOPs.
+Charalampos has not finally signed off on the thresholds, D030's F007 budget
+capacity, operating points or controller rule. Continuous `b` extends D021's accepted
+demonstration states without replacing them. T013 remains pending a frozen final
 protocol.
 
 T009/F003 ([`experiments/F003/README.md`](experiments/F003/README.md)) found
@@ -143,6 +155,6 @@ these are development numbers until T013.
 T009 characterized adaptive dimensions → T010 built six shared-weight
 frame-count operating points (F004) → T011 added nested pruned widths (F005) →
 T012a screened quality and cost across width × K points → T012b implemented and
-simulated a provisional resource-aware policy for team review → T013 performs
-the final static-versus-adaptive evaluation after the policy and test protocol
-are fixed.
+simulated a provisional resource-aware policy for team review → T013a proposes
+the final comparison protocol → T013b can run it only after the controller and
+protocol are reviewed and accepted.

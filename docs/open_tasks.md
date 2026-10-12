@@ -94,11 +94,11 @@ Historical acceptance criteria and evidence remain in
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Status:** F006a and F006a_2 analyses completed as draft T012a evidence;
-  the [`F006a design analysis`](../experiments/F006a/README.md) and
-  [`F006a_2 quality screen`](../experiments/F006a_2/README.md) still await
-  Charalampos and Salo's review. No controller policy or final quality threshold
-  has been accepted.
+- **Status:** F006a and F006a_2 analyses were included in the independently
+  reviewed and merged T012 PR #27. Their measured validation evidence is
+  historical; final numerical controller-policy acceptance remains pending
+  independent PR re-review and Charalampos's recorded sign-off under the
+  reported Salo delegation (D030).
 - **Dependencies:** T010 and relevant T011 results.
 - **Scope:** Analyze all 24 configurations of the actual deployable F005b
   seed-2026 checkpoint. Report strict macro-F1/FLOPs dominance, practical
@@ -120,10 +120,11 @@ Historical acceptance criteria and evidence remain in
 - **Priority:** P1
 - **Owner:** Charalampos
 - **Status:** Provisional implementation and validation-only evaluation
-  completed in [`F006b`](../experiments/F006b/README.md), pending Charalampos
-  and Salo's review. T012b policy acceptance and the T013 protocol remain
-  open; the quality requirements, continuous-budget normalization and
-  recall-first rule are not accepted final project policy.
+  completed in [`F006b`](../experiments/F006b/README.md) and merged in PR #27.
+  Merge did not accept the numerical policy. D030 proposes F007 headroom and
+  retains the quality filter and recall-first rule; Charalampos approved that
+  direction; independent PR re-review and Charalampos's recorded final sign-off
+  under the reported Salo delegation remain pending.
 - **Dependencies:** T012a's F006a and F006a_2 analyses; final team decision
   before T013.
 - **Scope:** Implement a deterministic policy over all 24 measured F005b cells:
@@ -141,22 +142,48 @@ Historical acceptance criteria and evidence remain in
   held-out-test use. Team review is required before treating this policy as
   fixed for T013. Learned control is optional research, not required here.
 
-## T013 — Final static-versus-adaptive evaluation
+## T013a — Propose the final evaluation protocol
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Dependencies:** T010–T012 and a frozen final evaluation protocol.
-- **Scope:** Compare the frozen F002b MobileNetV2 static reference with the selected
-  TinyViT adaptive/compressed system.
-- **Acceptance criteria:** Pre-specify any held-out-test use before inference;
-  report predictive metrics, consistent FLOPs, throughput and relevant latency;
-  preserve raw evidence and state uncertainty, proxy-dataset limits and any
-  validation-driven selection bias. From the T010/T011 reviews: freeze the
-  operating points and the policy on validation before touching test; add the
-  static TinyViT points (D026 at K16, the 50%-only model at a fixed K) as
-  further fixed baselines next to MobileNetV2; report one matched-accuracy and
-  one matched-FLOPs comparison with intervals; report per-device results
-  (device and label are entangled); and use CPU latencies from a single job.
+- **Status:** [`F007`](../experiments/F007/README.md) is a proposed
+  preregistration based on the merged T012 implementation. Canonical
+  `verify_t006()` has structurally verified test-manifest metadata; no held-out
+  test images have been decoded for evaluation and no test-image inference or
+  predictive evaluation has occurred. B1/B2 from the first independent review
+  and the later cross-platform protocol-hash blocker have been addressed in
+  the proposed docs/config; D030 and F007 await final independent PR re-review
+  and Charalampos's recorded sign-off under the reported Salo delegation.
+- **Scope:** Fix six primary systems, the D021 resource states and a
+  test-independent mixed schedule, duplicate-aware prediction/coverage and
+  cost rules, one same-job CPU benchmark, group-cluster uncertainty, a fixed
+  descriptive MobileNetV2-versus-`w0.5_k2` comparison and preselected
+  matched-FLOP diagnostics before any predictive final-test access. The static
+  width-0.5
+  comparator is the **canonical nested F005b** width slice at validation-
+  selected K8, not the separate historical 50%-only training control.
+- **Acceptance criteria:** Independent PR review and Charalampos's recorded
+  final sign-off under the reported Salo delegation on
+  D030's numerical policy and the F007 protocol, including simulated budget
+  assignment and descriptive comparison rules; record the accepted version
+  in the repository before T013b execution. Do not treat this proposal as
+  held-out evidence.
+
+## T013b — Execute the accepted final comparison
+
+- **Priority:** P1
+- **Owner:** Charalampos
+- **Status:** Blocked on final independent PR review and Charalampos's recorded
+  D030/F007 sign-off under the reported Salo delegation. The final-test
+  execution guard is not yet implemented.
+- **Dependencies:** Frozen T006/F002b/F002c/F005b handoffs and accepted F007
+  protocol.
+- **Acceptance criteria:** Use the approved six-system matched requests;
+  report quality **with coverage**, exact full/incremental FLOPs, same-job CPU
+  latency and throughput, dependency-group intervals, the fixed cost–quality
+  and matched-FLOP comparisons, and descriptive per-device results. Keep raw
+  evidence ignored and document proxy-dataset, validation-selection and
+  device/label limitations. No test-driven retuning or comparison changes.
 
 ## Research backlog
 

@@ -44,11 +44,13 @@ T010 select at least three useful shared-model operating points (done)
                     |
 T011 integrate one compression method (done)
                     |
-T012a screen quality, then design the resource-aware policy (draft complete)
+T012a screen quality, then design the resource-aware policy (merged evidence)
                     |
-T012b provisional implementation and simulation complete; review pending
+T012b provisional implementation and simulation merged; policy approval pending
                     |
-T013 final static-versus-adaptive evaluation
+T013a F007 final-evaluation protocol proposal; review pending
+                    |
+T013b held-out comparison only after T012 and protocol approval
 ```
 
 ## T009 — characterize the adaptive configuration space
@@ -116,13 +118,23 @@ states to configurations; that belongs to T012.
   change to D021. It serves width changes with `NestedAnytimeClip`, compares
   fixed alternatives and measures selected pruned width × K points in one
   comparable local chunked CPU job. FLOPs remain the resource constraint;
-  final quality limits, normalization and policy mapping still need
-  Charalampos and Salo's acceptance.
-- **T013:** Run the pre-specified final comparison between the frozen MobileNetV2
-  static reference and the adaptive/compressed system. Report predictive metrics,
-  consistent FLOPs, throughput and relevant latency, with uncertainty and dataset
-  limitations. Any use of the held-out T006 test partition requires the final
-  protocol to be fixed first.
+  final numerical policy acceptance remains pending independent PR re-review
+  and Charalampos's recorded sign-off under the reported Salo delegation.
+  D030 proposes 10% simulated capacity headroom for F007 only; F006b's original normalization
+  and evidence remain historical.
+- **T013a:** [`F007`](../experiments/F007/README.md) proposes the six-system
+  final comparison: matched resource requests, prediction quality alongside
+  coverage/deferrals, exact FLOPs, one comparable CPU job, dependency-group
+  uncertainty and preselected cost–quality contrasts. It is not an
+  accepted protocol or a held-out result. T012 PR #27 merged its implementation;
+  D030's proposed numerical policy still awaits final independent PR re-review
+  and Charalampos's recorded sign-off under the reported Salo delegation.
+- **T013b:** Execute only after independent PR review and Charalampos's recorded
+  acceptance of the controller policy and F007 protocol in the repository.
+  Then compare frozen MobileNetV2, original TinyViT, a static nested-width
+  point and adaptive policies without
+  test-driven retuning. Report throughput, latency, uncertainty and the dataset
+  limits. The held-out T006 partition remains protected until that gate.
 
 ## Continuing guardrails
 

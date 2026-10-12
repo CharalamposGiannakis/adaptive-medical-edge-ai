@@ -437,18 +437,85 @@ decision timing.
 
 ---
 
+### D030 — Proposed T013 budget headroom and final-comparison rules
+
+**Date:** 2026-10-12
+**Status:** Proposed for F007; Charalampos approved this direction in the T013a
+revision request. Charalampos reports that Salo delegated completion of the
+remaining project work to him. This is not a claim that Salo individually
+approved these numerical choices. Independent PR re-review and Charalampos's
+recorded final sign-off remain pending; D030 is not yet accepted.
+
+- **Proposed policy:** Keep F006b's provisional three inclusive,
+  F002b-referenced validation quality requirements and its recall-priority,
+  lower-FLOPs, stable-name selection rule over all 24 F005b cells. Keep
+  continuous `b ∈ [0,1]` but evaluate held-out predictions only at D021's
+  `0/0.25/0.50/0.75/1` states and the fixed, label-independent mixed schedule
+  in [`F007`](../experiments/F007/README.md).
+- **Proposed F007 budget:** Let `Cmodel = 20,596,068,563` exact model FLOPs
+  and `Ccapacity = (11/10) × Cmodel = 22,655,675,419.3` FLOPs. Give **all six**
+  F007 systems the same exact per-request limit `B(b) = b × Ccapacity`, with
+  no FLOP tolerance. The 10% headroom is an explicit simulated allowance,
+  not measured hardware capacity, battery charge, CPU utilization or energy.
+- **Why revise:** F006b's historical `B(b) = b × Cmodel` put full-width K8
+  169.5 FLOPs above `b=0.50`, K12 84.75 FLOPs above `b=0.75`, and full K16
+  at exactly `b=1`. The headroom distinguishes modeled capacity from the
+  largest model configuration without changing the quality rule.
+- **Validation-profile check:** Exact rational comparisons on the tracked
+  24-cell F006a_2 screen select DEFER / `w0.5_k2` / `w1.0_k8` /
+  `w1.0_k12` / `w1.0_k16` at the five states with 10% headroom. The 0%
+  mapping is DEFER / K2 / K2 / K8 / K16; 5%, 10% and 20% all produce DEFER /
+  K2 / K8 / K12 / K16 **at those states**. This sensitivity does not prove a
+  physical device has headroom. Full exact budgets, continuous thresholds and
+  static feasibility are in F007.
+- **Other F007 comparisons:** Retain the fixed MobileNetV2 K16 versus nested
+  `w0.5_k2` quality/cost comparison with paired descriptive intervals, but
+  remove unsupported formal noninferiority margins. Add a secondary original
+  TinyViT K16 versus nested full-width K16 comparison at equal inference
+  FLOPs; different training recipes prevent attribution to pruning alone.
+- **Independent-review corrections:** The first F007 review requested (B1)
+  explicit F-versus-A/B/C contrasts at every jointly served state and on the
+  fixed mixed schedule, and (B2) an accurate test-access gate. F007 now fixes
+  those contrasts before inference and allows canonical structural
+  `verify_t006()` metadata/fingerprint checks while prohibiting test-image
+  decoding, inference and predictive evaluation until final sign-off. The
+  proposed machine-readable contract is
+  [`configs/f007_protocol.json`](../configs/f007_protocol.json). Normal task
+  branches, pull requests and independent review remain required.
+- **Cross-platform provenance correction:** The proposed F007 contract now
+  pins the canonical Git LF SHA-256 of `configs/f002_protocol.json`, rather
+  than a Windows CRLF checkout hash. The exact future accepted JSON status is
+  `accepted_final_protocol`; its current status remains proposed and
+  `authorizes_test_inference=false`. The F007 README governs methodology
+  details not duplicated in the JSON. This correction changes no model,
+  resource budget, checkpoint or held-out evaluation rule.
+- **Limits and consequences:** `w1.0_k12` has validation TN=163, FP=15,
+  normal recall 163/178 and accuracy exactly 225/254; a one-unit higher
+  accuracy requirement would disqualify it. Recall priority can increase
+  false positives and computation and is not a clinical safety rule. F006b's
+  original `Cmax = Cmodel` behavior, simulation, tests and measurements remain
+  historical. T013b must parameterize capacity without changing that behavior.
+  No held-out test-image decoding or predictive evaluation is permitted until
+  an independent final PR review and Charalampos's recorded sign-off under
+  the reported delegation.
+
+---
+
 # Open Decisions
 
 The following are intentionally **not decided yet**:
 
 - How well the validation-supported model and adaptive behavior generalize; OpenPOCUS remains a technical proxy rather than clinical deployment evidence.
 - Any additional biological-patient identity mapping if new provenance becomes available; D023 fixes the current T006 quality exclusions and known-group split protocol.
-- Mapping from active resource states to the measured D029 width × K frontier (T012), including what b = 0.25/0.50/0.75/1.00 is a fraction of.
-- Whether resource conditions beyond the accepted simulated budget states will also be measured.
+- Charalampos's recorded final sign-off on D030's F007 quality filter,
+  recall-priority rule, simulated 10% capacity headroom and operating-point
+  mapping under the reported Salo delegation, after independent PR review.
 - Whether input uncertainty becomes part of the runtime policy.
 - Whether an optimization-based controller is worth implementing.
 - Final scenario-specific utility / global performance measure.
 - Exact latency, battery, thermal, and network assumptions.
-- Final held-out test protocol.
+- Final held-out test protocol; the T013a
+  [`F007 proposal`](../experiments/F007/README.md) awaits independent review
+  and Charalampos's final sign-off before predictive test access.
 - Whether restricted FAST/pneumothorax data become available.
 - Any later teaching-team clarification of throughput presentation; D024 specifies reporting both frames/s and completed zone-sequence predictions/s.
