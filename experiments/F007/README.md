@@ -2,9 +2,10 @@
 
 **Status: proposed, not approved or executable.** This records the T013a design
 before any held-out T006 test labels, images or predictions are accessed. PR #27
-still contains the T012 evidence and provisional F006b controller. Charalampos
-and Salo must review T012, freeze its policy, and approve this protocol in the
-repository before T013b may implement a final-test command. No F007 result or
+merged the T012 implementation and validation evidence; that merge did not
+accept its numerical controller policy. Charalampos approved the proposed
+F007 direction in D030; Salo's explicit approval, an independent F007 review,
+and a frozen team decision are still required before T013b. No F007 result or
 raw test artifact exists yet.
 
 **Question.** Does the shared-weight adaptive TinyViT system provide a useful
@@ -51,24 +52,74 @@ strict `count_sequence_flops` on the frozen MobileNetV2 architecture; all
 costs and checkpoint hashes must be verified again in the final preflight.
 
 D, E and F use their tracked validation-derived selection algorithms with no
-test-derived quality table. D/F's three inclusive validation requirements are accuracy
-`>=225/254`, exact F002b macro-F1 `>=(336/365 + 114/143)/2`, and abnormal
-recall `>=57/76`. `Cmax = 20,596,068,563` is the F005b full-width K16 cost. These
-requirements, normalization, and F's rule remain **provisional** until T012
-acceptance; the approved values and source hashes must be recorded before test
-access. At each budget, a static A/B/C point runs only if its own full cost is
-within the cap; otherwise it defers. No FLOP tolerance is allowed.
+test-derived quality table. D/F's three inclusive validation requirements are
+accuracy `>=225/254`, exact F002b macro-F1
+`>=(336/365 + 114/143)/2`, and abnormal recall `>=57/76`. These limits and
+F's recall-priority rule remain **provisional** pending Salo's explicit
+approval. F006b historically used `Cmax = Cmodel = 20,596,068,563` FLOPs,
+the full-width K16 cost. D030 proposes a subsequent F007-only budget scale:
+`Ccapacity = (11/10) × Cmodel = 22,655,675,419.3` FLOPs. This 10% headroom
+is a **simulated per-request allowance**, not measured hardware capacity,
+battery level, CPU utilization or energy. F006b's original measurements and
+controller code retain their original normalization. At each revised budget,
+a static A/B/C point runs only if its own full cost is within the cap;
+otherwise it defers. No FLOP tolerance is allowed.
 
 ## 2. Matched resource requests and coverage
 
 The primary resource states are D021's accepted
 `b = {0, 0.25, 0.50, 0.75, 1.00}` with exact rational per-row limit
-`B(b) = b × Cmax`. At zero, every system defers. **Primary statewise design:**
-each frozen duplicate-aware test unit is requested once at each of these five
+`B(b) = b × Ccapacity = b × (11/10) × Cmodel`. The same revised cap applies
+to **all six systems** at each state. At zero, every system defers.
+**Primary statewise design:** Each frozen duplicate-aware test unit is requested
+once at each of these five
 states, with a fresh clip cache for each row/request. All six systems face
 identical unit × state pairs. This is a factorial stress test, not an estimate
 of a real ambulance resource distribution. Report every state separately;
 do not pool the five repeated observations as independent patients.
+
+Reapply the unmodified [F006b selection rule](../F006b/controller.py) to all
+24 tracked [F006a_2 validation profiles](../F006a_2/quality_screen.csv)
+(CSV SHA-256 `726038faa90e86a405367fb1cfdd5043be68fe8672cb2bd248a7b2205447027d`).
+Compare integer point costs with exact rational budgets. The resulting D/E/F
+selections and static feasibility under the **proposed** 10% headroom are:
+
+| D021 `b` | Exact `B(b)` FLOPs | Static A/B/C feasible | D | E | F |
+|---:|---:|---|---|---|---|
+| 0 | 0 | none | DEFER | DEFER | DEFER |
+| 0.25 | 5,663,918,854.825 | A | `w0.5_k2` | `w0.5_k2` | `w0.5_k2` |
+| 0.50 | 11,327,837,709.65 | A, C | `w0.5_k2` | `w0.75_k8` | `w1.0_k8` |
+| 0.75 | 16,991,756,564.475 | A, C | `w0.5_k2` | `w0.75_k8` | `w1.0_k12` |
+| 1.00 | 22,655,675,419.3 | A, B, C | `w0.5_k2` | `w1.0_k16` | `w1.0_k16` |
+
+F reaches exactly four active configurations over continuous `b`, at these
+inclusive entry thresholds (fractions are exact; decimals are display only):
+
+| Selected point | First selected `b = FLOPs/Ccapacity` |
+|---|---:|
+| `w0.5_k2` | `18,165,752,990/226,556,754,193` ≈ 0.080181908744 |
+| `w1.0_k8` | `102,980,344,510/226,556,754,193` ≈ 0.454545462027 |
+| `w1.0_k12` | `154,470,515,070/226,556,754,193` ≈ 0.681818185559 |
+| `w1.0_k16` | `10/11` ≈ 0.909090909091 |
+
+Validation-profile-only headroom sensitivity, with the same rule and five
+states, confirms the effect of normalization without image inference:
+
+| Headroom above `Cmodel` | `b=0` | `b=0.25` | `b=0.50` | `b=0.75` | `b=1` |
+|---:|---|---|---|---|---|
+| 0% (historical F006b) | DEFER | `w0.5_k2` | `w0.5_k2` | `w1.0_k8` | `w1.0_k16` |
+| 5% | DEFER | `w0.5_k2` | `w1.0_k8` | `w1.0_k12` | `w1.0_k16` |
+| 10% (F007 proposal) | DEFER | `w0.5_k2` | `w1.0_k8` | `w1.0_k12` | `w1.0_k16` |
+| 20% | DEFER | `w0.5_k2` | `w1.0_k8` | `w1.0_k12` | `w1.0_k16` |
+
+The mapping is stable across 5–20% headroom **at these states**. This does
+not establish physical device headroom. Every selected point is within its
+exact budget. The `w1.0_k12` choice is validation-sensitive: its TN=163,
+FP=15, normal recall=163/178 and accuracy=225/254 place accuracy exactly at
+the provisional threshold. Requiring one more correct validation unit would
+disqualify it. Relative to `w1.0_k8`, it detects two more abnormal units but
+adds four false positives and roughly 50% more FLOPs. Recall priority is not
+a clinical safety guarantee.
 
 One **secondary heterogeneous schedule** uses each test unit once. Construct
 unit IDs from the frozen T006 shared-recording graph without using labels for
@@ -80,15 +131,10 @@ unit. The schedule is fixed for all systems, independent of labels, model
 scores or device. Report the realized state counts, coverage and cost; do not
 describe this deliberately balanced scenario as a deployment frequency.
 
-Conditional on team acceptance of continuous `b`, test-independent
-**sensitivity states** `0.05`, `0.67` and `0.83` may be evaluated statewise,
-separately from the primary five-state and heterogeneous summaries. They were
-already used in F006b's validation-only sweep/traces: 0.05 probes an
-insufficient active budget, 0.67 an interior middle budget and 0.83 the
-region where F's K12 choice becomes feasible. Exact one-FLOP boundary checks
-are analytical/controller tests, not extra held-out quality searches. If the
-team rejects continuous-budget use, omit this entire sensitivity set before
-any test access and update the approved protocol accordingly.
+The final predictive-evaluation schedule contains only these five states.
+Continuous `b ∈ [0,1]` remains a controller capability; exact boundary
+checks and headroom sensitivity use validation profiles without adding
+held-out states.
 
 For each unit × state, every retained alias receives the same budget and
 configuration or the same DEFER. Each alias is one zone-sequence inference
@@ -147,8 +193,9 @@ cost in the primary comparison. FLOPs are not energy, battery life or latency.
 ## 4. Comparable CPU latency and throughput
 
 Run **one** CPU benchmark job for the union of A/B/C, every distinct D/E/F
-configuration reached in the approved states, and the supplementary
-matched-FLOP point below. Preload the same 200 frozen D024 validation timing
+configuration reached in the five states, and the supplementary original
+F002c K4 point below. This union includes nested F005b full-width K16.
+Preload the same 200 frozen D024 validation timing
 IDs on each model's canonical preprocessing path; use D024's first 50 warm-up
 IDs, then all 200 timed IDs, for five repeats per point. Use one named CPU,
 one process and fixed four threads; record CPU model/node, OS, library
@@ -193,15 +240,25 @@ multiple-comparison p-values determine a winner.
 
 **Near-matched computation (supplementary, chosen before test):** accept at
 most a 1% relative difference in exact full FLOPs, measured against A's cost.
-Compare A at K16 (5,107,788,033 FLOPs) with the **same original F002c
-checkpoint** at K4 (5,149,017,395 FLOPs), a 0.807% cost difference. K4 is an additional
-diagnostic point, not a replacement for primary B at K16. Use identical
-units, probability aggregation and paired group-bootstrap differences at
-an unrestricted budget; report cost, quality and coverage. F002c K4 exceeds
-the exact D021 `b=0.25` cap by 254.25 FLOPs, so it must not be counted as
-feasible at that state. This pair meets the proposed 1% matching tolerance
-and isolates a near-matched FLOP comparison. It does not by itself measure
-the benefit of adaptivity.
+Compare A at K16 (5,107,788,033 FLOPs) with the **original frozen F002c
+TinyViT checkpoint** at K4 (5,149,017,395 FLOPs), a 0.807% cost difference.
+K4 is an additional diagnostic point, not a replacement for primary B at K16.
+Use identical units, probability aggregation and paired group-bootstrap
+differences at
+the common `b=0.25` budget, where both points now fit under the revised cap;
+report cost, quality and coverage. This pair meets the proposed 1% matching
+tolerance and isolates a near-matched FLOP comparison. It does not by itself
+measure the benefit of adaptivity.
+
+**Equal-FLOP training-recipe comparison (secondary, chosen before test):**
+compare B's original F002c TinyViT K16 checkpoint with the canonical F005b
+nested checkpoint at full width, K16. Both cost exactly 20,596,068,563
+FLOPs and fit at `b=1`. Use the same units and report paired accuracy,
+macro-F1, both recalls and AUROC where supported, coverage and cost with
+dependency-group intervals. This investigates the predictive effect of the
+F005b training/distillation procedure at unchanged inference FLOPs. The
+training recipes and checkpoints differ, so it does not isolate pruning as a
+causal mechanism or add a seventh primary system.
 
 **Adaptive-value contrasts (preselected):** for each informative D021 state
 `b = {0.25, 0.50, 0.75, 1.00}` and the secondary heterogeneous schedule,
@@ -214,19 +271,16 @@ do not select favorable states after seeing test results. At `b=0`, all
 systems defer, so report the common zero coverage/cost without a predictive
 contrast. No single winner rule is specified.
 
-**Candidate matched predictive quality (chosen on validation):** compare A
+**Fixed cost–quality comparison (chosen on validation):** compare A
 against D's `w0.5_k2` at `b=0.25`; both pass the exact cap. Validation
 macro-F1 is 0.858875 versus 0.869706, with D's exact cost 1,816,575,299
-FLOPs. This pair is fixed regardless of its held-out result. Proposed
-descriptive noninferiority margins are `-0.02` for D-minus-A macro-F1 and
-accuracy, and `-0.05` for abnormal recall; these are **not clinical safety
-margins** and require team approval. Claim “at least matched predictive
-quality on these three metrics at lower cost” only if the lower bounds of all
-three paired 95% group-bootstrap intervals exceed their respective margins,
-both systems have complete coverage on the pair, and the intervals are
-available.
-Otherwise report **match not established**, the observed gaps and cost ratio;
-do not search test configurations or relax a margin after seeing results.
+FLOPs. This pair is fixed regardless of its held-out result. Report paired
+D-minus-A accuracy, macro-F1, abnormal-recall and normal-recall differences,
+the full-work difference/ratio, coverage and dependency-group bootstrap
+intervals. Describe the observed differences and uncertainty without an
+equivalence or noninferiority claim: no justified margins have been fixed.
+A nonsignificant difference does not establish equivalent predictive quality.
+Do not search test configurations after seeing the results.
 
 Per-device results are descriptive: assign a unit to its common device code,
 or `mixed` if aliases disagree; show units, class counts, coverage, confusion
@@ -247,18 +301,24 @@ quality–coverage–cost, deferral reasons, paired contrasts, per-device
 descriptives, CPU timing/throughput, and quality-versus-FLOPs plots annotated
 with coverage. Separate measurements from interpretation.
 
-No T013b final-test command exists in this branch. Its future command must
-first verify (1) PR #27 was reviewed and merged or an explicitly revised T012
-policy was accepted, (2) Charalampos and Salo approved the fixed K8 static
-comparator, budget schedule, quality margins, benchmark path and this entire
-protocol in a tracked decision, (3) an independent protocol review was done,
-and (4) frozen source/protocol/checkpoint hashes match. Only after those gates
+No T013b final-test command exists in this branch. Before implementing it,
+parameterize the F006b controller's budget capacity as an exact rational
+value in selection, DEFER records and boundary checks, retaining historical
+`Cmodel` as the F006b default. T013b must pass the approved `Ccapacity` for
+D/E/F and use that same value for A/B/C feasibility. Preserve F006b's original
+behavior, tests, simulation and measured outputs. The future command must
+first verify (1) Charalampos and Salo accepted the numerical quality filter,
+recall-priority rule, F007 headroom and continuous-budget interpretation in
+the repository, (2) they approved the six systems, five-state schedule,
+descriptive comparisons, CPU path and entire F007 protocol after independent
+review, and (3) frozen source/protocol/checkpoint hashes match. Only after
+those gates
 may it read the held-out test manifest **as bytes solely to check its frozen
 hash**, without parsing rows or labels. A manifest-hash mismatch fails closed.
 Only after that check may it parse labels or images and run inference. No
 model/threshold fitting, post-test configuration selection, budget
-reassignment or
-metric-driven rerun is allowed. A technical failure may be rerun with the
+reassignment or metric-driven rerun is allowed. A technical failure may be
+rerun with the
 identical frozen configuration and all attempts retained.
 
 The available identifiers protect only known family/shared-recording

@@ -35,13 +35,15 @@ shared-weight frame-count family that T011 and T012 build on.
   and screen them against provisional validation quality requirements anchored
   to the frozen F002b reference. F006b (T012b) implements and evaluates a
   user-directed, recall-priority controller over continuous normalized FLOP
-  budgets. Its numerical requirements and rule remain provisional.
+  budgets. PR #27 merged that implementation and evidence; its numerical
+  requirements and rule remain provisional.
 
 ## Next research decision
 
-Charalampos and Salo next review the T012b policy, operating points and CPU
-evidence. T013a's proposed [`F007 protocol`](../experiments/F007/README.md)
-then needs independent review and explicit team approval before T013b. It
+Charalampos approved D030's proposed F007 10% simulated capacity headroom and
+recall-priority direction; Salo's explicit policy approval remains pending.
+T013a's proposed [`F007 protocol`](../experiments/F007/README.md) needs
+independent review and team approval before T013b. It
 plans matched comparisons against frozen F002b MobileNetV2, original static
 TinyViT K16 and a fixed width-0.5 slice of the canonical nested F005b bundle;
 the separately trained 50%-only control is not the proposed static handoff.

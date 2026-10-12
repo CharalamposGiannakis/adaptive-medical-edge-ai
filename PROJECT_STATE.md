@@ -5,11 +5,12 @@ count as the primary adaptive axis (D027). T010/F004 completed the shared
 K1/K2/K4/K8/K12/K16 family on unchanged D026 weights (D028). T011/F005
 completed nested structured pruning with distillation as the compute-compression
 step (D029). D027–D029 are accepted. T012a has screened the deployable F005b
-width × K configurations against provisional quality requirements. T012b has
-implemented and evaluated a provisional resource-aware controller in F006b;
-its numerical requirements and selection rule still await Charalampos and
-Salo's review. T013a has a proposed, unapproved F007 final-evaluation
-protocol; no held-out test access has occurred.
+width × K configurations against provisional quality requirements. T012b's
+provisional F006b controller implementation and validation evidence merged in
+PR #27. D030 proposes F007's simulated 10% budget headroom and retains the
+quality filter and recall-priority rule: Charalampos approved this direction,
+while Salo's explicit approval remains pending. T013a has a proposed,
+unapproved F007 final-evaluation protocol; no held-out test access has occurred.
 F002b MobileNetV2 remains the frozen static comparison; D026 selects the F002c
 TinyViT-5M checkpoint as the model to develop adaptively. No model has run on the
 T006 held-out test partition.
@@ -71,8 +72,9 @@ and throughput under one convention. Full evidence and caveats are in
 The proposed [`F007 protocol`](experiments/F007/README.md) specifies the six
 static and adaptive systems, matched resource requests, duplicate-aware
 quality and coverage, exact cost, one comparable CPU job, dependency-group
-uncertainty and preselected matched comparisons. It is conditional on review
-of T012 PR #27 and explicit team approval before T013b can access test data.
+uncertainty and preselected matched comparisons. T013b needs Salo's explicit
+approval of D030 and independent review and team approval of F007 before it
+can access test data.
 It contains no held-out results.
 
 The validation-only [`F006a`](experiments/F006a/README.md) analysis maps the
@@ -84,9 +86,9 @@ research requirements, not clinically validated safety thresholds. T012b's
 [`F006b`](experiments/F006b/README.md) implements and simulates the
 user-directed provisional rule: within an exact FLOP budget, maximize abnormal
 recall among quality-qualified configurations, then prefer lower FLOPs. The
-team has not approved final thresholds, budget normalization, operating points
-or controller rule. Continuous `b` extends the accepted D021 demonstration
-states without replacing them. T013 remains pending a separately frozen final
+team has not fully approved final thresholds, D030's F007 budget capacity,
+operating points or controller rule. Continuous `b` extends the accepted D021
+demonstration states without replacing them. T013 remains pending a frozen final
 protocol.
 
 T009/F003 ([`experiments/F003/README.md`](experiments/F003/README.md)) found

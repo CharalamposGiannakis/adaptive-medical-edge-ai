@@ -94,11 +94,10 @@ Historical acceptance criteria and evidence remain in
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Status:** F006a and F006a_2 analyses completed as draft T012a evidence;
-  the [`F006a design analysis`](../experiments/F006a/README.md) and
-  [`F006a_2 quality screen`](../experiments/F006a_2/README.md) still await
-  Charalampos and Salo's review. No controller policy or final quality threshold
-  has been accepted.
+- **Status:** F006a and F006a_2 analyses were included in the independently
+  reviewed and merged T012 PR #27. Their measured validation evidence is
+  historical; final numerical controller-policy acceptance remains pending
+  from Salo (D030).
 - **Dependencies:** T010 and relevant T011 results.
 - **Scope:** Analyze all 24 configurations of the actual deployable F005b
   seed-2026 checkpoint. Report strict macro-F1/FLOPs dominance, practical
@@ -120,10 +119,10 @@ Historical acceptance criteria and evidence remain in
 - **Priority:** P1
 - **Owner:** Charalampos
 - **Status:** Provisional implementation and validation-only evaluation
-  completed in [`F006b`](../experiments/F006b/README.md), pending Charalampos
-  and Salo's review. T012b policy acceptance and the T013 protocol remain
-  open; the quality requirements, continuous-budget normalization and
-  recall-first rule are not accepted final project policy.
+  completed in [`F006b`](../experiments/F006b/README.md) and merged in PR #27.
+  Merge did not accept the numerical policy. D030 proposes F007 headroom and
+  retains the quality filter and recall-first rule; Charalampos approved that
+  direction, while Salo's explicit approval remains pending.
 - **Dependencies:** T012a's F006a and F006a_2 analyses; final team decision
   before T013.
 - **Scope:** Implement a deterministic policy over all 24 measured F005b cells:
@@ -146,33 +145,34 @@ Historical acceptance criteria and evidence remain in
 - **Priority:** P1
 - **Owner:** Charalampos
 - **Status:** [`F007`](../experiments/F007/README.md) is a proposed
-  preregistration on a branch based on the T012 PR #27 work. No T006 test
-  labels, images or predictions have been accessed for T013a. T012 policy and
-  this protocol both await review and Charalampos/Salo approval.
+  preregistration based on the merged T012 implementation. No T006 test
+  labels, images or predictions have been accessed for T013a. D030 awaits
+  Salo's explicit approval; F007 needs independent review and team approval.
 - **Scope:** Fix six primary systems, the D021 resource states and a
   test-independent mixed schedule, duplicate-aware prediction/coverage and
-  cost rules, one same-job CPU benchmark, group-cluster uncertainty, a
-  validation-selected matched-quality pair and a preselected matched-FLOP
-  diagnostic before any final-test access. The static width-0.5 comparator in
-  the proposal is the **canonical nested F005b** width slice at validation-
+  cost rules, one same-job CPU benchmark, group-cluster uncertainty, a fixed
+  descriptive MobileNetV2-versus-`w0.5_k2` comparison and preselected
+  matched-FLOP diagnostics before any final-test access. The static width-0.5
+  comparator is the **canonical nested F005b** width slice at validation-
   selected K8, not the separate historical 50%-only training control.
 - **Acceptance criteria:** Independent review and explicit team approval of
-  the T012 controller and F007 protocol, including quality margins and
-  budget assignment; record the accepted version in the repository before
-  T013b execution. Do not treat this proposal as held-out evidence.
+  D030's numerical policy and the F007 protocol, including simulated budget
+  assignment and descriptive comparison rules; record the accepted version
+  in the repository before T013b execution. Do not treat this proposal as
+  held-out evidence.
 
 ## T013b — Execute the accepted final comparison
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Status:** Blocked on T012 review/policy acceptance and T013a protocol
+- **Status:** Blocked on Salo's D030 policy acceptance and T013a protocol
   review/approval. The final-test execution guard is not yet implemented.
 - **Dependencies:** Frozen T006/F002b/F002c/F005b handoffs and accepted F007
   protocol.
 - **Acceptance criteria:** Use the approved six-system matched requests;
   report quality **with coverage**, exact full/incremental FLOPs, same-job CPU
-  latency and throughput, dependency-group intervals, the matched-quality and
-  matched-FLOP comparisons, and descriptive per-device results. Keep raw
+  latency and throughput, dependency-group intervals, the fixed cost–quality
+  and matched-FLOP comparisons, and descriptive per-device results. Keep raw
   evidence ignored and document proxy-dataset, validation-selection and
   device/label limitations. No test-driven retuning or comparison changes.
 

@@ -241,7 +241,10 @@ is a **proposed preregistration**, not an accepted decision or executed
 experiment. It preselects six systems, D021 statewise and test-independent
 mixed-budget comparisons, duplicate-aware unit metrics with explicit
 deferrals, exact FLOPs, a single comparable CPU benchmark, known-group paired
-intervals, matched-cost/quality contrasts and test-leakage guards. T012 PR
-#27 is still under review, and the policy, quality margins and final protocol
-require Charalampos and Salo's approval before T013b. No held-out test
-images, labels or predictions were accessed; no raw F007 results exist.
+intervals, fixed descriptive cost/quality contrasts and test-leakage guards.
+PR #27 merged the historical T012 implementation. D030 subsequently proposes
+10% simulated budget headroom for F007 only and removes formal predictive
+noninferiority margins; Charalampos approved the direction, Salo's explicit
+policy approval and independent F007 review remain pending before T013b.
+No held-out test images, labels or predictions were accessed; no raw F007
+results exist.
