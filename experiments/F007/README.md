@@ -468,6 +468,11 @@ valid-draw counts and suppress intervals below 4,000 valid draws. CSV tables,
 an SVG/PNG quality-versus-full-FLOPs figure, raw JSON and the bootstrap indices
 go to a new ignored `artifacts/F007/` directory. Identity-by-construction
 comparisons report the exact equality without redundant bootstrap tests.
+The heterogeneous report gives requested units, alias rows, completed units,
+deferred units and coverage for each realized resource state and system.
+Factorial coverage and factorial paired coverage differences are exact
+structural values without bootstrap intervals; mixed coverage retains its
+group-bootstrap interval.
 
 `cache_diagnostic.py` independently runs D/E/F in increasing and decreasing
 resource order with a fresh width-and-frame cache per alias/policy/order. It
@@ -479,6 +484,18 @@ order, model-only and JPEG pipeline clocks, policy/deferral clocks and
 grouped/interleaved nested switching on one CPU process with four threads.
 Outputs include raw repeats, request IDs, software/hardware identity and
 checkpoint hashes. Existing F002/F004/F006b times are not matched evidence.
+
+`provenance.py` records the Git commit and dirty state, local and committed
+SHA-256 for the execution modules, protocol/checkpoint/input identities,
+Python and package versions, OS/CPU/device/thread settings, UTC start time and
+exact command parameters in every new Phase A2 run/report. Official validation,
+analysis, cache and CPU runs require a clean committed working tree and fail if
+source or protocol changes during execution. Diagnostic runs record a dirty
+tree explicitly. Each output uses a new directory, preserving prior raw
+attempts. Validation-only CPU inference uses one fixed Torch thread and still
+executes every alias/system/state as a fresh request; the runner checks exact
+prediction identity whenever the frozen checkpoint, configuration and alias
+repeat. Full independent-request FLOPs are charged for every served request.
 
 Reproducible commands from the repository root in `bde-project`:
 

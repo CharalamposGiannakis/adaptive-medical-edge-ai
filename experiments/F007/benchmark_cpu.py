@@ -20,6 +20,7 @@ from experiments.F006b import controller
 from experiments.F006b.benchmark_cpu import (Inputs as SwitchingInputs,
                                               cpu_model_name, timed_switching)
 from experiments.F007.phase_a1 import route, validation_context
+from experiments.F007.provenance import assert_unchanged, capture
 from src import f002_pipeline as pipe
 from src.f002_protocol import benchmark_request_ids, key
 from src.f007_protocol import ROOT, load_protocol, rational, sha256_file
@@ -89,11 +90,12 @@ class Inputs:
         return source[index], self.positions[index][point.k]
 
 
-def prepare_inputs(protocol: dict, count: int) -> Inputs:
+def prepare_inputs(protocol: dict, count: int, *, rows: list[dict] | None = None) -> Inputs:
     """Only first fixed validation IDs; predecode both canonical resize paths."""
     if not 1 <= count <= 200:
         raise ValueError("F007 CPU timing count must lie in 1..200")
-    rows, _, _ = validation_context(protocol, full_hashes=True)
+    if rows is None:
+        rows, _, _ = validation_context(protocol, full_hashes=True)
     fixed = benchmark_request_ids(rows)
     selected_ids = fixed["timed"][:count]
     by_key = {key(row): row for row in rows}
@@ -254,12 +256,20 @@ def run(*, diagnostic_requests: int | None, output: Path) -> dict:
     repeats = 5 if diagnostic_requests is None else 1
     import torch
     torch.set_num_threads(4)
+    rows, _, verification = validation_context(protocol, full_hashes=True)
+    provenance = capture(protocol, verification, official=diagnostic_requests is None,
+                         execution_device="cpu", parameters={
+                             "diagnostic_requests": diagnostic_requests,
+                             "timed_requests": count, "warmup_requests": warmup,
+                             "repeats": repeats, "threads": 4,
+                             "points": POINT_IDS, "output": str(output),
+                             "partition": "validation"})
     grid = controller.load_policy_points()
     baseline = f006a_2.read_baseline()
     points = nine_points(protocol, grid)
     for point in points:
         _receipt(point, protocol, grid, baseline)
-    inputs = prepare_inputs(protocol, count)
+    inputs = prepare_inputs(protocol, count, rows=rows)
     models = load_models()
     agreement = verify_equivalence(models, points, inputs)
     model_only = _timed_modes(models, points, inputs, warmup=warmup,
@@ -283,6 +293,7 @@ def run(*, diagnostic_requests: int | None, output: Path) -> dict:
     env.update(cpu_model=cpu_model_name(), node=platform.node(),
                torch_interop_threads=torch.get_num_interop_threads(),
                process_count=1, intraop_threads=torch.get_num_threads())
+    assert_unchanged(provenance)
     evidence = {"experiment": "F007", "phase": "A2_cpu_benchmark",
                 "status": "completed", "partition": "validation",
                 "evidence_level": "diagnostic_only" if diagnostic_requests is not None else "official",
@@ -295,6 +306,8 @@ def run(*, diagnostic_requests: int | None, output: Path) -> dict:
                 "points": [point.__dict__ for point in points],
                 "checkpoint_hashes": {name: value.get("sha256", value.get("checkpoint_sha256"))
                                       for name, value in protocol["checkpoints"].items()},
+                "checkpoints": protocol["checkpoints"], "frozen_inputs": verification,
+                "provenance": provenance,
                 "direct_chunk4_max_abs_logit_difference": agreement,
                 "model_only": model_only, "switching": switching,
                 "practical_jpeg_pipeline": practical, "policy_clocks": policy_clocks,

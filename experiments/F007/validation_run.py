@@ -11,6 +11,7 @@ from pathlib import Path
 from experiments.F007.phase_a1 import (CanonicalModels, Plan, aggregate_requests,
                                         evaluate_requests, exact_string, mixed_assignments,
                                         state_string, validation_context, write_evidence)
+from experiments.F007.provenance import assert_unchanged, capture
 from src.f002_protocol import key
 from src.f007_protocol import ROOT, load_protocol, rational, sha256_file
 
@@ -70,6 +71,28 @@ def _supplementary(rows: list[dict], unit_of: dict, protocol: dict,
     return records
 
 
+def assert_identical_predictions(records: list[dict]) -> int:
+    """Independent fresh requests for one frozen point must agree bit for bit."""
+    seen = {}
+    checked = 0
+    for record in records:
+        if record["deferred"]:
+            continue
+        identity = (record["exam_id"], record["zone_id"],
+                    record["checkpoint_key"], record["configuration"])
+        evidence = (record["checkpoint_sha256"], record["preprocessing"],
+                    record["width"], record["k"], record["frame_indices"],
+                    record["probability"], record["full_flops"])
+        if identity in seen:
+            checked += 1
+            if seen[identity] != evidence:
+                raise RuntimeError("Identical F007 configuration produced unequal fresh "
+                                   f"predictions: {identity}")
+        else:
+            seen[identity] = evidence
+    return checked
+
+
 def run(*, unit_limit: int | None, diagnostic_states: tuple[str, ...] | None,
         output: Path, device: str = "cpu") -> dict:
     if not output.resolve().is_relative_to((ROOT / "artifacts/F007").resolve()):
@@ -80,9 +103,18 @@ def run(*, unit_limit: int | None, diagnostic_states: tuple[str, ...] | None,
     states = tuple(protocol["resource_states"] if diagnostic_states is None else diagnostic_states)
     if not states or len(states) != len(set(states)) or set(states) - set(protocol["resource_states"]):
         raise ValueError("Invalid F007 validation diagnostic states")
-    all_rows, unit_of, _ = validation_context(protocol, full_hashes=False)
+    if device == "cpu":
+        import torch
+        torch.set_num_threads(1)  # fixed serial CPU reductions for exact repeat identity
+    all_rows, unit_of, verification = validation_context(protocol, full_hashes=False)
     rows = _select(all_rows, unit_of, unit_limit)
+    provenance = capture(protocol, verification, official=unit_limit is None,
+                         execution_device=device, parameters={
+                             "unit_limit": unit_limit, "diagnostic_states": diagnostic_states,
+                             "resource_states": states, "output": str(output),
+                             "partition": "validation"})
     predictor = CanonicalModels(protocol, device=device)
+    provenance["frozen_inputs"] = predictor.verification
     requests, results = [], []
     systems = tuple(protocol["systems"])
     for state in states:
@@ -113,6 +145,8 @@ def run(*, unit_limit: int | None, diagnostic_states: tuple[str, ...] | None,
         requests.extend(records)
         results.append(aggregate_requests(rows, unit_of, records, system,
                                           schedule_id=f"factorial_b{state}"))
+    identical_checks = assert_identical_predictions(requests)
+    assert_unchanged(provenance)
     run_record = {"experiment": "F007", "phase": "A2_validation_evidence",
                   "status": "completed", "partition": "validation",
                   "diagnostic_only": unit_limit is not None, "device": device,
@@ -124,8 +158,8 @@ def run(*, unit_limit: int | None, diagnostic_states: tuple[str, ...] | None,
                   "protocol_sha256": sha256_file(ROOT / "configs/f007_protocol.json"),
                   "frozen_inputs": predictor.verification,
                   "checkpoints": protocol["checkpoints"],
-                  "code_sha256": {name: sha256_file(ROOT / f"experiments/F007/{name}")
-                                  for name in ("validation_run.py", "phase_a1.py")},
+                  "provenance": provenance,
+                  "identical_fresh_predictions_checked": identical_checks,
                   "test_inference_authorized": False,
                   "created_utc": datetime.now(timezone.utc).isoformat()}
     write_evidence(output, requests, results, run_record)

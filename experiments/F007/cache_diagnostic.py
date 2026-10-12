@@ -15,6 +15,7 @@ from experiments.F006a_2 import run_analysis as f006a_2
 from experiments.F006b import controller
 from experiments.F006b.runtime import NestedClipRuntime, direct_predict
 from experiments.F007.phase_a1 import route, state_string, validation_context
+from experiments.F007.provenance import assert_unchanged, capture
 from src.f002_protocol import key
 from src.f007_protocol import ROOT, load_protocol, sha256_file
 
@@ -112,11 +113,17 @@ def run(*, unit_limit: int | None, output: Path) -> dict:
     protocol = load_protocol()
     rows, unit_of, verification = validation_context(protocol, full_hashes=True)
     chosen = select_validation_units(rows, unit_of, unit_limit)
+    provenance = capture(protocol, verification, official=unit_limit is None,
+                         execution_device="cpu", parameters={
+                             "unit_limit": unit_limit, "output": str(output),
+                             "partition": "validation", "policies": POLICIES,
+                             "orders": ORDERS})
     points = controller.load_policy_points()
     baseline = f006a_2.read_baseline()
     model = load_deployable(device="cpu")
     records = diagnose(chosen, unit_of, protocol, model, points, baseline)
     summary = summarize(records)
+    assert_unchanged(provenance)
     output.mkdir(parents=True, exist_ok=False)
     with (output / "requests.jsonl").open("x", encoding="utf-8", newline="\n") as stream:
         for record in records:
@@ -129,6 +136,7 @@ def run(*, unit_limit: int | None, output: Path) -> dict:
         "requested_ids": [[r["exam_id"], r["zone_id"]] for r in chosen],
         "frozen_inputs": verification, "protocol_sha256": sha256_file(
             ROOT / "configs/f007_protocol.json"),
+        "checkpoints": protocol["checkpoints"], "provenance": provenance,
         "created_utc": datetime.now(timezone.utc).isoformat(),
         "test_inference_authorized": False}, indent=2, sort_keys=True) + "\n",
         encoding="utf-8")

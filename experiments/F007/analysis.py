@@ -18,6 +18,7 @@ import numpy as np
 from src.f002_protocol import binary_metrics
 from src.f007_protocol import ROOT, load_protocol, validate_structure
 from experiments.F007.phase_a1 import exact_string
+from experiments.F007.provenance import assert_unchanged, capture
 
 PREDICTIVE = ("accuracy", "macro_f1", "normal_recall", "abnormal_recall", "auroc")
 INTERVAL_METRICS = PREDICTIVE + ("coverage", "mean_full_flops_per_requested_row")
@@ -214,7 +215,7 @@ def _paired_values(left: list[dict], right: list[dict]) -> dict:
 
 def paired_analysis(left: dict[str, dict], right: dict[str, dict],
                     groups: tuple[str, ...], draws: np.ndarray, protocol: dict,
-                    *, identity_expected: bool = False) -> dict:
+                    *, identity_expected: bool = False, factorial: bool = False) -> dict:
     ids = sorted(left)
     if ids != sorted(right):
         raise ValueError("Paired F007 comparison has different unit universes")
@@ -242,7 +243,8 @@ def paired_analysis(left: dict[str, dict], right: dict[str, dict],
             samples[name].append(values[name])
     minimum = protocol["bootstrap"]["minimum_valid_draws"]
     return {"point": point, "identity_by_construction": False,
-            "intervals": {name: _interval(point[name], values, minimum)
+            "intervals": {name: _interval(point[name], values, minimum,
+                         structural=factorial and name == "coverage_difference")
                           for name, values in samples.items()}}
 
 
@@ -295,6 +297,39 @@ def _switches(requests: list[dict]) -> dict:
     return result
 
 
+def heterogeneous_state_counts(indexed: dict, protocol: dict) -> dict:
+    """Realized mixed-state units and alias rows, with system-specific coverage."""
+    systems = [system for system in protocol["systems"]
+               if ("heterogeneous", system) in indexed]
+    if not systems:
+        return {}
+    reference = indexed[("heterogeneous", systems[0])]
+    assigned = {unit_id: unit["resource_state"] for unit_id, unit in reference.items()}
+    if set(assigned.values()) - set(protocol["resource_states"]):
+        raise ValueError("Unknown heterogeneous resource state")
+    result = {}
+    for system in systems:
+        units = indexed[("heterogeneous", system)]
+        if {unit_id: unit["resource_state"] for unit_id, unit in units.items()} != assigned:
+            raise ValueError("Heterogeneous states differ across systems")
+        counts = {}
+        for state in protocol["resource_states"]:
+            selected = [unit for unit in units.values() if unit["resource_state"] == state]
+            requested = len(selected)
+            completed = sum(unit["completed"] for unit in selected)
+            counts[state] = {"requested_units": requested,
+                             "requested_alias_rows": sum(len(unit["aliases"]) for unit in selected),
+                             "completed_units": completed,
+                             "deferred_units": requested - completed,
+                             "coverage": completed / requested if requested else None}
+        if sum(value["requested_units"] for value in counts.values()) != len(reference) or \
+                sum(value["requested_alias_rows"] for value in counts.values()) != sum(
+                    len(unit["aliases"]) for unit in reference.values()):
+            raise ValueError("Mixed-state counts do not cover all evaluation units")
+        result[system] = counts
+    return result
+
+
 def analyze(cells: dict[str, dict[str, list[dict]]], requests: list[dict],
             protocol: dict, *, require_complete: bool = True) -> tuple[dict, np.ndarray]:
     """Generate one analysis from the fixed unit universe and one draw matrix."""
@@ -326,7 +361,8 @@ def analyze(cells: dict[str, dict[str, list[dict]]], requests: list[dict],
         name = f"{schedule}:{left}-{right}"
         contrasts[name] = {"category": category, **paired_analysis(
             indexed[(schedule, left)], indexed[(schedule, right)], groups, draws,
-            protocol, identity_expected=identical)}
+            protocol, identity_expected=identical,
+            factorial=schedule.startswith("factorial_"))}
     per_device = {}
     for cell, units in indexed.items():
         devices = defaultdict(list)
@@ -341,7 +377,8 @@ def analyze(cells: dict[str, dict[str, list[dict]]], requests: list[dict],
             "interval": "approximate_unadjusted_per_comparison_percentile_95"},
             "cells": cell_reports, "contrasts": contrasts,
             "omitted_preselected_contrasts": omitted, "per_device": per_device,
-            "switching": _switches(requests)}, draws
+            "switching": _switches(requests),
+            "heterogeneous_state_counts": heterogeneous_state_counts(indexed, protocol)}, draws
 
 
 def load_validation_evidence(directory: Path) -> tuple[dict, list[dict], dict]:
@@ -435,6 +472,12 @@ def write_report(directory: Path, report: dict, draws: np.ndarray, *, source: Pa
         if name.startswith("heterogeneous:")]
     if heterogeneous:
         _write_csv(directory / "heterogeneous.csv", heterogeneous)
+    state_counts = [
+        {"system": system, "resource_state": state, **counts}
+        for system, states in report["heterogeneous_state_counts"].items()
+        for state, counts in states.items()]
+    if state_counts:
+        _write_csv(directory / "heterogeneous_state_counts.csv", state_counts)
     _write_csv(directory / "per_device.csv", [
         {"cell": cell, "device": device, **values}
         for cell, groups in sorted(report["per_device"].items())
@@ -496,8 +539,22 @@ def main() -> None:
                         help="allow incomplete validation cells; label output diagnostic")
     args = parser.parse_args()
     protocol = load_protocol()
-    cells, requests, _ = load_validation_evidence(args.evidence)
+    cells, requests, source_run = load_validation_evidence(args.evidence)
+    if not args.diagnostic and not source_run.get("provenance", {}).get("official"):
+        raise ValueError("Official F007 analysis requires official validation evidence")
+    provenance = capture(protocol, source_run["frozen_inputs"],
+                         official=not args.diagnostic, execution_device="cpu_analysis",
+                         parameters={"evidence": str(args.evidence),
+                                     "output": str(args.output),
+                                     "diagnostic": args.diagnostic,
+                                     "bootstrap_seed": protocol["bootstrap"]["seed"]})
     report, draws = analyze(cells, requests, protocol, require_complete=not args.diagnostic)
+    from src.f007_protocol import sha256_file
+    report["provenance"] = provenance
+    report["source_evidence_sha256"] = {
+        name: sha256_file(args.evidence / name)
+        for name in ("run.json", "requests.jsonl", "units.jsonl")}
+    assert_unchanged(provenance)
     write_report(args.output, report, draws, source=args.evidence)
     print(json.dumps({"output": str(args.output), "cells": len(report["cells"]),
                       "contrasts": len(report["contrasts"]),
