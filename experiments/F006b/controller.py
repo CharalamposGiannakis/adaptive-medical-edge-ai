@@ -85,20 +85,35 @@ def quality_qualified(point: OperatingPoint, baseline: f006a_2.Quality) -> bool:
             and q.abnormal_recall >= baseline.abnormal_recall)
 
 
-def _defer(policy: str, b: Fraction, reason: str) -> Selection:
-    return Selection(policy, b, b * C_MAX, None, reason)
+def capacity_fraction(value: Fraction | Decimal | str | int) -> Fraction:
+    """Exact positive capacity; floats cannot silently round a FLOP boundary."""
+    if isinstance(value, (bool, float)):
+        raise ValueError("Capacity must be an exact positive rational")
+    try:
+        capacity = Fraction(value)
+    except (TypeError, ValueError, ArithmeticError) as exc:
+        raise ValueError("Capacity must be an exact positive rational") from exc
+    if capacity <= 0:
+        raise ValueError("Capacity must be an exact positive rational")
+    return capacity
+
+
+def _defer(policy: str, b: Fraction, reason: str, capacity: Fraction) -> Selection:
+    return Selection(policy, b, b * capacity, None, reason)
 
 
 def select(points: tuple[OperatingPoint, ...], baseline: f006a_2.Quality,
            resource: Fraction | Decimal | str | float | int,
-           policy: str = "recall_priority") -> Selection:
+           policy: str = "recall_priority", *,
+           capacity_flops: Fraction | Decimal | str | int = C_MAX) -> Selection:
     """Choose one measured point or DEFER, with no quality or FLOP tolerance."""
     if policy not in POLICIES:
         raise ValueError(f"Unknown policy: {policy}")
     b = resource_fraction(resource)
+    capacity = capacity_fraction(capacity_flops)
     if b == 0:
-        return _defer(policy, b, "resource_unavailable")
-    limit = b * C_MAX
+        return _defer(policy, b, "resource_unavailable", capacity)
+    limit = b * capacity
     feasible = [p for p in points if p.flops <= limit]
     by_name = {p.name: p for p in points}
     if len(by_name) != len(points):
@@ -107,27 +122,27 @@ def select(points: tuple[OperatingPoint, ...], baseline: f006a_2.Quality,
     if policy == "fixed_full_k16":
         fixed = full_width_k16(points)
         if fixed.flops > limit:
-            return _defer(policy, b, "fixed_point_over_budget")
+            return _defer(policy, b, "fixed_point_over_budget", capacity)
         chosen = fixed
     elif policy == "minimum_quality":
         qualified = [p for p in points if quality_qualified(p, baseline)]
         if not qualified:
-            return _defer(policy, b, "no_quality_qualified_point")
+            return _defer(policy, b, "no_quality_qualified_point", capacity)
         fixed = min(qualified, key=lambda p: (p.flops, p.name))
         if fixed.flops > limit:
-            return _defer(policy, b, "minimum_quality_point_over_budget")
+            return _defer(policy, b, "minimum_quality_point_over_budget", capacity)
         chosen = fixed
     elif policy == "f006a_rule_a":
         original = [f006a.Point(p.name, p.width, p.k, p.flops, p.recorded_macro_f1)
                     for p in points]
         rule_a = f006a.select(original, limit, "max_f1")
         if rule_a is None:
-            return _defer(policy, b, "no_budget_feasible_point")
+            return _defer(policy, b, "no_budget_feasible_point", capacity)
         chosen = by_name[rule_a.name]
     else:
         qualified = [p for p in feasible if quality_qualified(p, baseline)]
         if not qualified:
-            return _defer(policy, b, "no_quality_qualified_point_within_budget")
+            return _defer(policy, b, "no_quality_qualified_point_within_budget", capacity)
         chosen = min(qualified, key=lambda p: (-p.quality.abnormal_recall,
                                                p.flops, p.name))
     if chosen.flops > limit:
@@ -136,15 +151,20 @@ def select(points: tuple[OperatingPoint, ...], baseline: f006a_2.Quality,
 
 
 def selected_configurations(points: tuple[OperatingPoint, ...],
-                            baseline: f006a_2.Quality | None = None
+                            baseline: f006a_2.Quality | None = None, *,
+                            capacity_flops: Fraction | Decimal | str | int = C_MAX
                             ) -> tuple[OperatingPoint, ...]:
     """Derive every recall-priority point reached anywhere on continuous b."""
     baseline = baseline or f006a_2.read_baseline()
+    capacity = capacity_fraction(capacity_flops)
     qualified = sorted((p for p in points if quality_qualified(p, baseline)),
                        key=lambda p: (p.flops, p.name))
     reached = {}
     for point in qualified:
-        chosen = select(points, baseline, Fraction(point.flops, C_MAX)).point
+        if point.flops > capacity:
+            continue
+        chosen = select(points, baseline, Fraction(point.flops, 1) / capacity,
+                        capacity_flops=capacity).point
         if chosen is not None:
             reached[chosen.name] = chosen
     return tuple(sorted(reached.values(), key=lambda p: (p.flops, p.name)))

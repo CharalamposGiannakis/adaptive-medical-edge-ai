@@ -233,7 +233,7 @@ This is a validation-stage policy implementation, not team acceptance of the
 quality thresholds or controller and not held-out test evidence. No checkpoint
 or baseline was retrained or changed.
 
-## F007 — Proposed final comparison protocol (T013a; no measured result)
+## F007 — Proposed final comparison protocol and Phase A1 validation smoke
 
 Question: Does the adaptive TinyViT family provide a useful quality,
 coverage and cost trade-off against frozen static alternatives, and under
@@ -248,6 +248,12 @@ PR #27 merged the historical T012 implementation. D030 subsequently proposes
 noninferiority margins; Charalampos approved the direction and reports that
 Salo delegated completion of the remaining work to him. D030/F007 remain
 proposed pending final independent PR re-review and his recorded sign-off
-before T013b. Canonical T006 test-manifest metadata underwent structural
-verification; no held-out test images were decoded for evaluation, no test
-inference or predictive evaluation occurred, and no raw F007 results exist.
+before T013b held-out execution. Canonical T006 test-manifest metadata underwent structural
+verification; no held-out test images were decoded for evaluation, no held-out
+inference or predictive evaluation occurred, and no raw held-out F007 results exist.
+Phase A1 used two validation singleton requests (one per class) at `b=1` and
+`b=0` across all six systems. All 12 full-resource requests completed within
+their exact budgets and all 12 zero-resource requests deferred. Raw diagnostic
+records are ignored under `artifacts/F007/`. This small smoke confirms model
+loading, preprocessing, routing and evidence plumbing only; it is not a
+predictive-quality estimate or a final scientific comparison.

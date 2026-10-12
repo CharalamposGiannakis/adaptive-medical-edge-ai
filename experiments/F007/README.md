@@ -1,6 +1,6 @@
 # F007 — final static-versus-adaptive evaluation (T013a protocol proposal)
 
-**Status: proposed, not approved or executable.** This records the T013a design
+**Status: proposed, not approved for held-out execution.** This records the T013a design
 before held-out test-image inference or predictive evaluation. The canonical
 `verify_t006()` has already parsed the frozen test manifest for structural
 counts and fingerprints; this is permitted provenance verification, not model
@@ -8,7 +8,7 @@ evaluation. PR #27 merged the T012 implementation and validation evidence;
 that merge did not accept its numerical controller policy. Charalampos reports
 that Salo delegated completion of the remaining work to him. D030 and F007
 remain proposed pending final independent PR review and Charalampos's sign-off
-under that delegation. No F007 prediction or raw test-result artifact exists.
+under that delegation. No held-out F007 prediction or raw test-result artifact exists.
 The JSON status required for a future accepted final protocol is
 `accepted_final_protocol`; the current proposed status and
 `authorizes_test_inference=false` grant no test-inference authorization.
@@ -418,3 +418,40 @@ per frozen checkpoint, validation reuse in prior selection, device/label
 confounding, simulated FLOP budgets, and absence of edge-device energy or
 clinical data limit the conclusions. The team must decide whether it wants a
 separate scalar utility for deferral; this protocol makes no such claim.
+
+## 7. T013b Phase A1 validation infrastructure
+
+`experiments/F007/phase_a1.py` implements exact-capacity routing, the frozen
+recording-unit schedule, guarded alias-row requests, canonical model dispatch,
+and duplicate-aware unit aggregation. Every served primary request starts a
+fresh sequence/clip cache; encoded-frame counts are diagnostics while full
+FLOPs remain the independent-request accounting. `src/f007_protocol.py` checks the
+proposed JSON, canonical Git LF identity of the F002 protocol and validation
+profile, T006 manifests via `verify_t006()`, and the frozen model hashes.
+The controller's historical default remains `Cmodel`; F007 explicitly passes
+`Ccapacity`. This implementation changes no F007 scientific selection rule.
+
+The bounded reproducible validation smoke is:
+
+```powershell
+& C:\venvs\bde-project\Scripts\python.exe -m experiments.F007.phase_a1 smoke-validation --device cpu
+```
+
+It creates a new ignored `artifacts/F007/phase_a1_validation_*` directory with
+`requests.jsonl`, `units.jsonl`, `summary.json`, and `run.json`; an existing
+attempt is never overwritten. The 2026-10-12 UTC smoke used one normal and
+one abnormal validation singleton. Across six systems and the `b=1` and
+`b=0` diagnostic states, all 12 full-resource requests completed within
+their exact budgets and all 12 zero-resource requests deferred. The two-row
+predictive figures only verify plumbing; they are not an F007 quality result
+or held-out evidence. Synthetic tests cover intermediate states, shared
+aliases, missing classes, and unauthorized test attempts. The full CPU job,
+group bootstrap, paired analyses, and figures remain Phase A2 work.
+
+The proposed JSON retains `status=proposed_pending_team_approval` and
+`authorizes_test_inference=false`. A future final-test run requires both
+accepted values, frozen identity checks, D030's committed acceptance and
+sign-off, and a separately committed `configs/f007_approval.json` receipt
+that references the earlier accepted protocol commit and independent review.
+No receipt or final-test command is provided in Phase A1. A receipt is kept
+separate because a commit cannot embed its own SHA in its committed bytes.
