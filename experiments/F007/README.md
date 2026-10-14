@@ -390,7 +390,8 @@ quality–coverage–cost, deferral reasons, paired contrasts, per-device
 descriptives, CPU timing/throughput, and quality-versus-FLOPs plots annotated
 with coverage. Separate measurements from interpretation.
 
-No T013b final-test command exists in this branch. Phase A1 parameterized the
+A guarded T013b final-test command is implemented but currently denies execution.
+Phase A1 parameterized the
 F006b controller's exact-rational capacity while retaining historical
 `Cmodel` as its default; F007 applies `Ccapacity` to all six systems. The
 future command must strictly require F007 JSON
@@ -451,8 +452,8 @@ The proposed JSON retains `status=proposed_pending_team_approval` and
 accepted values, frozen identity checks, D030's committed acceptance and
 sign-off, and a separately committed `configs/f007_approval.json` receipt
 that references the earlier accepted protocol commit and independent review.
-No receipt or final-test command is provided in Phase A1 or A2. A receipt is
-kept separate because a commit cannot embed its own SHA in its committed bytes.
+No receipt is provided in Phase A1 or A2. A receipt is kept separate because a
+commit cannot embed its own SHA in its committed bytes.
 
 ## 8. T013b Phase A2 validation analysis and CPU runner
 
@@ -523,3 +524,36 @@ These subset timings are **diagnostic only**; no official 200-request CPU
 measurement has completed. Full validation evidence and the official CPU job
 remain to be run before final-test authorization. No held-out test image was
 decoded or inferred, and the JSON remains proposed with test inference false.
+
+## 9. Guarded final-test command (not yet authorized)
+
+`final_test.py` calls the committed F007 authorization gate before selecting
+test rows for execution, constructing a model predictor, decoding an image,
+or producing a prediction. The gate requires both accepted JSON values, the
+earlier accepted protocol commit, a committed approval receipt referencing the
+independent PR review and D030 sign-off, and matching frozen manifest/profile/
+checkpoint hashes. The run also requires committed clean source and records the
+approval receipt, protocol commit, source hashes, environment, exact parameters,
+request identities and output hashes. The present proposed JSON and absent
+receipt make this command fail closed; this section grants no authorization.
+
+After independent review, complete validation/CPU evidence and formal recorded
+approval, the exact command from the repository root is:
+
+```powershell
+$testRunDir = "artifacts/F007/final_test_$(Get-Date -Format yyyyMMddTHHmmss)"
+& C:\venvs\bde-project\Scripts\python.exe -m experiments.F007.final_test --output $testRunDir --device cpu
+```
+
+It creates a new ignored attempt directory and refuses an existing one. An
+`attempt.json` records success or failure; denial leaves no predictions. An
+authorized run writes `evidence/requests.jsonl`, `units.jsonl`, `summary.json`
+and `run.json`, then uses the same Phase A2 analysis to write `report/` tables,
+bootstrap indices and figures. The five factorial states, mixed schedule, all
+six systems and both fixed supplementary comparisons use the same canonical
+request, aggregation and statistical functions as validation. Each request
+retains fresh-cache full-FLOP accounting. Technical failures preserve the new
+attempt and any completed raw evidence for investigation; a rerun uses another
+directory with the identical frozen configuration. This implementation has
+only been exercised with synthetic and validation data; no held-out predictive
+result exists.

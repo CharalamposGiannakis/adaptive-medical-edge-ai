@@ -362,9 +362,13 @@ class CanonicalModels:
         return probability, identity
 
 
-def validation_context(protocol: dict, *, full_hashes: bool = True
-                       ) -> tuple[list[dict], dict, dict]:
-    """Structural verification and frozen recording units; no image decoding."""
+def partition_context(protocol: dict, partition: str, *, full_hashes: bool = True
+                      ) -> tuple[list[dict], dict, dict]:
+    """Frozen manifest and recording units; authorize test before any data access."""
+    if partition == "test":
+        require_test_authorization(protocol)
+    elif partition != "validation":
+        raise ValueError("F007 context requires validation or authorized test")
     verification = verify_inputs(protocol, check_checkpoints=full_hashes)
     partitions = verify_t006(ROOT / "configs/f002_protocol.json", ROOT / "data/openpocus/t006")
     directory = ROOT / "data/openpocus/t006"
@@ -372,7 +376,13 @@ def validation_context(protocol: dict, *, full_hashes: bool = True
         edges = list(csv.DictReader(handle))
     with (directory / "exclusions.csv").open(newline="", encoding="utf-8") as handle:
         exclusions = list(csv.DictReader(handle))
-    return partitions["validation"], recording_units(partitions, edges, exclusions), verification
+    return partitions[partition], recording_units(partitions, edges, exclusions), verification
+
+
+def validation_context(protocol: dict, *, full_hashes: bool = True
+                       ) -> tuple[list[dict], dict, dict]:
+    """Validation-only structural verification; no image decoding."""
+    return partition_context(protocol, "validation", full_hashes=full_hashes)
 
 
 def write_evidence(directory: Path, requests: list[dict], results: list[dict],

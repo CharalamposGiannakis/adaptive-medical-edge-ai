@@ -1,7 +1,7 @@
-"""F007 Phase A2: dependency-group uncertainty and preselected comparisons.
+"""F007 dependency-group uncertainty and preselected comparisons.
 
-This module analyses validation records only. It has no test-image path and no
-test-evidence command. All resampling indices are made once and reused.
+The CLI remains validation-only. The final-test runner calls the same analysis
+functions after its committed authorization gate has passed.
 """
 from __future__ import annotations
 
@@ -16,7 +16,8 @@ from pathlib import Path
 import numpy as np
 
 from src.f002_protocol import binary_metrics
-from src.f007_protocol import ROOT, load_protocol, validate_structure
+from src.f007_protocol import (ROOT, load_protocol, require_test_authorization,
+                               validate_structure)
 from experiments.F007.phase_a1 import exact_string
 from experiments.F007.provenance import assert_unchanged, capture
 
@@ -331,11 +332,16 @@ def heterogeneous_state_counts(indexed: dict, protocol: dict) -> dict:
 
 
 def analyze(cells: dict[str, dict[str, list[dict]]], requests: list[dict],
-            protocol: dict, *, require_complete: bool = True) -> tuple[dict, np.ndarray]:
+            protocol: dict, *, require_complete: bool = True,
+            partition: str = "validation") -> tuple[dict, np.ndarray]:
     """Generate one analysis from the fixed unit universe and one draw matrix."""
     validate_structure(protocol)
-    if not requests or any(row["partition"] != "validation" for row in requests):
-        raise PermissionError("A2 reporting is validation-only before final approval")
+    if partition == "test":
+        require_test_authorization(protocol)
+    elif partition != "validation":
+        raise ValueError("Unknown F007 analysis partition")
+    if not requests or any(row["partition"] != partition for row in requests):
+        raise PermissionError("F007 analysis request partition mismatch")
     groups, indexed = _index(cells)
     draws = bootstrap_indices(groups, protocol)
     if require_complete:
@@ -370,7 +376,7 @@ def analyze(cells: dict[str, dict[str, list[dict]]], requests: list[dict],
             devices[unit["device"]].append(unit)
         per_device[f"{cell[0]}:{cell[1]}"] = {
             device: _numeric_metrics(members) for device, members in sorted(devices.items())}
-    return {"experiment": "F007", "partition": "validation", "diagnostic_only":
+    return {"experiment": "F007", "partition": partition, "diagnostic_only":
             not require_complete, "bootstrap": {"seed": 13013, "generator": "numpy_PCG64",
             "draws": 5000, "group_count": len(groups), "sorted_groups": list(groups),
             "indices_sha256": hashlib.sha256(draws.tobytes()).hexdigest(),
@@ -522,8 +528,8 @@ def write_report(directory: Path, report: dict, draws: np.ndarray, *, source: Pa
         axes[index // 3][index % 3].axis("off")
     fig.supxlabel("Full FLOPs per requested alias row (billions)")
     fig.supylabel("Completed-unit macro-F1; point size reflects coverage")
-    fig.suptitle("F007 validation diagnostic" if report["diagnostic_only"] else
-                 "F007 validation quality, coverage and cost")
+    fig.suptitle(f"F007 {report['partition']} diagnostic" if report["diagnostic_only"] else
+                 f"F007 {report['partition']} quality, coverage and cost")
     fig.tight_layout()
     fig.savefig(directory / "quality_vs_flops.svg", metadata={"Date": None})
     fig.savefig(directory / "quality_vs_flops.png", dpi=180)

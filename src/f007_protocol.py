@@ -239,7 +239,7 @@ def verify_inputs(protocol: dict, *, root: Path = ROOT,
 
 
 def require_test_authorization(protocol: dict, *, root: Path = ROOT,
-                               protocol_path: Path | None = None) -> None:
+                               protocol_path: Path | None = None) -> dict:
     """Reject before any held-out image loader can be constructed.
 
     A future committed approval receipt must point back to a previously
@@ -291,4 +291,11 @@ def require_test_authorization(protocol: dict, *, root: Path = ROOT,
     if ("**Status:** Accepted" not in d030 or "Charalampos" not in d030 or
             acceptance["independent_review_ref"] not in d030):
         raise PermissionError("D030 accepted sign-off is absent from the committed decision log")
-    verify_inputs(protocol, root=root, check_checkpoints=True)
+    verification = verify_inputs(protocol, root=root, check_checkpoints=True)
+    return {"protocol_commit": commit,
+            "accepted_protocol_sha256": hashlib.sha256(committed).hexdigest(),
+            "approval_receipt_sha256": hashlib.sha256(committed_receipt).hexdigest(),
+            "independent_review_ref": acceptance["independent_review_ref"],
+            "charalampos_signoff_ref": acceptance["charalampos_signoff_ref"],
+            "decision_record_ref": acceptance["decision_record_ref"],
+            "frozen_inputs": verification}

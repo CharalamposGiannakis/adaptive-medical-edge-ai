@@ -1,4 +1,4 @@
-"""Produce F007 validation evidence; deliberately exposes no test execution path."""
+"""Produce validation evidence and share guarded F007 request orchestration."""
 from __future__ import annotations
 
 import argparse
@@ -13,7 +13,8 @@ from experiments.F007.phase_a1 import (CanonicalModels, Plan, aggregate_requests
                                         state_string, validation_context, write_evidence)
 from experiments.F007.provenance import assert_unchanged, capture
 from src.f002_protocol import key
-from src.f007_protocol import ROOT, load_protocol, rational, sha256_file
+from src.f007_protocol import (ROOT, load_protocol, rational,
+                               require_test_authorization, sha256_file)
 
 
 def _select(rows: list[dict], unit_of: dict, limit: int | None) -> list[dict]:
@@ -29,9 +30,15 @@ def _select(rows: list[dict], unit_of: dict, limit: int | None) -> list[dict]:
 def _supplementary(rows: list[dict], unit_of: dict, protocol: dict,
                    predictor: CanonicalModels, *, system: str, state: str,
                    k: int, width: float | None, flops: int,
-                   checkpoint_key: str, configuration: str) -> list[dict]:
+                   checkpoint_key: str, configuration: str,
+                   partition: str = "validation") -> list[dict]:
     """Use the A1 predictor and record shape for two prespecified diagnostics."""
     from experiments.F007.phase_a1 import _checkpoint_sha
+
+    if partition == "test":
+        require_test_authorization(protocol)
+    elif partition != "validation":
+        raise ValueError("Invalid F007 supplementary partition")
 
     expected = {
         "f002c_original_k4": ("0.25", 4, None, 5149017395,
@@ -57,7 +64,7 @@ def _supplementary(rows: list[dict], unit_of: dict, protocol: dict,
                         "unit_id": unit_of[key(row)], "exam_id": row["exam_id"],
                         "zone_id": row["zone_id"], "binary_target": int(row["binary_target"]),
                         "split_group": row["split_group"], "device": row.get("device", ""),
-                        "partition": "validation", "resource_state": state_string(resource),
+                        "partition": partition, "resource_state": state_string(resource),
                         "permitted_flops_exact": exact_string(budget),
                         "configuration": configuration, "width": width, "k": k,
                         "selection_policy": None, "deferred": False,
@@ -93,6 +100,48 @@ def assert_identical_predictions(records: list[dict]) -> int:
     return checked
 
 
+def collect_requests(rows: list[dict], unit_of: dict, protocol: dict,
+                     predictor: CanonicalModels, *, states: tuple[str, ...],
+                     partition: str) -> tuple[list[dict], list[dict], int]:
+    """Run the frozen factorial, mixed and supplementary requests for one split."""
+    if partition == "test":
+        require_test_authorization(protocol)
+    elif partition != "validation":
+        raise ValueError("Invalid F007 request partition")
+    requests, results = [], []
+    systems = tuple(protocol["systems"])
+    for state in states:
+        schedule = f"factorial_b{state}"
+        records = evaluate_requests(rows, unit_of, systems,
+                                    [Fraction(state)] * len(rows), protocol,
+                                    predictor, partition=partition, schedule_id=schedule)
+        requests.extend(records)
+        results.extend(aggregate_requests(rows, unit_of, records, system,
+                                         schedule_id=schedule) for system in systems)
+    _, mixed_states = mixed_assignments(rows, unit_of, protocol)
+    mixed = evaluate_requests(rows, unit_of, systems, mixed_states, protocol,
+                              predictor, partition=partition,
+                              schedule_id="heterogeneous")
+    requests.extend(mixed)
+    results.extend(aggregate_requests(rows, unit_of, mixed, system,
+                                      schedule_id="heterogeneous") for system in systems)
+    extras = (("f002c_original_k4", "0.25", 4, None, 5149017395,
+               "f002c_original_tinyvit", "original_tinyvit_k4"),
+              ("f005b_nested_w1.0_k16", "1.00", 16, 1.0, 20596068563,
+               "f005b_nested_tinyvit", "w1.0_k16"))
+    for system, state, k, width, flops, checkpoint, config in extras:
+        if state not in states:
+            continue
+        records = _supplementary(rows, unit_of, protocol, predictor,
+                                 system=system, state=state, k=k, width=width,
+                                 flops=flops, checkpoint_key=checkpoint,
+                                 configuration=config, partition=partition)
+        requests.extend(records)
+        results.append(aggregate_requests(rows, unit_of, records, system,
+                                          schedule_id=f"factorial_b{state}"))
+    return requests, results, assert_identical_predictions(requests)
+
+
 def run(*, unit_limit: int | None, diagnostic_states: tuple[str, ...] | None,
         output: Path, device: str = "cpu") -> dict:
     if not output.resolve().is_relative_to((ROOT / "artifacts/F007").resolve()):
@@ -115,37 +164,9 @@ def run(*, unit_limit: int | None, diagnostic_states: tuple[str, ...] | None,
                              "partition": "validation"})
     predictor = CanonicalModels(protocol, device=device)
     provenance["frozen_inputs"] = predictor.verification
-    requests, results = [], []
     systems = tuple(protocol["systems"])
-    for state in states:
-        schedule = f"factorial_b{state}"
-        records = evaluate_requests(rows, unit_of, systems,
-                                    [Fraction(state)] * len(rows), protocol,
-                                    predictor, schedule_id=schedule)
-        requests.extend(records)
-        results.extend(aggregate_requests(rows, unit_of, records, system,
-                                         schedule_id=schedule) for system in systems)
-    _, mixed_states = mixed_assignments(rows, unit_of, protocol)
-    mixed = evaluate_requests(rows, unit_of, systems, mixed_states, protocol,
-                              predictor, schedule_id="heterogeneous")
-    requests.extend(mixed)
-    results.extend(aggregate_requests(rows, unit_of, mixed, system,
-                                      schedule_id="heterogeneous") for system in systems)
-    extras = (("f002c_original_k4", "0.25", 4, None, 5149017395,
-               "f002c_original_tinyvit", "original_tinyvit_k4"),
-              ("f005b_nested_w1.0_k16", "1.00", 16, 1.0, 20596068563,
-               "f005b_nested_tinyvit", "w1.0_k16"))
-    for system, state, k, width, flops, checkpoint, config in extras:
-        if state not in states:
-            continue
-        records = _supplementary(rows, unit_of, protocol, predictor,
-                                 system=system, state=state, k=k, width=width,
-                                 flops=flops, checkpoint_key=checkpoint,
-                                 configuration=config)
-        requests.extend(records)
-        results.append(aggregate_requests(rows, unit_of, records, system,
-                                          schedule_id=f"factorial_b{state}"))
-    identical_checks = assert_identical_predictions(requests)
+    requests, results, identical_checks = collect_requests(
+        rows, unit_of, protocol, predictor, states=states, partition="validation")
     assert_unchanged(provenance)
     run_record = {"experiment": "F007", "phase": "A2_validation_evidence",
                   "status": "completed", "partition": "validation",
