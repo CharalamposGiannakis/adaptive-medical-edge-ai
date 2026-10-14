@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "experiment": "F007",
-  "status": "proposed_pending_team_approval",
+  "status": "accepted_final_protocol",
   "accepted_status_value": "accepted_final_protocol",
-  "authorizes_test_inference": false,
+  "authorizes_test_inference": true,
   "decision_record": "D030",
   "methodology_details": "experiments/F007/README.md",
   "frozen_t006": {
@@ -49,30 +49,77 @@
     "source": "F006a_2_frozen_F002b_validation_reference",
     "validation_profile_path": "experiments/F006a_2/quality_screen.csv",
     "validation_profile_sha256": "726038faa90e86a405367fb1cfdd5043be68fe8672cb2bd248a7b2205447027d",
-    "accuracy_min": {"numerator": 225, "denominator": 254},
-    "macro_f1_min": {"numerator": 44829, "denominator": 52195},
-    "abnormal_recall_min": {"numerator": 57, "denominator": 76},
+    "accuracy_min": {
+      "numerator": 225,
+      "denominator": 254
+    },
+    "macro_f1_min": {
+      "numerator": 44829,
+      "denominator": 52195
+    },
+    "abnormal_recall_min": {
+      "numerator": 57,
+      "denominator": 76
+    },
     "all_three_inclusive": true,
     "clinical_safety_thresholds": false
   },
   "resource": {
     "variable": "b",
-    "continuous_domain_inclusive": ["0", "1"],
+    "continuous_domain_inclusive": [
+      "0",
+      "1"
+    ],
     "cmodel_flops": 20596068563,
-    "headroom_ratio": {"numerator": 11, "denominator": 10},
-    "ccapacity_flops": {"numerator": 226556754193, "denominator": 10},
+    "headroom_ratio": {
+      "numerator": 11,
+      "denominator": 10
+    },
+    "ccapacity_flops": {
+      "numerator": 226556754193,
+      "denominator": 10
+    },
     "per_alias_request_budget": "b_times_ccapacity_exact_rational_no_tolerance",
     "interpretation": "simulated_model_work_allowance_not_measured_hardware_or_energy",
     "historical_f006b_capacity_unchanged": true
   },
-  "resource_states": ["0", "0.25", "0.50", "0.75", "1.00"],
+  "resource_states": [
+    "0",
+    "0.25",
+    "0.50",
+    "0.75",
+    "1.00"
+  ],
   "systems": {
-    "A": {"checkpoint": "f002b_mobilenetv2", "static_k": 16, "flops": 5107788033},
-    "B": {"checkpoint": "f002c_original_tinyvit", "static_k": 16, "flops": 20596068563},
-    "C": {"checkpoint": "f005b_nested_tinyvit", "static_width": "0.5", "static_k": 8, "flops": 7266300179},
-    "D": {"checkpoint": "f005b_nested_tinyvit", "policy": "minimum_quality", "fixed_point": "w0.5_k2"},
-    "E": {"checkpoint": "f005b_nested_tinyvit", "policy": "f006a_rule_a"},
-    "F": {"checkpoint": "f005b_nested_tinyvit", "policy": "recall_priority"}
+    "A": {
+      "checkpoint": "f002b_mobilenetv2",
+      "static_k": 16,
+      "flops": 5107788033
+    },
+    "B": {
+      "checkpoint": "f002c_original_tinyvit",
+      "static_k": 16,
+      "flops": 20596068563
+    },
+    "C": {
+      "checkpoint": "f005b_nested_tinyvit",
+      "static_width": "0.5",
+      "static_k": 8,
+      "flops": 7266300179
+    },
+    "D": {
+      "checkpoint": "f005b_nested_tinyvit",
+      "policy": "minimum_quality",
+      "fixed_point": "w0.5_k2"
+    },
+    "E": {
+      "checkpoint": "f005b_nested_tinyvit",
+      "policy": "f006a_rule_a"
+    },
+    "F": {
+      "checkpoint": "f005b_nested_tinyvit",
+      "policy": "recall_priority"
+    }
   },
   "heterogeneous_schedule": {
     "unit": "src.f002_protocol.recording_units_unit_id",
@@ -87,27 +134,82 @@
   },
   "comparisons": {
     "adaptive_vs_static_by_state": {
-      "0.25": ["F-A"],
-      "0.50": ["F-A", "F-C"],
-      "0.75": ["F-A", "F-C"],
-      "1.00": ["F-A", "F-B", "F-C"]
+      "0.25": [
+        "F-A"
+      ],
+      "0.50": [
+        "F-A",
+        "F-C"
+      ],
+      "0.75": [
+        "F-A",
+        "F-C"
+      ],
+      "1.00": [
+        "F-A",
+        "F-B",
+        "F-C"
+      ]
     },
-    "adaptive_vs_static_heterogeneous": ["F-A", "F-B", "F-C"],
-    "adaptive_policy_by_state": ["F-D", "F-E"],
-    "adaptive_policy_states": ["0.25", "0.50", "0.75", "1.00", "heterogeneous"],
-    "fixed_cost_quality": {"pair": "D-A", "state": "0.25", "formal_noninferiority_margin": null},
-    "near_matched_flops": {"pair": "A-f002c_original_k4", "state": "0.25", "maximum_relative_flops_gap": "1/100"},
-    "equal_flops_training_recipe": {"pair": "B-f005b_nested_w1.0_k16", "state": "1.00"},
+    "adaptive_vs_static_heterogeneous": [
+      "F-A",
+      "F-B",
+      "F-C"
+    ],
+    "adaptive_policy_by_state": [
+      "F-D",
+      "F-E"
+    ],
+    "adaptive_policy_states": [
+      "0.25",
+      "0.50",
+      "0.75",
+      "1.00",
+      "heterogeneous"
+    ],
+    "fixed_cost_quality": {
+      "pair": "D-A",
+      "state": "0.25",
+      "formal_noninferiority_margin": null
+    },
+    "near_matched_flops": {
+      "pair": "A-f002c_original_k4",
+      "state": "0.25",
+      "maximum_relative_flops_gap": "1/100"
+    },
+    "equal_flops_training_recipe": {
+      "pair": "B-f005b_nested_w1.0_k16",
+      "state": "1.00"
+    },
     "identical_prediction_pairs": [
-      {"state": "0.25", "systems": ["D", "E", "F"]},
-      {"state": "1.00", "systems": ["E", "F"]}
+      {
+        "state": "0.25",
+        "systems": [
+          "D",
+          "E",
+          "F"
+        ]
+      },
+      {
+        "state": "1.00",
+        "systems": [
+          "E",
+          "F"
+        ]
+      }
     ],
     "predictive_and_paired_cost_unit_set": "common_completed_units_only",
     "coverage_and_total_cost_unit_set": "all_assigned_requests",
     "winner_rule": null
   },
   "metrics": {
-    "classification": ["accuracy", "macro_f1", "abnormal_recall", "normal_recall", "auroc_where_supported"],
+    "classification": [
+      "accuracy",
+      "macro_f1",
+      "abnormal_recall",
+      "normal_recall",
+      "auroc_where_supported"
+    ],
     "paired_differences": "first_system_minus_second_system",
     "missing_class_wrapper": "absent_class_recall_macro_f1_auroc_unavailable_not_zero",
     "mixed_auroc": "descriptive_across_routed_configurations",
@@ -122,12 +224,32 @@
     "draws": 5000,
     "reuse_group_indices_across_systems_states_and_contrasts": true,
     "interval": "approximate_unadjusted_per_comparison_percentile_95",
-    "percentiles": [2.5, 97.5],
+    "percentiles": [
+      2.5,
+      97.5
+    ],
     "minimum_valid_draws": 4000
   },
   "cpu_benchmark": {
-    "points": ["f002b_mobilenetv2_k16", "f002c_original_k16", "f002c_original_k4", "f005b_w0.5_k8", "f005b_w0.5_k2", "f005b_w0.75_k8", "f005b_w1.0_k8", "f005b_w1.0_k12", "f005b_w1.0_k16"],
-    "switching_nested_points": ["w0.5_k2", "w0.5_k8", "w0.75_k8", "w1.0_k8", "w1.0_k12", "w1.0_k16"],
+    "points": [
+      "f002b_mobilenetv2_k16",
+      "f002c_original_k16",
+      "f002c_original_k4",
+      "f005b_w0.5_k8",
+      "f005b_w0.5_k2",
+      "f005b_w0.75_k8",
+      "f005b_w1.0_k8",
+      "f005b_w1.0_k12",
+      "f005b_w1.0_k16"
+    ],
+    "switching_nested_points": [
+      "w0.5_k2",
+      "w0.5_k8",
+      "w0.75_k8",
+      "w1.0_k8",
+      "w1.0_k12",
+      "w1.0_k16"
+    ],
     "validation_timed_requests": 200,
     "warmup_requests": 50,
     "repeats": 5,
@@ -142,8 +264,18 @@
   "execution_gate": {
     "before_final_signoff": "structural_verify_t006_metadata_allowed_only",
     "requires_authorizes_test_inference_true": true,
-    "requires": ["independent_PR_review", "recorded_Charalampos_final_signoff_under_reported_delegation", "accepted_committed_F007_protocol", "frozen_hash_validation"],
-    "before_requirements_forbidden": ["test_image_decoding_for_evaluation", "test_model_inference", "test_predictive_metrics", "test_prediction_driven_selection_or_retuning"],
+    "requires": [
+      "independent_PR_review",
+      "recorded_Charalampos_final_signoff_under_reported_delegation",
+      "accepted_committed_F007_protocol",
+      "frozen_hash_validation"
+    ],
+    "before_requirements_forbidden": [
+      "test_image_decoding_for_evaluation",
+      "test_model_inference",
+      "test_predictive_metrics",
+      "test_prediction_driven_selection_or_retuning"
+    ],
     "technical_failure_rerun": "identical_frozen_configuration_preserve_all_attempts"
   }
 }
