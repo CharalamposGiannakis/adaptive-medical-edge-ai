@@ -14,3 +14,8 @@ data/openpocus/t006/*.json text eol=lf
 
 # Keep the canonical F005b run record byte-identical to the measured artifact.
 checkpoints/f005b_nested_seed2026/run.json -text
+
+# Preserve exact CRLF bytes of the published official F007 exports.
+experiments/F007/results/final_test_report.json -text whitespace=cr-at-eol
+experiments/F007/results/final_quality_coverage_cost.csv -text whitespace=cr-at-eol
+experiments/F007/results/final_paired_contrasts.csv -text whitespace=cr-at-eol

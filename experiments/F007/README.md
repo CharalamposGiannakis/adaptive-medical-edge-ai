@@ -1,19 +1,16 @@
-# F007 — final static-versus-adaptive evaluation (T013a protocol proposal)
+# F007 — accepted final static-versus-adaptive evaluation
 
-**Status: proposed, not approved for held-out execution.** This records the T013a design
-before held-out test-image inference or predictive evaluation. The canonical
-`verify_t006()` has already parsed the frozen test manifest for structural
-counts and fingerprints; this is permitted provenance verification, not model
-evaluation. PR #27 merged the T012 implementation and validation evidence;
-that merge did not accept its numerical controller policy. Charalampos reports
-that Salo delegated completion of the remaining work to him. D030 and F007
-remain proposed pending final independent PR review and Charalampos's sign-off
-under that delegation. No held-out F007 prediction or raw test-result artifact exists.
-The JSON status required for a future accepted final protocol is
-`accepted_final_protocol`; the current proposed status and
-`authorizes_test_inference=false` grant no test-inference authorization.
-This README governs methodology details not duplicated in the compact JSON
-contract. Resolve any disagreement before accepting the protocol.
+**Status: accepted and executed.** This is the T013a methodology frozen before
+held-out inference. After independent review, Charalampos's recorded D030
+sign-off under Salo's reported delegation, the accepted committed protocol and
+approval receipt authorized T013b's final run. It completed on 2026-10-14 at
+clean commit `d061ea4`. The measured findings and verified raw-evidence hashes
+are in [FINAL_RESULTS.md](FINAL_RESULTS.md); the original ignored attempt is
+`artifacts/F007/final_test_20261014T155259/`. The accepted JSON has
+`status=accepted_final_protocol` and `authorizes_test_inference=true`.
+This README remains the frozen methodology for details not duplicated in the
+compact JSON contract. Earlier proposal and validation-stage records below
+describe how that methodology was established; they do not add post-test rules.
 
 **Question.** Does the shared-weight adaptive TinyViT system provide a useful
 predictive-quality, coverage and computational-cost trade-off against frozen
@@ -32,7 +29,7 @@ T006 manifests. All predictions use the relevant canonical model loader and
 The canonical `test.csv` SHA-256 in
 [`configs/f002_protocol.json`](../../configs/f002_protocol.json) is
 `439315130efb419032d1a686c1a871f0b60443e635a0845e03ebf4325db55c38`.
-The proposed [`F007 machine-readable protocol`](../../configs/f007_protocol.json)
+The accepted [`F007 machine-readable protocol`](../../configs/f007_protocol.json)
 pins and references that F002 protocol's T006 fingerprints; it does not define
 a second test-manifest hash. Its F002 protocol-file SHA-256 is
 `84762d37e9de78fb906a05f8f9a5b7daeb65226d59821393db6517a1e4faa70f`,
@@ -62,7 +59,7 @@ for predictive evaluation and recorded in cross-system comparisons.
 | C | Canonical **nested F005b** at fixed width 0.5, K8 | 7,266,300,179 |
 | D | F006b minimum-quality-cost policy: the fixed cheapest of the quality-qualified F005b cells, `w0.5_k2`, or DEFER when over budget | 1,816,575,299 when served |
 | E | F006a Rule A: highest **validation macro-F1** among all 24 budget-feasible F005b cells; no F006a_2 quality gate | selected cell's exact cost |
-| F | F006b proposed rule: quality gate, then highest abnormal recall, lower FLOPs and stable name tie-break | selected cell's exact cost |
+| F | D030-accepted F006b rule: quality gate, then highest abnormal recall, lower FLOPs and stable name tie-break | selected cell's exact cost |
 
 For C, the pre-test selection rule is maximum duplicate-aware validation
 macro-F1 among the six width-0.5 K cells; exact ties go to lower FLOPs, then
@@ -77,10 +74,10 @@ D, E and F use their tracked validation-derived selection algorithms with no
 test-derived quality table. D/F's three inclusive validation requirements are
 accuracy `>=225/254`, exact F002b macro-F1
 `>=(336/365 + 114/143)/2`, and abnormal recall `>=57/76`. These limits and
-F's recall-priority rule remain **provisional** pending independent PR re-review
-and Charalampos's recorded final sign-off under the reported delegation.
+F's recall-priority rule were accepted for F007 in D030 after independent
+review and Charalampos's recorded sign-off.
 F006b historically used `Cmax = Cmodel = 20,596,068,563` FLOPs,
-the full-width K16 cost. D030 proposes a subsequent F007-only budget scale:
+the full-width K16 cost. D030 accepts the F007-only budget scale:
 `Ccapacity = (11/10) × Cmodel = 22,655,675,419.3` FLOPs. This 10% headroom
 is a **simulated per-request allowance**, not measured hardware capacity,
 battery level, CPU utilization or energy. F006b's original measurements and
@@ -105,7 +102,7 @@ Reapply the unmodified [F006b selection rule](../F006b/controller.py) to all
 24 tracked [F006a_2 validation profiles](../F006a_2/quality_screen.csv)
 (CSV SHA-256 `726038faa90e86a405367fb1cfdd5043be68fe8672cb2bd248a7b2205447027d`).
 Compare integer point costs with exact rational budgets. The resulting D/E/F
-selections and static feasibility under the **proposed** 10% headroom are:
+selections and static feasibility under the **accepted** 10% headroom are:
 
 | D021 `b` | Exact `B(b)` FLOPs | Static A/B/C feasible | D | E | F |
 |---:|---:|---|---|---|---|
@@ -132,7 +129,7 @@ states, confirms the effect of normalization without image inference:
 |---:|---|---|---|---|---|
 | 0% (historical F006b) | DEFER | `w0.5_k2` | `w0.5_k2` | `w1.0_k8` | `w1.0_k16` |
 | 5% | DEFER | `w0.5_k2` | `w1.0_k8` | `w1.0_k12` | `w1.0_k16` |
-| 10% (F007 proposal) | DEFER | `w0.5_k2` | `w1.0_k8` | `w1.0_k12` | `w1.0_k16` |
+| 10% (accepted F007) | DEFER | `w0.5_k2` | `w1.0_k8` | `w1.0_k12` | `w1.0_k16` |
 | 20% | DEFER | `w0.5_k2` | `w1.0_k8` | `w1.0_k12` | `w1.0_k16` |
 
 The mapping is stable across 5–20% headroom **at these states**. This does
@@ -142,7 +139,7 @@ mapping stay unchanged at the five states; the headroom changes **F's**
 evaluated mapping at `b=0.50/0.75`. Every selected point is within its exact
 budget. The `w1.0_k12` choice is validation-sensitive: its TN=163,
 FP=15, normal recall=163/178 and accuracy=225/254 place accuracy exactly at
-the provisional threshold. Requiring one more correct validation unit would
+the accepted validation threshold. Requiring one more correct validation unit would
 disqualify it. Relative to `w1.0_k8`, it detects two more abnormal units but
 adds four false positives and roughly 50% more FLOPs. Recall priority is not
 a clinical safety guarantee.
@@ -310,7 +307,7 @@ K4 is an additional diagnostic point, not a replacement for primary B at K16.
 Use identical units, probability aggregation and paired group-bootstrap
 differences at
 the common `b=0.25` budget, where both points now fit under the revised cap;
-report cost, quality and coverage. This pair meets the proposed 1% matching
+report cost, quality and coverage. This pair meets the frozen 1% matching
 tolerance and isolates a near-matched FLOP comparison. It does not by itself
 measure the benefit of adaptivity.
 
@@ -379,34 +376,35 @@ device-adjusted or causal superiority.
 
 ## 6. Outputs, limits and execution gate
 
-T013b should write ignored `artifacts/F007/` raw row probabilities, unit
+T013b wrote ignored `artifacts/F007/` raw row probabilities, unit
 aggregations, resource assignments, deferrals, per-request FLOPs, cache
 diagnostics, CPU raw timings and a run record. The run record must contain
 the accepted protocol's committed SHA, code/checkpoint/manifest hashes,
 environment, exact request IDs, seed, status and every attempted execution;
-fail on mismatches. Version concise derived tables and figures only after
-review: system/configuration provenance, per-state and mixed-schedule
+fail on mismatches. T013c versions concise derived tables and figures from
+the completed official report: system/configuration provenance, per-state and mixed-schedule
 quality–coverage–cost, deferral reasons, paired contrasts, per-device
 descriptives, CPU timing/throughput, and quality-versus-FLOPs plots annotated
 with coverage. Separate measurements from interpretation.
 
-A guarded T013b final-test command is implemented but currently denies execution.
+A guarded T013b final-test command completed the authorized official attempt.
 Phase A1 parameterized the
 F006b controller's exact-rational capacity while retaining historical
 `Cmodel` as its default; F007 applies `Ccapacity` to all six systems. The
-future command must strictly require F007 JSON
+command must strictly require F007 JSON
 `status == "accepted_final_protocol"` and
 `authorizes_test_inference=true`, the accepted committed protocol and frozen
-source/checkpoint identities. The proposed JSON currently has
-`authorizes_test_inference=false`; changing its status alone is insufficient.
+source/checkpoint identities. The accepted JSON has
+`authorizes_test_inference=true`; this flag alone is insufficient without the
+committed approval receipt and all frozen identity checks.
 Structural T006 verification may occur before final sign-off: canonical
 `verify_t006()` hashes and parses test-manifest
 metadata, checks counts and fingerprints against `configs/f002_protocol.json`,
-and must fail closed on mismatch. That check does not authorize predictive
-evaluation. Before **any test-image decoding for evaluation, model inference,
-test-derived predictive metric or raw result**, require completed independent
+and must fail closed on mismatch. That check by itself did not authorize
+predictive evaluation. The official execution followed the required independent
 PR review and Charalampos's recorded final sign-off under the reported Salo
-delegation. No test predictions may choose a model or configuration, and no
+delegation before **any test-image decoding for evaluation, model inference,
+test-derived predictive metric or raw result**. No test predictions may choose a model or configuration, and no
 threshold, budget assignment or protocol rule may be retuned from held-out
 evidence. A technical failure may be rerun with the identical frozen
 configuration and all attempts retained.
@@ -425,7 +423,7 @@ recording-unit schedule, guarded alias-row requests, canonical model dispatch,
 and duplicate-aware unit aggregation. Every served primary request starts a
 fresh sequence/clip cache; encoded-frame counts are diagnostics while full
 FLOPs remain the independent-request accounting. `src/f007_protocol.py` checks the
-proposed JSON, canonical Git LF identity of the F002 protocol and validation
+accepted JSON, canonical Git LF identity of the F002 protocol and validation
 profile, T006 manifests via `verify_t006()`, and the frozen model hashes.
 The controller's historical default remains `Cmodel`; F007 explicitly passes
 `Ccapacity`. This implementation changes no F007 scientific selection rule.
@@ -445,15 +443,17 @@ their exact budgets and all 12 zero-resource requests deferred. The two-row
 predictive figures only verify plumbing; they are not an F007 quality result
 or held-out evidence. Synthetic tests cover intermediate states, shared
 aliases, missing classes, and unauthorized test attempts. The full official
-CPU job and held-out execution remain pending.
+CPU job and held-out execution completed later, with provenance below and
+results in [FINAL_RESULTS.md](FINAL_RESULTS.md).
 
-The proposed JSON retains `status=proposed_pending_team_approval` and
-`authorizes_test_inference=false`. A future final-test run requires both
+The accepted JSON has `status=accepted_final_protocol` and
+`authorizes_test_inference=true`. An authorized final-test run requires both
 accepted values, frozen identity checks, D030's committed acceptance and
 sign-off, and a separately committed `configs/f007_approval.json` receipt
 that references the earlier accepted protocol commit and independent review.
-No receipt is provided in Phase A1 or A2. A receipt is kept separate because a
-commit cannot embed its own SHA in its committed bytes.
+No receipt was provided in Phase A1 or A2; it was committed separately before
+the official final run. A receipt is kept separate because a commit cannot
+embed its own SHA in its committed bytes.
 
 ## 8. T013b Phase A2 validation analysis and CPU runner
 
@@ -542,11 +542,11 @@ same frozen input/checkpoint identities as the current protocol:
   for every point. Its locally verified SHA-256 is
   `223fd2655acb54b6b0ea775d8f220b83d607ec864aaa5a014d9867fdaa0e1de8`.
 
-These are validation and CPU measurements, not held-out predictive evidence.
-No held-out test image was decoded or inferred, and the JSON remains proposed
-with test inference false.
+These are validation and CPU measurements, separate from the subsequently
+completed held-out predictive evaluation. Its report and raw-evidence hashes
+are in [FINAL_RESULTS.md](FINAL_RESULTS.md).
 
-## 9. Guarded final-test command (not yet authorized)
+## 9. Guarded final-test command and completed attempt
 
 `final_test.py` calls the committed F007 authorization gate before selecting
 test rows for execution, constructing a model predictor, decoding an image,
@@ -555,16 +555,17 @@ earlier accepted protocol commit, a committed approval receipt referencing the
 independent PR review and D030 sign-off, and matching frozen manifest/profile/
 checkpoint hashes. The run also requires committed clean source and records the
 approval receipt, protocol commit, source hashes, environment, exact parameters,
-request identities and output hashes. The present proposed JSON and absent
-receipt make this command fail closed; this section grants no authorization.
+request identities and output hashes. The accepted JSON and committed receipt
+passed the gate for the completed official attempt; the command still fails
+closed on any missing or mismatched authorization or frozen identity.
 After authorization, a no-decode preflight resolves both the MobileNetV2 and
 TinyViT K16 frame inventories for every frozen test row before model inference.
 The F007-only TinyViT test loader inherits F003's nested positions, bicubic
 RGB224/ImageNet preprocessing and `frames_at` behavior; F002c's original
 train/validation guard is unchanged.
 
-After independent review and formal recorded approval, the exact command from
-the repository root is:
+After independent review and formal recorded approval, the official attempt
+used this command form from the repository root:
 
 ```powershell
 $testRunDir = "artifacts/F007/final_test_$(Get-Date -Format yyyyMMddTHHmmss)"
@@ -581,9 +582,8 @@ six systems and both fixed supplementary comparisons use the same canonical
 request, aggregation and statistical functions as validation. Each request
 retains fresh-cache full-FLOP accounting. Technical failures preserve the new
 attempt and any completed raw evidence for investigation; a rerun uses another
-directory with the identical frozen configuration. This implementation has
-only been exercised with synthetic and validation data; no held-out predictive
-result exists.
+directory with the identical frozen configuration. The completed official
+attempt used this guarded path and produced the published held-out results.
 
 If complete authorized predictions were written but report generation failed,
 recover analysis without another model pass, using a **new** output directory:

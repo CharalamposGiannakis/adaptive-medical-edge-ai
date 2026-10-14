@@ -7,15 +7,13 @@ completed nested structured pruning with distillation as the compute-compression
 step (D029). D027–D029 are accepted. T012a has screened the deployable F005b
 width × K configurations against provisional quality requirements. T012b's
 provisional F006b controller implementation and validation evidence merged in
-PR #27. D030 proposes F007's simulated 10% budget headroom and retains the
-quality filter and recall-priority rule. Charalampos reports that Salo
-delegated completion of the remaining work to him; D030 and F007 remain
-proposed pending independent PR re-review and his recorded final sign-off.
-The frozen test manifest has been structurally verified, but no test images
-have been decoded for evaluation and no held-out predictive results exist.
-F002b MobileNetV2 remains the frozen static comparison; D026 selects the F002c
-TinyViT-5M checkpoint as the model to develop adaptively. No model has run on the
-T006 held-out test partition.
+PR #27. D030 subsequently accepted F007's simulated 10% budget headroom,
+quality filter and recall-priority rule after independent review and recorded
+sign-off. The authorized F007 held-out evaluation completed at clean commit
+`d061ea4` with 265 units, 38 cells and 24 prespecified contrasts. Its results
+are published in [`FINAL_RESULTS.md`](experiments/F007/FINAL_RESULTS.md).
+F002b MobileNetV2 remains the external frozen static comparison; original
+F002c TinyViT K16 is the main architectural baseline for F007.
 
 ## Frozen foundation
 
@@ -29,8 +27,8 @@ T006 fixes the cohort, labels, known-family/shared-recording-group-disjoint spli
 and evaluation units (D023). The retained snapshot has 1,762 sequences: 1,232
 train, 265 validation and 265 test. The split protects against known dependencies,
 but the released identifiers cannot prove biological-patient independence. T009
-through T012 use train and validation only; the test partition remains reserved for
-a later pre-specified final evaluation.
+through T012 used train and validation only; the test partition was used once
+for the accepted, prespecified F007 final evaluation.
 
 The frozen static reference is F002b MobileNetV2 (D025), seed 2026 at K16:
 
@@ -69,32 +67,21 @@ or universal superiority. F003 and F004 later measured TinyViT's cost, latency
 and throughput under one convention. Full evidence and caveats are in
 [`experiments/F002c/README.md`](experiments/F002c/README.md).
 
-## Current objective — T013b guarded final-evaluation readiness
+## Current objective — T013c publication and review of F007 results
 
-The proposed [`F007 protocol`](experiments/F007/README.md) specifies the six
-static and adaptive systems, matched resource requests, duplicate-aware
-quality and coverage, exact cost, one comparable CPU job, dependency-group
-uncertainty and preselected adaptive-versus-static comparisons. T013b needs
-independent PR re-review and Charalampos's recorded final sign-off on D030
-and F007 before test-image inference.
-It contains no held-out results.
-T013b Phase A1 now has exact-capacity routing, six canonical model paths,
-duplicate-aware request/unit records, and a fail-closed execution gate. A
-bounded two-row validation smoke exercised all six systems at full resource
-and at zero resource; it is a plumbing check, not final quality evidence.
-Phase A2 now implements the fixed group bootstrap, preselected paired
-comparisons, reproducible validation reports, separate cache diagnostics and
-the nine-point CPU benchmark runner. A bounded two-unit validation diagnostic
-covered all five budget states plus the heterogeneous schedule. A one-unit cache
-diagnostic and one-request CPU runner diagnostic also completed. The later full
-validation run (265 rows, 254 units; 38 report cells, 24 fixed contrasts) and
-official nine-point CPU benchmark (200 validation requests, five repeats,
-four threads) completed at clean commit `ffac851`; their verified hashes and
-paths are in [`experiments/F007/README.md`](experiments/F007/README.md).
-These are validation and CPU evidence, not held-out results. The guarded
-final-test runner is implemented for review. Independent review, D030/F007
-acceptance and a committed approval receipt remain open; the F007 JSON is
-proposed and test inference remains unauthorized.
+The accepted [`F007 protocol`](experiments/F007/README.md) fixed six systems,
+five resource states, one heterogeneous schedule, duplicate-aware quality and
+coverage, exact full FLOPs and 5,000 paired dependency-group bootstrap draws.
+T013b's authorized final attempt completed successfully on 2026-10-14:
+265 held-out units in 32 dependency groups, 10,070 request records, 38 report
+cells and 24 prespecified contrasts. The original raw attempt remains ignored
+at `artifacts/F007/final_test_20261014T155259/`; verified report and evidence
+hashes, derived tables, figures and measured interpretation are in
+[`experiments/F007/FINAL_RESULTS.md`](experiments/F007/FINAL_RESULTS.md).
+T013c publishes these results for team review without changing the frozen
+protocol, predictions or analysis. The earlier complete validation run and
+official nine-point CPU benchmark remain separate development/runtime evidence,
+with provenance in the F007 README.
 
 The validation-only [`F006a`](experiments/F006a/README.md) analysis maps the
 24 F005b configurations by macro-F1 and FLOPs. The follow-up
@@ -105,10 +92,10 @@ research requirements, not clinically validated safety thresholds. T012b's
 [`F006b`](experiments/F006b/README.md) implements and simulates the
 user-directed provisional rule: within an exact FLOP budget, maximize abnormal
 recall among quality-qualified configurations, then prefer lower FLOPs.
-Charalampos has not finally signed off on the thresholds, D030's F007 budget
-capacity, operating points or controller rule. Continuous `b` extends D021's accepted
-demonstration states without replacing them. T013 remains pending a frozen final
-protocol.
+Charalampos accepted the D030/F007 numerical policy for the final evaluation;
+its held-out results are now recorded. Continuous `b` remains a controller
+capability, while F007 evaluated only the five frozen D021 states and the
+prespecified heterogeneous schedule.
 
 T009/F003 ([`experiments/F003/README.md`](experiments/F003/README.md)) found
 frame count to be the useful axis of the D026 TinyViT (D027, accepted).
@@ -172,6 +159,6 @@ these are development numbers until T013.
 T009 characterized adaptive dimensions → T010 built six shared-weight
 frame-count operating points (F004) → T011 added nested pruned widths (F005) →
 T012a screened quality and cost across width × K points → T012b implemented and
-simulated a provisional resource-aware policy for team review → T013a proposes
-the final comparison protocol → T013b can run it only after the controller and
-protocol are reviewed and accepted.
+simulated the resource-aware policy → T013a froze and obtained acceptance for
+the final protocol → T013b executed it after authorization → T013c publishes
+the measured results for team review.

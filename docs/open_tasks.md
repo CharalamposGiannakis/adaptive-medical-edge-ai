@@ -96,9 +96,8 @@ Historical acceptance criteria and evidence remain in
 - **Owner:** Charalampos
 - **Status:** F006a and F006a_2 analyses were included in the independently
   reviewed and merged T012 PR #27. Their measured validation evidence is
-  historical; final numerical controller-policy acceptance remains pending
-  independent PR re-review and Charalampos's recorded sign-off under the
-  reported Salo delegation (D030).
+  historical. D030 later accepted the numerical F007 controller policy after
+  independent review and Charalampos's recorded sign-off.
 - **Dependencies:** T010 and relevant T011 results.
 - **Scope:** Analyze all 24 configurations of the actual deployable F005b
   seed-2026 checkpoint. Report strict macro-F1/FLOPs dominance, practical
@@ -121,10 +120,9 @@ Historical acceptance criteria and evidence remain in
 - **Owner:** Charalampos
 - **Status:** Provisional implementation and validation-only evaluation
   completed in [`F006b`](../experiments/F006b/README.md) and merged in PR #27.
-  Merge did not accept the numerical policy. D030 proposes F007 headroom and
-  retains the quality filter and recall-first rule; Charalampos approved that
-  direction; independent PR re-review and Charalampos's recorded final sign-off
-  under the reported Salo delegation remain pending.
+  That merge did not accept the numerical policy; D030 subsequently accepted
+  F007's headroom, quality filter and recall-first rule after review and
+  recorded sign-off. Historical F006b normalization remains unchanged.
 - **Dependencies:** T012a's F006a and F006a_2 analyses; final team decision
   before T013.
 - **Scope:** Implement a deterministic policy over all 24 measured F005b cells:
@@ -146,14 +144,10 @@ Historical acceptance criteria and evidence remain in
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Status:** [`F007`](../experiments/F007/README.md) is a proposed
-  preregistration based on the merged T012 implementation. Canonical
-  `verify_t006()` has structurally verified test-manifest metadata; no held-out
-  test images have been decoded for evaluation and no test-image inference or
-  predictive evaluation has occurred. B1/B2 from the first independent review
-  and the later cross-platform protocol-hash blocker have been addressed in
-  the proposed docs/config; D030 and F007 await final independent PR re-review
-  and Charalampos's recorded sign-off under the reported Salo delegation.
+- **Status:** Completed. The frozen [`F007`](../experiments/F007/README.md)
+  methodology and D030 were independently reviewed and accepted before
+  authorized T013b execution. The canonical T006 fingerprints and checkpoint
+  identities were verified by the execution gate.
 - **Scope:** Fix six primary systems, the D021 resource states and a
   test-independent mixed schedule, duplicate-aware prediction/coverage and
   cost rules, one same-job CPU benchmark, group-cluster uncertainty, a fixed
@@ -173,19 +167,15 @@ Historical acceptance criteria and evidence remain in
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Status:** Phase A1 validation infrastructure and Phase A2 evaluation
-  machinery are implemented for review:
-  exact-capacity routing, six canonical model paths, request/unit
-  evidence, and a fail-closed final-test gate passed a bounded validation
-  smoke. Held-out execution remains blocked on final independent PR review,
-  Charalampos's recorded D030/F007 sign-off under the reported Salo delegation,
-  and a committed approval receipt. The fixed bootstrap/contrasts, validation
-  reports, cache experiment and nine-point CPU runner passed bounded
-  diagnostics. Full validation evidence (265 rows, 254 units) and the official
-  200-request, five-repeat CPU benchmark subsequently completed at clean commit
-  `ffac851`; verified artifact hashes are recorded in the F007 README. The
-  guarded final-test runner and no-decode inventory preflight are implemented
-  for review. No held-out inference or predictive result exists.
+- **Status:** Completed. Following independent review, accepted D030/F007 and
+  the committed approval receipt, the authorized final run completed at clean
+  commit `d061ea4` on 2026-10-14. It recorded 265 held-out units, 10,070
+  requests, 38 cells, 24 prespecified contrasts and 5,000 bootstrap draws.
+  Complete raw evidence stays ignored in
+  `artifacts/F007/final_test_20261014T155259/`; verified hashes and the
+  published scientific interpretation are in
+  [`FINAL_RESULTS.md`](../experiments/F007/FINAL_RESULTS.md). The full
+  validation and official same-job CPU benchmark remain separate evidence.
 - **Dependencies:** Frozen T006/F002b/F002c/F005b handoffs and accepted F007
   protocol.
 - **Acceptance criteria:** Use the approved six-system matched requests;
@@ -194,6 +184,17 @@ Historical acceptance criteria and evidence remain in
   and matched-FLOP comparisons, and descriptive per-device results. Keep raw
   evidence ignored and document proxy-dataset, validation-selection and
   device/label limitations. No test-driven retuning or comparison changes.
+
+## T013c — Publish final F007 results
+
+- **Priority:** P1
+- **Owner:** Charalampos
+- **Status:** Results publication prepared on `T013c-final-results` for
+  independent review; no new inference, statistics or scientific selection.
+- **Scope:** Version the official report and summary CSVs, two report-derived
+  figures, verified artifact provenance and a restrained interpretation in
+  [`FINAL_RESULTS.md`](../experiments/F007/FINAL_RESULTS.md). Preserve the
+  complete ignored final attempt and the accepted F007 protocol.
 
 ## Research backlog
 

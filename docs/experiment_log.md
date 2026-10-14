@@ -233,24 +233,21 @@ This is a validation-stage policy implementation, not team acceptance of the
 quality thresholds or controller and not held-out test evidence. No checkpoint
 or baseline was retrained or changed.
 
-## F007 — Proposed final comparison protocol and validation-only infrastructure
+## F007 — Accepted final comparison and completed held-out evaluation
 
 Question: Does the adaptive TinyViT family provide a useful quality,
 coverage and cost trade-off against frozen static alternatives, and under
 which resource states? [`experiments/F007/README.md`](../experiments/F007/README.md)
-is a **proposed preregistration**, not an accepted decision or executed
-experiment. It preselects six systems, D021 statewise and test-independent
+is the accepted, frozen methodology. It preselected six systems, D021 statewise and test-independent
 mixed-budget comparisons, duplicate-aware unit metrics with explicit
 deferrals, exact FLOPs, a single comparable CPU benchmark, known-group paired
 intervals, fixed descriptive cost/quality contrasts and test-leakage guards.
-PR #27 merged the historical T012 implementation. D030 subsequently proposes
-10% simulated budget headroom for F007 only and removes formal predictive
-noninferiority margins; Charalampos approved the direction and reports that
-Salo delegated completion of the remaining work to him. D030/F007 remain
-proposed pending final independent PR re-review and his recorded sign-off
-before T013b held-out execution. Canonical T006 test-manifest metadata underwent structural
-verification; no held-out test images were decoded for evaluation, no held-out
-inference or predictive evaluation occurred, and no raw held-out F007 results exist.
+PR #27 merged the historical T012 implementation. D030 subsequently fixed
+10% simulated budget headroom for F007 only and removed formal predictive
+noninferiority margins. Independent PR review and Charalampos's recorded
+sign-off under Salo's reported delegation preceded the committed accepted
+protocol and approval receipt. The execution gate verified canonical T006
+test-manifest and frozen checkpoint identities before authorized inference.
 Phase A1 used two validation singleton requests (one per class) at `b=1` and
 `b=0` across all six systems. All 12 full-resource requests completed within
 their exact budgets and all 12 zero-resource requests deferred. Raw diagnostic
@@ -286,6 +283,23 @@ the report's source hashes match the raw evidence. The official nine-point
 process and four CPU threads. All direct/chunk4 logit differences were zero;
 the verified file SHA-256 is
 `223fd2655acb54b6b0ea775d8f220b83d607ec864aaa5a014d9867fdaa0e1de8`.
-The two records' frozen input/checkpoint identities match the current F007
-contract. These are validation development and CPU measurements, not held-out
-predictive results. D030/F007 remain proposed and test inference unauthorized.
+The two records' frozen input/checkpoint identities match the F007 contract.
+These are validation development and CPU measurements, separate from the
+subsequent held-out predictive evaluation.
+
+The authorized F007 final attempt at clean commit
+`d061ea4dec0e32783bed8f57cc032af08f077585` completed on 2026-10-14:
+265 held-out units, 32 known dependency groups, 10,070 request records, 38
+report cells, all 24 prespecified contrasts and 5,000 paired bootstrap draws.
+Its accepted protocol SHA-256 is
+`c69ebae9e7620b2e4df4528881b5d08d6158b6b38b72c6266c64d8cc50d5c358`;
+the approval receipt SHA-256 is
+`6d7e1b72cafb6d9c9230e9cb32b27009be5f7042df603edd565a1bc6f4a061a5`.
+The original completed attempt remains ignored at
+`artifacts/F007/final_test_20261014T155259/`. The locally verified
+`report/report.json` SHA-256 is
+`1e5c3846bd01b03f9c407702f5a3a116b6622f1a32e363fac10f1079364824a5`;
+its raw-evidence hashes and measured interpretation are recorded in
+[`FINAL_RESULTS.md`](../experiments/F007/FINAL_RESULTS.md). No checkpoint,
+threshold, budget, controller or statistical rule was changed after observing
+the held-out results.
