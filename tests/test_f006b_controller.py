@@ -54,6 +54,37 @@ def file_sha256(path: Path) -> str:
 
 
 class ControllerPureTests(unittest.TestCase):
+    def test_capacity_default_is_exact_historical_cmodel(self):
+        points = tracked_points()
+        for policy in controller.POLICIES:
+            for resource in ("0", "0.25", "0.50", "0.75", "1.00"):
+                old = controller.select(points, BASELINE, resource, policy)
+                explicit = controller.select(points, BASELINE, resource, policy,
+                                             capacity_flops=controller.C_MAX)
+                self.assertEqual(old, explicit)
+                self.assertEqual(old.permitted_flops,
+                                 Fraction(resource) * controller.C_MAX)
+        self.assertEqual(controller.capacity_fraction(Fraction(11, 10) * controller.C_MAX),
+                         Fraction(226556754193, 10))
+        for bad in (0, -1, 1.1, True, "bad"):
+            with self.subTest(capacity=bad), self.assertRaises(ValueError):
+                controller.capacity_fraction(bad)
+
+    def test_f007_capacity_moves_exact_entry_boundary_without_changing_rule(self):
+        points = tracked_points()
+        capacity = Fraction(11, 10) * controller.C_MAX
+        point = next(point for point in points if point.name == "w0.5_k2")
+        at_boundary = Fraction(point.flops, 1) / capacity
+        below_boundary = Fraction(point.flops - 1, 1) / capacity
+        self.assertEqual(controller.select(points, BASELINE, at_boundary,
+                         capacity_flops=capacity).point.name, point.name)
+        deferred = controller.select(points, BASELINE, below_boundary,
+                                     capacity_flops=capacity)
+        self.assertTrue(deferred.deferred)
+        self.assertEqual(deferred.permitted_flops, point.flops - 1)
+        self.assertEqual(tuple(point.name for point in controller.selected_configurations(
+            points, BASELINE, capacity_flops=capacity)), EXPECTED)
+
     def test_quality_qualification_is_exact_and_inclusive(self):
         point = controller.OperatingPoint("equal", 0.5, 2, 100, BASELINE, float(BASELINE.macro_f1))
         self.assertTrue(controller.quality_qualified(point, BASELINE))

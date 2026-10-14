@@ -233,7 +233,7 @@ This is a validation-stage policy implementation, not team acceptance of the
 quality thresholds or controller and not held-out test evidence. No checkpoint
 or baseline was retrained or changed.
 
-## F007 — Proposed final comparison protocol (T013a; no measured result)
+## F007 — Proposed final comparison protocol and validation-only infrastructure
 
 Question: Does the adaptive TinyViT family provide a useful quality,
 coverage and cost trade-off against frozen static alternatives, and under
@@ -248,6 +248,44 @@ PR #27 merged the historical T012 implementation. D030 subsequently proposes
 noninferiority margins; Charalampos approved the direction and reports that
 Salo delegated completion of the remaining work to him. D030/F007 remain
 proposed pending final independent PR re-review and his recorded sign-off
-before T013b. Canonical T006 test-manifest metadata underwent structural
-verification; no held-out test images were decoded for evaluation, no test
-inference or predictive evaluation occurred, and no raw F007 results exist.
+before T013b held-out execution. Canonical T006 test-manifest metadata underwent structural
+verification; no held-out test images were decoded for evaluation, no held-out
+inference or predictive evaluation occurred, and no raw held-out F007 results exist.
+Phase A1 used two validation singleton requests (one per class) at `b=1` and
+`b=0` across all six systems. All 12 full-resource requests completed within
+their exact budgets and all 12 zero-resource requests deferred. Raw diagnostic
+records are ignored under `artifacts/F007/`. This small smoke confirms model
+loading, preprocessing, routing and evidence plumbing only; it is not a
+predictive-quality estimate or a final scientific comparison.
+
+Phase A2 added the fixed 5,000-draw dependency-group bootstrap, all 24
+prespecified contrast entries (including identity-by-construction pairs),
+validation-only reports, a separate within-clip cache diagnostic, and the
+nine-point comparable CPU runner. A bounded real-validation diagnostic used
+two units across all five resource states and the heterogeneous schedule: 76
+alias requests, 48 served, 38 report cells and all 24 prespecified contrasts.
+Both selected units were normal, so this subset does not estimate two-class
+predictive performance. A one-unit cache diagnostic served 24 of 30
+within-clip requests with exact cached work accounting and maximum
+cached/direct logit difference 0. A
+one-request, one-repeat CPU diagnostic passed nine-point direct/chunk4 parity
+with maximum absolute logit difference 0. These generated records are ignored
+under `artifacts/F007/`; none of these diagnostics is held-out evidence.
+
+Complete validation evidence and the official CPU benchmark subsequently ran
+at clean commit `ffac85119713fc8d8cd4fde53ea56fedd2e44c38`. The completed
+`artifacts/F007/validation_full_20261013T015903/` run has 265 rows and 254
+duplicate-aware units; its full report has 38 cells and 24 fixed contrasts.
+Local SHA-256: `run.json`
+`8dcaa47a211c2a224756dd3a58cad11db5c359893a1086afda86fe66e2d0e199`,
+`report.json`
+`b92318ecaf78d3d8e0b9fbee77d0f2e8f9c2c0392d7b7652b96a05a822a1e3cc`;
+the report's source hashes match the raw evidence. The official nine-point
+`artifacts/F007/cpu_validation_20261014T004948183271Z/benchmark.json` used
+200 validation requests, 50 warm-ups, five repeats, one AMD Ryzen AI 9 HX 370
+process and four CPU threads. All direct/chunk4 logit differences were zero;
+the verified file SHA-256 is
+`223fd2655acb54b6b0ea775d8f220b83d607ec864aaa5a014d9867fdaa0e1de8`.
+The two records' frozen input/checkpoint identities match the current F007
+contract. These are validation development and CPU measurements, not held-out
+predictive results. D030/F007 remain proposed and test inference unauthorized.

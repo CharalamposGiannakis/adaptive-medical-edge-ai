@@ -69,7 +69,7 @@ or universal superiority. F003 and F004 later measured TinyViT's cost, latency
 and throughput under one convention. Full evidence and caveats are in
 [`experiments/F002c/README.md`](experiments/F002c/README.md).
 
-## Current objective — T013a final-evaluation protocol
+## Current objective — T013b guarded final-evaluation readiness
 
 The proposed [`F007 protocol`](experiments/F007/README.md) specifies the six
 static and adaptive systems, matched resource requests, duplicate-aware
@@ -78,6 +78,23 @@ uncertainty and preselected adaptive-versus-static comparisons. T013b needs
 independent PR re-review and Charalampos's recorded final sign-off on D030
 and F007 before test-image inference.
 It contains no held-out results.
+T013b Phase A1 now has exact-capacity routing, six canonical model paths,
+duplicate-aware request/unit records, and a fail-closed execution gate. A
+bounded two-row validation smoke exercised all six systems at full resource
+and at zero resource; it is a plumbing check, not final quality evidence.
+Phase A2 now implements the fixed group bootstrap, preselected paired
+comparisons, reproducible validation reports, separate cache diagnostics and
+the nine-point CPU benchmark runner. A bounded two-unit validation diagnostic
+covered all five budget states plus the heterogeneous schedule. A one-unit cache
+diagnostic and one-request CPU runner diagnostic also completed. The later full
+validation run (265 rows, 254 units; 38 report cells, 24 fixed contrasts) and
+official nine-point CPU benchmark (200 validation requests, five repeats,
+four threads) completed at clean commit `ffac851`; their verified hashes and
+paths are in [`experiments/F007/README.md`](experiments/F007/README.md).
+These are validation and CPU evidence, not held-out results. The guarded
+final-test runner is implemented for review. Independent review, D030/F007
+acceptance and a committed approval receipt remain open; the F007 JSON is
+proposed and test inference remains unauthorized.
 
 The validation-only [`F006a`](experiments/F006a/README.md) analysis maps the
 24 F005b configurations by macro-F1 and FLOPs. The follow-up

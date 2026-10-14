@@ -173,9 +173,19 @@ Historical acceptance criteria and evidence remain in
 
 - **Priority:** P1
 - **Owner:** Charalampos
-- **Status:** Blocked on final independent PR review and Charalampos's recorded
-  D030/F007 sign-off under the reported Salo delegation. The final-test
-  execution guard is not yet implemented.
+- **Status:** Phase A1 validation infrastructure and Phase A2 evaluation
+  machinery are implemented for review:
+  exact-capacity routing, six canonical model paths, request/unit
+  evidence, and a fail-closed final-test gate passed a bounded validation
+  smoke. Held-out execution remains blocked on final independent PR review,
+  Charalampos's recorded D030/F007 sign-off under the reported Salo delegation,
+  and a committed approval receipt. The fixed bootstrap/contrasts, validation
+  reports, cache experiment and nine-point CPU runner passed bounded
+  diagnostics. Full validation evidence (265 rows, 254 units) and the official
+  200-request, five-repeat CPU benchmark subsequently completed at clean commit
+  `ffac851`; verified artifact hashes are recorded in the F007 README. The
+  guarded final-test runner and no-decode inventory preflight are implemented
+  for review. No held-out inference or predictive result exists.
 - **Dependencies:** Frozen T006/F002b/F002c/F005b handoffs and accepted F007
   protocol.
 - **Acceptance criteria:** Use the approved six-system matched requests;

@@ -5,6 +5,8 @@ data/openpocus/labels.csv -text
 docs/adaptivity_project_notes.md -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
 # Hash protocol JSON from canonical Git LF bytes on every checkout platform.
 configs/*.json text eol=lf
+# The F007 validation-profile fingerprint also uses canonical Git LF bytes.
+experiments/F006a_2/quality_screen.csv text eol=lf
 # Keep reproducible small metadata identical across checkout platforms.
 data/openpocus/split_groups.csv text eol=lf
 data/openpocus/t006/*.csv text eol=lf

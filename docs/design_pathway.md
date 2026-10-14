@@ -129,10 +129,11 @@ states to configurations; that belongs to T012.
   accepted protocol or a held-out result. T012 PR #27 merged its implementation;
   D030's proposed numerical policy still awaits final independent PR re-review
   and Charalampos's recorded sign-off under the reported Salo delegation.
-- **T013b:** Execute only after independent PR review and Charalampos's recorded
-  acceptance of the controller policy and F007 protocol in the repository.
-  Then compare frozen MobileNetV2, original TinyViT, a static nested-width
-  point and adaptive policies without
+- **T013b:** Phase A1 implements validation-only infrastructure and a guarded
+  two-row smoke. Execute held-out evaluation only after independent PR review
+  and Charalampos's recorded acceptance of the controller policy and F007
+  protocol in the repository. Then compare frozen MobileNetV2, original
+  TinyViT, a static nested-width point and adaptive policies without
   test-driven retuning. Report throughput, latency, uncertainty and the dataset
   limits. The held-out T006 partition remains protected until that gate.
 

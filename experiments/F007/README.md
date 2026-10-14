@@ -1,6 +1,6 @@
 # F007 — final static-versus-adaptive evaluation (T013a protocol proposal)
 
-**Status: proposed, not approved or executable.** This records the T013a design
+**Status: proposed, not approved for held-out execution.** This records the T013a design
 before held-out test-image inference or predictive evaluation. The canonical
 `verify_t006()` has already parsed the frozen test manifest for structural
 counts and fingerprints; this is permitted provenance verification, not model
@@ -8,7 +8,7 @@ evaluation. PR #27 merged the T012 implementation and validation evidence;
 that merge did not accept its numerical controller policy. Charalampos reports
 that Salo delegated completion of the remaining work to him. D030 and F007
 remain proposed pending final independent PR review and Charalampos's sign-off
-under that delegation. No F007 prediction or raw test-result artifact exists.
+under that delegation. No held-out F007 prediction or raw test-result artifact exists.
 The JSON status required for a future accepted final protocol is
 `accepted_final_protocol`; the current proposed status and
 `authorizes_test_inference=false` grant no test-inference authorization.
@@ -390,13 +390,12 @@ quality–coverage–cost, deferral reasons, paired contrasts, per-device
 descriptives, CPU timing/throughput, and quality-versus-FLOPs plots annotated
 with coverage. Separate measurements from interpretation.
 
-No T013b final-test command exists in this branch. Before implementing it,
-parameterize the F006b controller's budget capacity as an exact rational
-value in selection, DEFER records and boundary checks, retaining historical
-`Cmodel` as the F006b default. T013b must pass the approved `Ccapacity` for
-D/E/F and use that same value for A/B/C feasibility. Preserve F006b's original
-behavior, tests, simulation and measured outputs. The future command must
-strictly require F007 JSON `status == "accepted_final_protocol"` and
+A guarded T013b final-test command is implemented but currently denies execution.
+Phase A1 parameterized the
+F006b controller's exact-rational capacity while retaining historical
+`Cmodel` as its default; F007 applies `Ccapacity` to all six systems. The
+future command must strictly require F007 JSON
+`status == "accepted_final_protocol"` and
 `authorizes_test_inference=true`, the accepted committed protocol and frozen
 source/checkpoint identities. The proposed JSON currently has
 `authorizes_test_inference=false`; changing its status alone is insufficient.
@@ -418,3 +417,182 @@ per frozen checkpoint, validation reuse in prior selection, device/label
 confounding, simulated FLOP budgets, and absence of edge-device energy or
 clinical data limit the conclusions. The team must decide whether it wants a
 separate scalar utility for deferral; this protocol makes no such claim.
+
+## 7. T013b Phase A1 validation infrastructure
+
+`experiments/F007/phase_a1.py` implements exact-capacity routing, the frozen
+recording-unit schedule, guarded alias-row requests, canonical model dispatch,
+and duplicate-aware unit aggregation. Every served primary request starts a
+fresh sequence/clip cache; encoded-frame counts are diagnostics while full
+FLOPs remain the independent-request accounting. `src/f007_protocol.py` checks the
+proposed JSON, canonical Git LF identity of the F002 protocol and validation
+profile, T006 manifests via `verify_t006()`, and the frozen model hashes.
+The controller's historical default remains `Cmodel`; F007 explicitly passes
+`Ccapacity`. This implementation changes no F007 scientific selection rule.
+
+The bounded reproducible validation smoke is:
+
+```powershell
+& C:\venvs\bde-project\Scripts\python.exe -m experiments.F007.phase_a1 smoke-validation --device cpu
+```
+
+It creates a new ignored `artifacts/F007/phase_a1_validation_*` directory with
+`requests.jsonl`, `units.jsonl`, `summary.json`, and `run.json`; an existing
+attempt is never overwritten. The 2026-10-12 UTC smoke used one normal and
+one abnormal validation singleton. Across six systems and the `b=1` and
+`b=0` diagnostic states, all 12 full-resource requests completed within
+their exact budgets and all 12 zero-resource requests deferred. The two-row
+predictive figures only verify plumbing; they are not an F007 quality result
+or held-out evidence. Synthetic tests cover intermediate states, shared
+aliases, missing classes, and unauthorized test attempts. The full official
+CPU job and held-out execution remain pending.
+
+The proposed JSON retains `status=proposed_pending_team_approval` and
+`authorizes_test_inference=false`. A future final-test run requires both
+accepted values, frozen identity checks, D030's committed acceptance and
+sign-off, and a separately committed `configs/f007_approval.json` receipt
+that references the earlier accepted protocol commit and independent review.
+No receipt is provided in Phase A1 or A2. A receipt is kept separate because a
+commit cannot embed its own SHA in its committed bytes.
+
+## 8. T013b Phase A2 validation analysis and CPU runner
+
+`validation_run.py` writes complete or explicitly bounded validation-only A1
+request/unit evidence for all six systems, the five fixed states, the
+heterogeneous schedule and the two prespecified supplementary points.
+`analysis.py` rechecks frozen request and checkpoint identities, reconstructs
+duplicate-aware units from alias records, generates the shared sorted-group
+PCG64 seed-13013 draw matrix once, and uses it for all point and paired
+intervals. Drawn groups retain all aliases and repeated states; absent-class
+macro-F1/AUROC and recall are unavailable as specified above. Results include
+valid-draw counts and suppress intervals below 4,000 valid draws. CSV tables,
+an SVG/PNG quality-versus-full-FLOPs figure, raw JSON and the bootstrap indices
+go to a new ignored `artifacts/F007/` directory. Identity-by-construction
+comparisons report the exact equality without redundant bootstrap tests.
+The heterogeneous report gives requested units, alias rows, completed units,
+deferred units and coverage for each realized resource state and system.
+Factorial coverage and factorial paired coverage differences are exact
+structural values without bootstrap intervals; mixed coverage retains its
+group-bootstrap interval.
+
+`cache_diagnostic.py` independently runs D/E/F in increasing and decreasing
+resource order with a fresh width-and-frame cache per alias/policy/order. It
+verifies every cached/direct logit and records incremental FLOPs separately
+from full independent-request FLOPs. `benchmark_cpu.py` checks direct/chunk4
+logit and class agreement before timing all nine fixed points. It implements
+the frozen 200-ID/50-warm-up/five-repeat official protocol, rotating point
+order, model-only and JPEG pipeline clocks, policy/deferral clocks and
+grouped/interleaved nested switching on one CPU process with four threads.
+Outputs include raw repeats, request IDs, software/hardware identity and
+checkpoint hashes. Existing F002/F004/F006b times are not matched evidence.
+
+`provenance.py` records the Git commit and dirty state, local and committed
+SHA-256 for the execution modules, protocol/checkpoint/input identities,
+Python and package versions, OS/CPU/device/thread settings, UTC start time and
+exact command parameters in every new Phase A2 run/report. Official validation,
+analysis, cache and CPU runs require a clean committed working tree and fail if
+source or protocol changes during execution. Diagnostic runs record a dirty
+tree explicitly. Each output uses a new directory, preserving prior raw
+attempts. Validation-only CPU inference uses one fixed Torch thread and still
+executes every alias/system/state as a fresh request; the runner checks exact
+prediction identity whenever the frozen checkpoint, configuration and alias
+repeat. Full independent-request FLOPs are charged for every served request.
+
+Reproducible commands from the repository root in `bde-project`:
+
+```powershell
+$runDir = "artifacts/F007/validation_full_$(Get-Date -Format yyyyMMddTHHmmss)"
+$reportDir = "artifacts/F007/report_full_$(Get-Date -Format yyyyMMddTHHmmss)"
+& C:\venvs\bde-project\Scripts\python.exe -m experiments.F007.validation_run --all-validation-units --output $runDir
+& C:\venvs\bde-project\Scripts\python.exe -m experiments.F007.analysis --evidence $runDir --output $reportDir
+& C:\venvs\bde-project\Scripts\python.exe -m experiments.F007.cache_diagnostic --all-validation-aliases
+& C:\venvs\bde-project\Scripts\python.exe -m experiments.F007.benchmark_cpu --official
+```
+
+For a bounded plumbing check, use `validation_run --diagnostic-units 2`, then
+`analysis ... --diagnostic`, `cache_diagnostic --diagnostic-units 1`, and
+`benchmark_cpu --diagnostic-requests 1`. On 2026-10-12 UTC, these
+real-validation checks created 76 A1 request records (48 served), 38 report
+cells and all 24
+prespecified contrasts across five states and the heterogeneous schedule.
+Both selected units were normal, so this subset does not estimate two-class
+predictive performance. The one-unit cache run served 24 of 30 requests with
+zero maximum cached/direct logit difference. The one-request, one-repeat CPU
+diagnostic covered all nine points with zero maximum direct/chunk4 logit
+difference.
+These subset timings are **diagnostic only**. The subsequent complete
+validation run and official CPU job were verified locally as follows; both
+record clean commit `ffac85119713fc8d8cd4fde53ea56fedd2e44c38` and the
+same frozen input/checkpoint identities as the current protocol:
+
+- `artifacts/F007/validation_full_20261013T015903/`: completed, 265 retained
+  validation alias rows, 254 duplicate-aware units, all six systems and five
+  states plus the heterogeneous schedule; its
+  `artifacts/F007/report_full_20261013T015903/` analysis has 38 cells and 24
+  preselected contrasts. SHA-256: `run.json`
+  `8dcaa47a211c2a224756dd3a58cad11db5c359893a1086afda86fe66e2d0e199`,
+  `report.json`
+  `b92318ecaf78d3d8e0b9fbee77d0f2e8f9c2c0392d7b7652b96a05a822a1e3cc`.
+  The report's recorded source-file hashes match the local raw request, unit
+  and run files.
+- `artifacts/F007/cpu_validation_20261014T004948183271Z/benchmark.json`:
+  official same-job nine-point benchmark on an AMD Ryzen AI 9 HX 370, one
+  process/four CPU threads, 200 timed validation requests, 50 warm-ups and
+  five repeats. Maximum direct/chunk4 absolute logit difference was `0.0`
+  for every point. Its locally verified SHA-256 is
+  `223fd2655acb54b6b0ea775d8f220b83d607ec864aaa5a014d9867fdaa0e1de8`.
+
+These are validation and CPU measurements, not held-out predictive evidence.
+No held-out test image was decoded or inferred, and the JSON remains proposed
+with test inference false.
+
+## 9. Guarded final-test command (not yet authorized)
+
+`final_test.py` calls the committed F007 authorization gate before selecting
+test rows for execution, constructing a model predictor, decoding an image,
+or producing a prediction. The gate requires both accepted JSON values, the
+earlier accepted protocol commit, a committed approval receipt referencing the
+independent PR review and D030 sign-off, and matching frozen manifest/profile/
+checkpoint hashes. The run also requires committed clean source and records the
+approval receipt, protocol commit, source hashes, environment, exact parameters,
+request identities and output hashes. The present proposed JSON and absent
+receipt make this command fail closed; this section grants no authorization.
+After authorization, a no-decode preflight resolves both the MobileNetV2 and
+TinyViT K16 frame inventories for every frozen test row before model inference.
+The F007-only TinyViT test loader inherits F003's nested positions, bicubic
+RGB224/ImageNet preprocessing and `frames_at` behavior; F002c's original
+train/validation guard is unchanged.
+
+After independent review and formal recorded approval, the exact command from
+the repository root is:
+
+```powershell
+$testRunDir = "artifacts/F007/final_test_$(Get-Date -Format yyyyMMddTHHmmss)"
+& C:\venvs\bde-project\Scripts\python.exe -m experiments.F007.final_test --output $testRunDir --device cpu
+```
+
+It creates a new ignored attempt directory and refuses an existing one. An
+`attempt.json` records success, failure or interruption; denial leaves no
+predictions. An
+authorized run writes `evidence/requests.jsonl`, `units.jsonl`, `summary.json`
+and `run.json`, then uses the same Phase A2 analysis to write `report/` tables,
+bootstrap indices and figures. The five factorial states, mixed schedule, all
+six systems and both fixed supplementary comparisons use the same canonical
+request, aggregation and statistical functions as validation. Each request
+retains fresh-cache full-FLOP accounting. Technical failures preserve the new
+attempt and any completed raw evidence for investigation; a rerun uses another
+directory with the identical frozen configuration. This implementation has
+only been exercised with synthetic and validation data; no held-out predictive
+result exists.
+
+If complete authorized predictions were written but report generation failed,
+recover analysis without another model pass, using a **new** output directory:
+
+```powershell
+$recoveryDir = "artifacts/F007/final_report_recovery_$(Get-Date -Format yyyyMMddTHHmmss)"
+& C:\venvs\bde-project\Scripts\python.exe -m experiments.F007.final_test --recover-evidence "$testRunDir/evidence" --output $recoveryDir
+```
+
+Recovery repeats the authorization gate, verifies complete raw evidence and
+the original committed source/approval provenance, then applies the unchanged
+F007 analysis. It does not construct models or decode images.
