@@ -35,25 +35,25 @@ shared-weight frame-count family that T011 and T012 build on.
   and screen them against provisional validation quality requirements anchored
   to the frozen F002b reference. F006b (T012b) implements and evaluates a
   user-directed, recall-priority controller over continuous normalized FLOP
-  budgets. PR #27 merged that implementation and evidence; its numerical
-  requirements and rule remain provisional.
+  budgets. PR #27 merged that implementation and evidence; D030 later accepted
+  its numerical F007 rule after independent review and recorded sign-off.
 
-## Next research decision
+## Final F007 evidence
 
-Charalampos approved D030's proposed F007 10% simulated capacity headroom and
-recall-priority direction. He reports that Salo delegated completion of the
-remaining project work to him; D030 and T013a's proposed
-[`F007 protocol`](../experiments/F007/README.md) need final independent PR
-re-review and his recorded sign-off before T013b held-out execution. Phase A1
-validation-only infrastructure can be reviewed while that gate remains closed. It
-plans matched comparisons against frozen F002b MobileNetV2, original static
-TinyViT K16 and a fixed width-0.5 slice of the canonical nested F005b bundle;
-the separately trained 50%-only control is not the proposed static handoff.
-The T006 held-out test partition remains reserved until both gates are fixed.
+The accepted [`F007 protocol`](../experiments/F007/README.md) fixed the six
+systems, five simulated resource states, heterogeneous schedule and paired
+comparisons before authorized held-out execution. T013b completed the final
+run on 2026-10-14 with 265 evaluation units and all 24 prespecified
+contrasts. The [final results](../experiments/F007/FINAL_RESULTS.md) retain
+original TinyViT K16 as the main architectural baseline, MobileNetV2 K16 as
+an external static reference, and a fixed canonical nested width-0.5/K8
+comparator. They show resource-dependent coverage and predictive trade-offs;
+the separately trained 50%-only control is not the static handoff.
 
 ## Interpretation guardrails
 
 Separate validation measurements, validation-driven model/checkpoint selection,
 per-input analyses, cost measurements and deployable policy performance. Do not
-infer clinical significance, statistical superiority or edge-device behavior from
-the present validation results.
+infer clinical effectiveness or edge-device energy use from the validation or
+held-out results. Interpret the unadjusted, group-bootstrap comparisons with
+their denominators and uncertainty.

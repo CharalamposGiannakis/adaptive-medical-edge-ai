@@ -6,7 +6,9 @@ The current OpenPOCUS direction develops **TinyViT-5M as an adaptive backbone**,
 starting from variable frame counts per lung-zone sequence prediction and measuring
 other bounded adaptive dimensions where useful. The project studies predictive
 performance, FLOPs, throughput, latency, adaptive policies and deployment
-constraints at the edge.
+constraints at the edge. The accepted F007 held-out comparison completed;
+its measured interpretation and provenance are in
+[`experiments/F007/FINAL_RESULTS.md`](experiments/F007/FINAL_RESULTS.md).
 
 ## Current status
 
@@ -15,12 +17,11 @@ to be the useful adaptive axis; T010 (F004) serves the TinyViT checkpoint at
 K = 1–16 frames as one weight file; T011 (F005) adds nested structured pruning
 with distillation, giving 4 widths × 6 K in one file. D027–D029 record these as
 accepted decisions. T010 and T011 are complete; T012b's provisional
-resource-aware controller was implemented and merged in PR #27. D030 proposes
-10% simulated budget headroom for F007. Charalampos reports Salo delegated
-completion of the remaining work to him; D030 and the
-[`F007 final-evaluation protocol`](experiments/F007/README.md) remain proposed
-until independent PR re-review and his recorded final sign-off. T013b cannot
-run held-out predictive evaluation before then. The frozen static reference
+resource-aware controller was implemented and merged in PR #27. D030 and the
+[`F007 final-evaluation protocol`](experiments/F007/README.md) were accepted
+after independent review and recorded sign-off. The authorized held-out run
+completed on 2026-10-14; T013c publishes its frozen results for team review.
+The frozen static reference
 remains F002b MobileNetV2 (D025): K16 validation macro-F1 0.859,
 abnormal recall 0.750 and 5.11 GFLOPs.
 Charalampos and Salo selected the F002c TinyViT-5M epoch-8 checkpoint as the
@@ -29,10 +30,9 @@ adaptive-system backbone (D026). That same checkpoint reached validation macro-F
 shared frozen copy is
 [`checkpoints/f002c_tinyvit5m_epoch8.pt`](checkpoints/f002c_tinyvit5m_epoch8.pt).
 
-These are validation development results, not clinical performance or a claim of
-universal architecture superiority. The frozen T006 test manifest has undergone
-structural verification; no held-out test-image inference or predictive
-evaluation has occurred.
+These are validation development results, distinct from the completed F007
+held-out evaluation. Neither is clinical performance or a claim of universal
+architecture superiority.
 
 ## Project direction
 
@@ -42,8 +42,8 @@ evaluation:
 1. characterize useful adaptive dimensions and costs around the selected TinyViT checkpoint (T009, complete);
 2. construct measured shared-model operating points (T010, complete);
 3. integrate compute compression (T011, complete) and evaluate a provisional resource-aware policy (T012b implementation merged);
-4. review how the system behaves under simulated edge constraints;
-5. review the T013a protocol, then compare the final adaptive system with the frozen MobileNetV2 static reference (T013b, later).
+4. assess the accepted controller under simulated edge constraints (T013b, complete);
+5. publish and review the frozen final comparison with original TinyViT as the main architectural baseline and MobileNetV2 as an external static reference (T013c).
 
 The prehospital/ambulance lung POCUS use-case design and variable-frame direction
 were accepted in TA Sudaksh's feedback. OpenPOCUS remains a technical experimental
@@ -51,9 +51,9 @@ proxy. D025 continues to govern the MobileNetV2 static reference; D026 selects
 TinyViT for adaptive development. D027–D029 accept the frame-count family and
 nested structured pruning as compute compression. Its shared checkpoint remains
 about 20.4 MB; narrower widths reduce inference work. The T012b controller
-policy and D030 remain provisional pending independent PR re-review and
-Charalampos's final sign-off under the reported delegation. No held-out
-OpenPOCUS predictive results are claimed.
+policy and D030 were accepted for F007 after independent review and recorded
+sign-off. Held-out predictive results are reported only under the frozen F007
+methodology in [`FINAL_RESULTS.md`](experiments/F007/FINAL_RESULTS.md).
 
 The current technical pathway is in [`docs/design_pathway.md`](docs/design_pathway.md).
 The independently reviewed F002 qualification and static-baseline contract is

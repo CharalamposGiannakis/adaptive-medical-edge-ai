@@ -476,14 +476,15 @@ decision timing.
   those contrasts before inference and allows canonical structural
   `verify_t006()` metadata/fingerprint checks while prohibiting test-image
   decoding, inference and predictive evaluation until final sign-off. The
-  proposed machine-readable contract is
+  subsequently accepted machine-readable contract is
   [`configs/f007_protocol.json`](../configs/f007_protocol.json). Normal task
   branches, pull requests and independent review remain required.
-- **Cross-platform provenance correction:** The proposed F007 contract now
+- **Cross-platform provenance correction:** The F007 contract
   pins the canonical Git LF SHA-256 of `configs/f002_protocol.json`, rather
-  than a Windows CRLF checkout hash. The exact future accepted JSON status is
-  `accepted_final_protocol`; its current status remains proposed and
-  `authorizes_test_inference=false`. The F007 README governs methodology
+  than a Windows CRLF checkout hash. The accepted JSON status is
+  `accepted_final_protocol` with `authorizes_test_inference=true`; these
+  values were committed with the separate approval receipt before the
+  authorized final run. The F007 README governs methodology
   details not duplicated in the JSON. This correction changes no model,
   resource budget, checkpoint or held-out evaluation rule.
 - **Limits and consequences:** `w1.0_k12` has validation TN=163, FP=15,
@@ -491,10 +492,11 @@ decision timing.
   accuracy requirement would disqualify it. Recall priority can increase
   false positives and computation and is not a clinical safety rule. F006b's
   original `Cmax = Cmodel` behavior, simulation, tests and measurements remain
-  historical. T013b must parameterize capacity without changing that behavior.
+  historical. T013b parameterized capacity without changing that behavior.
   Independent PR review and Charalampos's sign-off are recorded. Held-out
-  inference remains prohibited until the accepted protocol and separately
-  committed approval receipt pass the F007 authorization gate.
+  inference was prohibited until the accepted protocol and separately
+  committed approval receipt passed the F007 authorization gate; the final
+  run then completed at clean commit `d061ea4`.
 
 ---
 
@@ -502,17 +504,11 @@ decision timing.
 
 The following are intentionally **not decided yet**:
 
-- How well the validation-supported model and adaptive behavior generalize; OpenPOCUS remains a technical proxy rather than clinical deployment evidence.
+- How well the frozen held-out findings generalize beyond OpenPOCUS; it remains a technical proxy rather than clinical deployment evidence.
 - Any additional biological-patient identity mapping if new provenance becomes available; D023 fixes the current T006 quality exclusions and known-group split protocol.
-- Charalampos's recorded final sign-off on D030's F007 quality filter,
-  recall-priority rule, simulated 10% capacity headroom and operating-point
-  mapping under the reported Salo delegation, after independent PR review.
 - Whether input uncertainty becomes part of the runtime policy.
 - Whether an optimization-based controller is worth implementing.
 - Final scenario-specific utility / global performance measure.
 - Exact latency, battery, thermal, and network assumptions.
-- Final held-out test protocol; the T013a
-  [`F007 proposal`](../experiments/F007/README.md) awaits independent review
-  and Charalampos's final sign-off before predictive test access.
 - Whether restricted FAST/pneumothorax data become available.
 - Any later teaching-team clarification of throughput presentation; D024 specifies reporting both frames/s and completed zone-sequence predictions/s.
