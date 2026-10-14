@@ -124,12 +124,17 @@ B−nested-full-width comparison is +.0017 [−.0150, .0221] macro-F1; the
 different training recipes prevent attributing that difference to pruning
 alone.
 
-F's validation-derived recall priority does **not** reliably improve held-out
-abnormal recall over E. At `b=.50`, F's abnormal recall is .8025 versus E's
-.8148, with 10.298 versus 8.782 GFLOPs/request. On the mixed schedule it is
-.7679 versus .7857, with 9.632 versus 7.995 GFLOPs/request and equal 80%
-coverage. These are observed policy trade-offs, not a reason to retune the
-frozen rule using the test split.
+F's validation-derived recall-priority rule did not increase held-out abnormal
+recall over E at any positive resource state or on the heterogeneous schedule.
+At `b=.25` and `b=1`, the policies used
+identical configurations, predictions and computation. At `b=.50`, F recorded
+.8025 versus E's .8148 abnormal recall, with 10.298 versus 8.782
+GFLOPs/request; at `b=.75`, recall was again .8025 versus .8148, with 15.447
+versus 8.782 GFLOPs/request. On the heterogeneous schedule, F recorded .7679
+versus .7857 abnormal recall, with 9.632 versus 7.995 GFLOPs/assigned row
+and equal 80% coverage. F had slightly higher macro-F1 than E at `b=.75`, so
+these descriptive recall and cost observations are not an all-metric ranking.
+The frozen rule was not retuned using the test split.
 
 ## Comparable CPU context
 
@@ -183,8 +188,9 @@ serves 80% of units on the mixed schedule, whereas the full original TinyViT
 K16 baseline serves 20% under the same budgets. This demonstrates the
 specified **simulated-resource adaptive inference** and coverage behavior.
 It does not establish a universal predictive winner: observed quality changes
-with configuration, E and F trade quality and work, and F's recall-priority
-selection did not consistently improve held-out abnormal recall. The original
+with configuration. At every positive state and on the heterogeneous schedule,
+F never had higher held-out abnormal recall than E despite equal or higher
+full FLOPs; F's macro-F1 was slightly higher at `b=.75`. The original
 TinyViT baseline remains the architectural reference; MobileNetV2 supplies a
 separate external static comparison.
 
