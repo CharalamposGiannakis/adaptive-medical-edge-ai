@@ -270,5 +270,22 @@ within-clip requests with exact cached work accounting and maximum
 cached/direct logit difference 0. A
 one-request, one-repeat CPU diagnostic passed nine-point direct/chunk4 parity
 with maximum absolute logit difference 0. These generated records are ignored
-under `artifacts/F007/`; the full official 200-request, five-repeat CPU job
-has not run. None of these diagnostics is held-out evidence.
+under `artifacts/F007/`; none of these diagnostics is held-out evidence.
+
+Complete validation evidence and the official CPU benchmark subsequently ran
+at clean commit `ffac85119713fc8d8cd4fde53ea56fedd2e44c38`. The completed
+`artifacts/F007/validation_full_20261013T015903/` run has 265 rows and 254
+duplicate-aware units; its full report has 38 cells and 24 fixed contrasts.
+Local SHA-256: `run.json`
+`8dcaa47a211c2a224756dd3a58cad11db5c359893a1086afda86fe66e2d0e199`,
+`report.json`
+`b92318ecaf78d3d8e0b9fbee77d0f2e8f9c2c0392d7b7652b96a05a822a1e3cc`;
+the report's source hashes match the raw evidence. The official nine-point
+`artifacts/F007/cpu_validation_20261014T004948183271Z/benchmark.json` used
+200 validation requests, 50 warm-ups, five repeats, one AMD Ryzen AI 9 HX 370
+process and four CPU threads. All direct/chunk4 logit differences were zero;
+the verified file SHA-256 is
+`223fd2655acb54b6b0ea775d8f220b83d607ec864aaa5a014d9867fdaa0e1de8`.
+The two records' frozen input/checkpoint identities match the current F007
+contract. These are validation development and CPU measurements, not held-out
+predictive results. D030/F007 remain proposed and test inference unauthorized.

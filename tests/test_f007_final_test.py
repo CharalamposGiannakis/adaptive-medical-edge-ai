@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import tempfile
 import unittest
@@ -71,6 +72,16 @@ class ApprovalGateTests(unittest.TestCase):
                 with self.assertRaisesRegex(PermissionError, "sign-off"):
                     f007_protocol.require_test_authorization(protocol, root=root)
         with tempfile.TemporaryDirectory(dir=ARTIFACTS) as folder:
+            root, protocol, blob = self._accepted_fixture(folder, decision_status="Proposed")
+            def unrelated_acceptance(_root, revision, name):
+                content = blob(_root, revision, name)
+                return (content.replace(b"---\n", b"Accepted by Charalampos elsewhere\n---\n")
+                        if name == "docs/decision_log.md" else content)
+            with patch.object(f007_protocol, "git_blob", side_effect=unrelated_acceptance), \
+                    patch.object(f007_protocol.subprocess, "run"):
+                with self.assertRaisesRegex(PermissionError, "sign-off"):
+                    f007_protocol.require_test_authorization(protocol, root=root)
+        with tempfile.TemporaryDirectory(dir=ARTIFACTS) as folder:
             root, protocol, blob = self._accepted_fixture(folder)
             with patch.object(f007_protocol, "git_blob", side_effect=blob), \
                     patch.object(f007_protocol.subprocess, "run"), \
@@ -123,6 +134,77 @@ class FinalRunnerTests(unittest.TestCase):
             analysis.analyze({}, [{"partition": "test"}], self.protocol,
                              partition="test")
 
+    def test_inventory_preflight_failure_precedes_model_construction(self):
+        row = {"exam_id": "S", "zone_id": "z1", "binary_target": "0",
+               "split_group": "G", "partition": "test"}
+        approval = {"frozen_inputs": {"checkpoint_hashes_checked": True}}
+        with tempfile.TemporaryDirectory(dir=ARTIFACTS) as folder:
+            output = Path(folder) / "preflight_failed"
+            with patch.object(final_test, "require_test_authorization",
+                              return_value=approval), \
+                    patch.object(final_test, "partition_context",
+                                 return_value=([row], {("S", "z1"): "singleton:S/z1"},
+                                               approval["frozen_inputs"])), \
+                    patch.object(final_test, "capture", return_value={"official": True}), \
+                    patch.object(final_test, "preflight_test_inventories",
+                                 side_effect=ValueError("inventory changed")), \
+                    patch.object(final_test, "CanonicalModels",
+                                 side_effect=AssertionError("model constructed")):
+                with self.assertRaisesRegex(ValueError, "inventory changed"):
+                    final_test.run(output=output)
+            self.assertEqual(json.loads((output / "attempt.json").read_text())["status"],
+                             "failed")
+
+    def test_interruptions_preserve_terminal_status_and_original_exit(self):
+        approval = {"frozen_inputs": {"checkpoint_hashes_checked": True}}
+        for interruption in (KeyboardInterrupt(), SystemExit(7)):
+            with self.subTest(type=type(interruption).__name__), \
+                    tempfile.TemporaryDirectory(dir=ARTIFACTS) as folder:
+                output = Path(folder) / "interrupted"
+                with patch.object(final_test, "require_test_authorization",
+                                  return_value=approval), \
+                        patch.object(final_test, "partition_context",
+                                     side_effect=interruption):
+                    with self.assertRaises(type(interruption)):
+                        final_test.run(output=output)
+                attempt = json.loads((output / "attempt.json").read_text())
+                self.assertEqual(attempt["status"], "interrupted")
+                self.assertEqual(attempt["error_type"], type(interruption).__name__)
+
+    def test_recovery_authenticates_original_source_commit_and_receipt(self):
+        digest = hashlib.sha256(b"original committed source").hexdigest()
+        source = {name: {"committed_blob_sha256": digest,
+                         "working_tree_sha256": digest}
+                  for name in final_test.SOURCE_MODULES}
+        approval = {field: "same" for field in
+                    ("protocol_commit", "accepted_protocol_sha256",
+                     "approval_receipt_sha256", "independent_review_ref",
+                     "charalampos_signoff_ref", "decision_record_ref")}
+        approval["frozen_inputs"] = {"checkpoint_hashes_checked": True}
+        run = {"provenance": {"official": True, "working_tree_dirty": False,
+                              "commit_sha": "a" * 40, "source_sha256": source,
+                              "protocol_sha256": "protocol",
+                              "frozen_inputs": approval["frozen_inputs"],
+                              "frozen_checkpoints": {"f002b": "frozen"}},
+               "authorization": approval, "frozen_inputs": approval["frozen_inputs"],
+               "checkpoints": {"f002b": "frozen"}, "protocol_sha256": "protocol"}
+        with patch.object(final_test, "git_blob", return_value=b"original committed source"), \
+                patch.object(final_test.subprocess, "run"):
+            final_test._verify_original_provenance(run, approval)
+            changed = copy.deepcopy(run)
+            changed["provenance"]["source_sha256"][final_test.SOURCE_MODULES[0]][
+                "committed_blob_sha256"] = "0" * 64
+            with self.assertRaisesRegex(ValueError, "source Git hash mismatch"):
+                final_test._verify_original_provenance(changed, approval)
+            changed = copy.deepcopy(run)
+            changed["authorization"]["approval_receipt_sha256"] = "different"
+            with self.assertRaisesRegex(ValueError, "approval provenance changed"):
+                final_test._verify_original_provenance(changed, approval)
+            changed = copy.deepcopy(run)
+            changed["provenance"]["frozen_checkpoints"] = {"f002b": "changed"}
+            with self.assertRaisesRegex(ValueError, "source frozen-input"):
+                final_test._verify_original_provenance(changed, approval)
+
     def test_synthetic_full_dispatch_and_report_without_images(self):
         rows = [{"exam_id": exam, "zone_id": "z1", "binary_target": str(target),
                  "split_group": group, "partition": "test", "device": "synthetic"}
@@ -142,8 +224,11 @@ class FinalRunnerTests(unittest.TestCase):
                     patch.object(phase_a1, "verify_inputs", return_value=approval["frozen_inputs"]), \
                     patch.object(final_test, "partition_context",
                                  return_value=(rows, unit_of, approval["frozen_inputs"])), \
+                    patch.object(final_test, "preflight_test_inventories",
+                                 return_value={"rows": 2, "decoded_images": 0}), \
                     patch.object(final_test, "CanonicalModels", return_value=fake_predictor), \
-                    patch.object(final_test, "capture", return_value={"official": True}), \
+                    patch.object(final_test, "capture", return_value={"official": True,
+                                                                       "commit_sha": "a" * 40}), \
                     patch.object(final_test, "assert_unchanged"), \
                     patch.object(phase_a1.controller, "load_policy_points",
                                  return_value=points_from_screen()), \
@@ -166,6 +251,62 @@ class FinalRunnerTests(unittest.TestCase):
             self.assertEqual({json.loads(line)["system_id"] for line in requests},
                              set(self.protocol["systems"]) |
                              {"f002c_original_k4", "f005b_nested_w1.0_k16"})
+
+    def test_recovery_reuses_complete_predictions_after_report_failure(self):
+        rows = [{"exam_id": exam, "zone_id": "z1", "binary_target": str(target),
+                 "split_group": group, "partition": "test", "device": "synthetic"}
+                for exam, target, group in (("R1", 0, "G1"), ("R2", 1, "G2"))]
+        unit_of = {(row["exam_id"], "z1"): f"singleton:{row['exam_id']}/z1"
+                   for row in rows}
+        approval = {"protocol_commit": "a" * 40,
+                    "frozen_inputs": {"checkpoint_hashes_checked": True}}
+        predictor = lambda row, plan: (0.2 if row["binary_target"] == "0" else 0.8,
+                                       {"frame_indices": "synthetic"})
+        with tempfile.TemporaryDirectory(dir=ARTIFACTS) as folder:
+            first, recovery = Path(folder) / "first", Path(folder) / "recovery"
+            with patch.object(final_test, "require_test_authorization", return_value=approval), \
+                    patch.object(phase_a1, "require_test_authorization", return_value=approval), \
+                    patch.object(validation_run, "require_test_authorization", return_value=approval), \
+                    patch.object(analysis, "require_test_authorization", return_value=approval), \
+                    patch.object(phase_a1, "verify_inputs", return_value=approval["frozen_inputs"]), \
+                    patch.object(final_test, "partition_context",
+                                 return_value=(rows, unit_of, approval["frozen_inputs"])), \
+                    patch.object(phase_a1, "partition_context",
+                                 return_value=(rows, unit_of, approval["frozen_inputs"])), \
+                    patch.object(final_test, "preflight_test_inventories",
+                                 return_value={"rows": 2, "decoded_images": 0}), \
+                    patch.object(final_test, "CanonicalModels", return_value=predictor), \
+                    patch.object(final_test, "capture", return_value={"official": True,
+                                                                       "commit_sha": "a" * 40}), \
+                    patch.object(final_test, "assert_unchanged"), \
+                    patch.object(phase_a1.controller, "load_policy_points",
+                                 return_value=points_from_screen()), \
+                    patch.object(phase_a1.f006a_2, "read_baseline", return_value=BASELINE), \
+                    patch.object(analysis, "bootstrap_indices",
+                                 return_value=np.array([[0, 1], [1, 0]], dtype=np.int32)):
+                with patch.object(analysis, "write_report",
+                                  side_effect=RuntimeError("report failed")):
+                    with self.assertRaisesRegex(RuntimeError, "report failed"):
+                        final_test.run(output=first)
+                self.assertEqual(json.loads((first / "attempt.json").read_text())["status"],
+                                 "failed")
+                self.assertTrue((first / "evidence/requests.jsonl").exists())
+                with patch.object(final_test, "_verify_original_provenance"), \
+                        patch.object(final_test, "CanonicalModels",
+                                     side_effect=AssertionError("model constructed")), \
+                        patch("PIL.Image.open", side_effect=AssertionError("image decoded")):
+                    result = final_test.recover_report(evidence=first / "evidence",
+                                                       output=recovery)
+                self.assertEqual(result["status"], "completed")
+                self.assertEqual(result["cells"], 38)
+                self.assertTrue((recovery / "report/report.json").exists())
+                with self.assertRaises(FileExistsError):
+                    final_test.recover_report(evidence=first / "evidence", output=recovery)
+                (first / "evidence/units.jsonl").write_text("{}\n", encoding="utf-8")
+                with patch.object(final_test, "_verify_original_provenance"):
+                    with self.assertRaises(ValueError):
+                        final_test.recover_report(evidence=first / "evidence",
+                                                  output=Path(folder) / "corrupt")
 
 
 if __name__ == "__main__":

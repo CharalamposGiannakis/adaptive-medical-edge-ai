@@ -308,12 +308,17 @@ class CanonicalModels:
         self.verification = (verify_inputs(protocol, check_checkpoints=True)
                              if partition == "validation" else None)
         from src import f002_pipeline as pipe
-        self.partition, self.device, self.models = partition, device, {}
+        self.protocol, self.partition, self.device, self.models = protocol, partition, device, {}
         if partition == "validation":
             self.allowed_rows = {key(row): row for row in pipe.load_inputs()["validation"]}
         else:
-            self.allowed_rows = {key(row): row for row in verify_t006(
-                ROOT / "configs/f002_protocol.json", ROOT / "data/openpocus/t006")["test"]}
+            from experiments.F007.test_sequences import AuthorizedTestTinyViTSequences
+            test_rows = verify_t006(ROOT / "configs/f002_protocol.json",
+                                    ROOT / "data/openpocus/t006")["test"]
+            self.allowed_rows = {key(row): row for row in test_rows}
+            self.test_index = {key(row): index for index, row in enumerate(test_rows)}
+            self.test_mobilenet = pipe.Sequences(test_rows, 16)
+            self.test_tinyvit = AuthorizedTestTinyViTSequences(test_rows, protocol)
 
     def __call__(self, row: dict, plan: Plan) -> tuple[float, dict]:
         if (row.get("partition") != self.partition or plan.deferred or
@@ -335,18 +340,22 @@ class CanonicalModels:
         model = self.models[plan.checkpoint_key]
         with torch.inference_mode():
             if plan.system == "A":
-                sequence = pipe.Sequences([row], 16)
-                logit = model(sequence.frames(0).unsqueeze(0).to(self.device)).float().item()
-                identity = sequence.identity(0)
+                sequence = (pipe.Sequences([row], 16) if self.partition == "validation"
+                            else self.test_mobilenet)
+                index = 0 if self.partition == "validation" else self.test_index[key(row)]
+                logit = model(sequence.frames(index).unsqueeze(0).to(self.device)).float().item()
+                identity = sequence.identity(index)
                 new_frames = plan.k
             else:
-                sequence = F003Sequences([row], 224)
+                sequence = (F003Sequences([row], 224) if self.partition == "validation"
+                            else self.test_tinyvit)
+                index = 0 if self.partition == "validation" else self.test_index[key(row)]
                 if plan.checkpoint_key == "f002c_original_tinyvit":
-                    logit = model(sequence.frames(0, plan.k).unsqueeze(0).to(self.device)).float().item()
+                    logit = model(sequence.frames(index, plan.k).unsqueeze(0).to(self.device)).float().item()
                     new_frames = plan.k
                 else:
                     clip = NestedAnytimeClip(model, int(row["frame_count"]),
-                        lambda numbers: sequence.frames_at(0, numbers).to(self.device))
+                        lambda numbers: sequence.frames_at(index, numbers).to(self.device))
                     nested_logit, new_frames = clip.predict(plan.width, plan.k)
                     if new_frames != plan.k:
                         raise ValueError("Primary F007 request reused a clip cache")
@@ -360,6 +369,30 @@ class CanonicalModels:
         probability = (1.0 / (1.0 + math.exp(-logit)) if logit >= 0 else
                        math.exp(logit) / (1.0 + math.exp(logit)))
         return probability, identity
+
+
+def preflight_test_inventories(rows: list[dict], protocol: dict) -> dict:
+    """Resolve both frozen K16 test inventories without opening image pixels."""
+    require_test_authorization(protocol)
+    from src import f002_pipeline as pipe
+    from experiments.F003.adaptive import K_VALUES
+    from experiments.F007.test_sequences import AuthorizedTestTinyViTSequences
+
+    canonical = verify_t006(ROOT / "configs/f002_protocol.json",
+                            ROOT / "data/openpocus/t006")["test"]
+    if rows != canonical or not rows:
+        raise ValueError("F007 preflight requires every frozen test row in manifest order")
+    mobilenet = pipe.Sequences(rows, 16)
+    tinyvit = AuthorizedTestTinyViTSequences(rows, protocol)
+    if len(mobilenet) != len(rows) or len(tinyvit) != len(rows):
+        raise ValueError("F007 test loader inventories are incomplete")
+    for index, row in enumerate(rows):
+        if (len(mobilenet.selected[index][1]) != 16 or
+                len(tinyvit.selected[index][1]) != 16 or
+                any(len(tinyvit.positions(index, k)) != k for k in K_VALUES)):
+            raise ValueError(f"F007 K16/K-subset inventory failed: {key(row)}")
+    return {"rows": len(rows), "mobilenet_k16_inventories": len(mobilenet),
+            "tinyvit_k16_inventories": len(tinyvit), "decoded_images": 0}
 
 
 def partition_context(protocol: dict, partition: str, *, full_hashes: bool = True

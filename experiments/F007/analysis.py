@@ -387,28 +387,37 @@ def analyze(cells: dict[str, dict[str, list[dict]]], requests: list[dict],
             "heterogeneous_state_counts": heterogeneous_state_counts(indexed, protocol)}, draws
 
 
-def load_validation_evidence(directory: Path) -> tuple[dict, list[dict], dict]:
-    from experiments.F007.phase_a1 import aggregate_requests, validation_context
+def _load_evidence(directory: Path, partition: str) -> tuple[dict, list[dict], dict]:
+    from experiments.F007.phase_a1 import (aggregate_requests, partition_context,
+                                            validation_context)
     from src.f002_protocol import key
     from src.f007_protocol import sha256_file
 
+    if partition == "test":
+        require_test_authorization(load_protocol())
+    elif partition != "validation":
+        raise ValueError("Unknown F007 evidence partition")
     run = json.loads((directory / "run.json").read_text(encoding="utf-8"))
-    if run.get("partition") != "validation" or run.get("experiment") != "F007":
-        raise PermissionError("F007 A2 accepts only validation evidence")
+    if run.get("partition") != partition or run.get("experiment") != "F007":
+        raise PermissionError("F007 evidence partition mismatch")
     protocol = load_protocol()
     if run.get("protocol_sha256") != sha256_file(ROOT / "configs/f007_protocol.json") or \
             run.get("checkpoints") != protocol["checkpoints"]:
         raise ValueError("F007 evidence protocol or frozen checkpoint identity changed")
-    all_rows, unit_of, _ = validation_context(protocol, full_hashes=False)
+    all_rows, unit_of, _ = (validation_context(protocol, full_hashes=False)
+                            if partition == "validation" else
+                            partition_context(protocol, "test", full_hashes=False))
     by_key = {key(row): row for row in all_rows}
     requested = [tuple(alias) for alias in run["request_ids"]]
     if len(requested) != len(set(requested)) or any(alias not in by_key for alias in requested):
-        raise ValueError("F007 evidence requests are not canonical validation aliases")
+        raise ValueError("F007 evidence requests are not canonical manifest aliases")
+    if partition == "test" and requested != [key(row) for row in all_rows]:
+        raise ValueError("F007 test evidence omits or reorders frozen requests")
     rows = [by_key[alias] for alias in requested]
     requests = [json.loads(line) for line in (directory / "requests.jsonl").read_text(
         encoding="utf-8").splitlines()]
-    if not requests or any(row.get("partition") != "validation" for row in requests):
-        raise PermissionError("F007 A2 refuses non-validation request records")
+    if not requests or any(row.get("partition") != partition for row in requests):
+        raise PermissionError("F007 evidence request partition mismatch")
     units = [json.loads(line) for line in (directory / "units.jsonl").read_text(
         encoding="utf-8").splitlines()]
     by_cell = defaultdict(list)
@@ -421,16 +430,57 @@ def load_validation_evidence(directory: Path) -> tuple[dict, list[dict], dict]:
         if record["checkpoint_sha256"] != expected_sha:
             raise ValueError("F007 request checkpoint identity mismatch")
         by_cell[(record["schedule_id"], record["system_id"])].append(record)
+    if partition == "test":
+        expected_cells = {(f"factorial_b{state}", system)
+                          for state in protocol["resource_states"]
+                          for system in protocol["systems"]}
+        expected_cells.update(("heterogeneous", system)
+                              for system in protocol["systems"])
+        expected_cells.update({("factorial_b0.25", "f002c_original_k4"),
+                               ("factorial_b1.00", "f005b_nested_w1.0_k16")})
+        if set(by_cell) != expected_cells:
+            raise ValueError("F007 test evidence lacks exact predefined cells")
     recomputed = []
+    summaries = defaultdict(dict)
     for (schedule, system), records in by_cell.items():
-        recomputed.extend(aggregate_requests(rows, unit_of, records, system,
-                                             schedule_id=schedule)["units"])
+        result = aggregate_requests(rows, unit_of, records, system,
+                                    schedule_id=schedule)
+        recomputed.extend(result["units"])
+        summaries[schedule][system] = result["summary"]
     if units != recomputed:
         raise ValueError("F007 unit records differ from canonical alias aggregation")
+    if partition == "test":
+        if (run.get("status") != "completed" or
+                run.get("phase") != "final_test_predictions" or
+                run.get("diagnostic_only") is not False or
+                run.get("test_inference_authorized") is not True or
+                run.get("rows") != len(rows) or
+                run.get("units") != len({unit_of[key(row)] for row in rows}) or
+                run.get("group_count") != len({row["split_group"] for row in rows}) or
+                run.get("class_counts") != dict(Counter(
+                    str(row["binary_target"]) for row in rows)) or
+                run.get("inventory_preflight", {}).get("rows") != len(rows) or
+                run.get("inventory_preflight", {}).get("decoded_images") != 0 or
+                tuple(run.get("states", ())) != tuple(protocol["resource_states"]) or
+                tuple(run.get("systems", ())) != tuple(protocol["systems"]) or
+                not run.get("frozen_inputs", {}).get("checkpoint_hashes_checked")):
+            raise ValueError("F007 test evidence is not a complete authorized run")
+        summary = json.loads((directory / "summary.json").read_text(encoding="utf-8"))
+        if summary != summaries:
+            raise ValueError("F007 test summary differs from raw requests")
     cells = defaultdict(lambda: defaultdict(list))
     for unit in units:
         cells[unit["schedule_id"]][unit["system_id"]].append(unit)
     return cells, requests, run
+
+
+def load_validation_evidence(directory: Path) -> tuple[dict, list[dict], dict]:
+    return _load_evidence(directory, "validation")
+
+
+def load_test_evidence(directory: Path) -> tuple[dict, list[dict], dict]:
+    """Guarded, no-image loading of complete frozen test prediction records."""
+    return _load_evidence(directory, "test")
 
 
 def _write_csv(path: Path, rows: list[dict]) -> None:

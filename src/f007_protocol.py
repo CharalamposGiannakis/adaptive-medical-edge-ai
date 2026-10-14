@@ -288,7 +288,10 @@ def require_test_authorization(protocol: dict, *, root: Path = ROOT,
     if "### D030" not in decision:
         raise PermissionError("D030 is absent from the committed decision log")
     d030 = decision.split("### D030", 1)[1].split("---", 1)[0]
-    if ("**Status:** Accepted" not in d030 or "Charalampos" not in d030 or
+    status_lines = re.findall(r"(?m)^\*\*Status:\*\*\s*([^\r\n]*)$", d030)
+    if (len(status_lines) != 1 or
+            re.match(r"^Accepted(?:\b|$)", status_lines[0]) is None or
+            "Charalampos" not in d030 or
             acceptance["independent_review_ref"] not in d030):
         raise PermissionError("D030 accepted sign-off is absent from the committed decision log")
     verification = verify_inputs(protocol, root=root, check_checkpoints=True)

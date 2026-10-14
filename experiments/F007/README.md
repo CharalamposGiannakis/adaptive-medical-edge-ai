@@ -520,10 +520,31 @@ predictive performance. The one-unit cache run served 24 of 30 requests with
 zero maximum cached/direct logit difference. The one-request, one-repeat CPU
 diagnostic covered all nine points with zero maximum direct/chunk4 logit
 difference.
-These subset timings are **diagnostic only**; no official 200-request CPU
-measurement has completed. Full validation evidence and the official CPU job
-remain to be run before final-test authorization. No held-out test image was
-decoded or inferred, and the JSON remains proposed with test inference false.
+These subset timings are **diagnostic only**. The subsequent complete
+validation run and official CPU job were verified locally as follows; both
+record clean commit `ffac85119713fc8d8cd4fde53ea56fedd2e44c38` and the
+same frozen input/checkpoint identities as the current protocol:
+
+- `artifacts/F007/validation_full_20261013T015903/`: completed, 265 retained
+  validation alias rows, 254 duplicate-aware units, all six systems and five
+  states plus the heterogeneous schedule; its
+  `artifacts/F007/report_full_20261013T015903/` analysis has 38 cells and 24
+  preselected contrasts. SHA-256: `run.json`
+  `8dcaa47a211c2a224756dd3a58cad11db5c359893a1086afda86fe66e2d0e199`,
+  `report.json`
+  `b92318ecaf78d3d8e0b9fbee77d0f2e8f9c2c0392d7b7652b96a05a822a1e3cc`.
+  The report's recorded source-file hashes match the local raw request, unit
+  and run files.
+- `artifacts/F007/cpu_validation_20261014T004948183271Z/benchmark.json`:
+  official same-job nine-point benchmark on an AMD Ryzen AI 9 HX 370, one
+  process/four CPU threads, 200 timed validation requests, 50 warm-ups and
+  five repeats. Maximum direct/chunk4 absolute logit difference was `0.0`
+  for every point. Its locally verified SHA-256 is
+  `223fd2655acb54b6b0ea775d8f220b83d607ec864aaa5a014d9867fdaa0e1de8`.
+
+These are validation and CPU measurements, not held-out predictive evidence.
+No held-out test image was decoded or inferred, and the JSON remains proposed
+with test inference false.
 
 ## 9. Guarded final-test command (not yet authorized)
 
@@ -536,9 +557,14 @@ checkpoint hashes. The run also requires committed clean source and records the
 approval receipt, protocol commit, source hashes, environment, exact parameters,
 request identities and output hashes. The present proposed JSON and absent
 receipt make this command fail closed; this section grants no authorization.
+After authorization, a no-decode preflight resolves both the MobileNetV2 and
+TinyViT K16 frame inventories for every frozen test row before model inference.
+The F007-only TinyViT test loader inherits F003's nested positions, bicubic
+RGB224/ImageNet preprocessing and `frames_at` behavior; F002c's original
+train/validation guard is unchanged.
 
-After independent review, complete validation/CPU evidence and formal recorded
-approval, the exact command from the repository root is:
+After independent review and formal recorded approval, the exact command from
+the repository root is:
 
 ```powershell
 $testRunDir = "artifacts/F007/final_test_$(Get-Date -Format yyyyMMddTHHmmss)"
@@ -546,7 +572,8 @@ $testRunDir = "artifacts/F007/final_test_$(Get-Date -Format yyyyMMddTHHmmss)"
 ```
 
 It creates a new ignored attempt directory and refuses an existing one. An
-`attempt.json` records success or failure; denial leaves no predictions. An
+`attempt.json` records success, failure or interruption; denial leaves no
+predictions. An
 authorized run writes `evidence/requests.jsonl`, `units.jsonl`, `summary.json`
 and `run.json`, then uses the same Phase A2 analysis to write `report/` tables,
 bootstrap indices and figures. The five factorial states, mixed schedule, all
@@ -557,3 +584,15 @@ attempt and any completed raw evidence for investigation; a rerun uses another
 directory with the identical frozen configuration. This implementation has
 only been exercised with synthetic and validation data; no held-out predictive
 result exists.
+
+If complete authorized predictions were written but report generation failed,
+recover analysis without another model pass, using a **new** output directory:
+
+```powershell
+$recoveryDir = "artifacts/F007/final_report_recovery_$(Get-Date -Format yyyyMMddTHHmmss)"
+& C:\venvs\bde-project\Scripts\python.exe -m experiments.F007.final_test --recover-evidence "$testRunDir/evidence" --output $recoveryDir
+```
+
+Recovery repeats the authorization gate, verifies complete raw evidence and
+the original committed source/approval provenance, then applies the unchanged
+F007 analysis. It does not construct models or decode images.

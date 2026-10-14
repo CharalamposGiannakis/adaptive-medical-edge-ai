@@ -31,6 +31,7 @@ SOURCE_MODULES = (
     "experiments/F007/phase_a1.py",
     "experiments/F007/validation_run.py",
     "experiments/F007/final_test.py",
+    "experiments/F007/test_sequences.py",
     "experiments/F007/analysis.py",
     "experiments/F007/cache_diagnostic.py",
     "experiments/F007/benchmark_cpu.py",
