@@ -437,14 +437,11 @@ decision timing.
 
 ---
 
-### D030 — Proposed T013 budget headroom and final-comparison rules
+### D030 — Accepted T013 budget headroom and final-comparison rules
 
 **Date:** 2026-10-12
-**Status:** Proposed for F007; Charalampos approved this direction in the T013a
-revision request. Charalampos reports that Salo delegated completion of the
-remaining project work to him. This is not a claim that Salo individually
-approved these numerical choices. Independent PR re-review and Charalampos's
-recorded final sign-off remain pending; D030 is not yet accepted.
+**Status:** Accepted by Charalampos on 2026-10-14, under Salo's reported delegation of the remaining project work, after independent implementation review of PR #29 at commit `540dfd4f3afe2590f559d761aec1fa71e7b7aae0`. Charalampos explicitly accepts the frozen D030/F007 scientific methodology without changes. Independent review: https://github.com/CharalamposGiannakis/adaptive-medical-edge-ai/pull/29#pullrequestreview-5518707989
+
 
 - **Proposed policy:** Keep F006b's provisional three inclusive,
   F002b-referenced validation quality requirements and its recall-priority,
@@ -495,9 +492,9 @@ recorded final sign-off remain pending; D030 is not yet accepted.
   false positives and computation and is not a clinical safety rule. F006b's
   original `Cmax = Cmodel` behavior, simulation, tests and measurements remain
   historical. T013b must parameterize capacity without changing that behavior.
-  No held-out test-image decoding or predictive evaluation is permitted until
-  an independent final PR review and Charalampos's recorded sign-off under
-  the reported delegation.
+  Independent PR review and Charalampos's sign-off are recorded. Held-out
+  inference remains prohibited until the accepted protocol and separately
+  committed approval receipt pass the F007 authorization gate.
 
 ---
 
