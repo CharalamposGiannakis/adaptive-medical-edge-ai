@@ -19,3 +19,5 @@ checkpoints/f005b_nested_seed2026/run.json -text
 experiments/F007/results/final_test_report.json -text whitespace=cr-at-eol
 experiments/F007/results/final_quality_coverage_cost.csv -text whitespace=cr-at-eol
 experiments/F007/results/final_paired_contrasts.csv -text whitespace=cr-at-eol
+# Publish the original validation CPU benchmark with its measured CRLF bytes.
+experiments/F007/results/cpu_benchmark.json -text whitespace=cr-at-eol
