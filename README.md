@@ -1,139 +1,83 @@
 # Adaptive Medical Edge AI
 
-A course project exploring **adaptive inference at the edge**, with lung ultrasound classification as the current application scenario.
+[Final presentation (PowerPoint)](presentation/Adaptive_Edge_AI_Final.pptx) · [Final presentation (PDF)](presentation/Adaptive_Edge_AI_Final.pdf)
 
-The current OpenPOCUS direction develops **TinyViT-5M as an adaptive backbone**,
-starting from variable frame counts per lung-zone sequence prediction and measuring
-other bounded adaptive dimensions where useful. The project studies predictive
-performance, FLOPs, throughput, latency, adaptive policies and deployment
-constraints at the edge. The accepted F007 held-out comparison completed;
-its measured interpretation and provenance are in
-[`experiments/F007/FINAL_RESULTS.md`](experiments/F007/FINAL_RESULTS.md).
+## Project overview
 
-## Current status
+We study resource-adaptive lung-ultrasound inference at the edge. OpenPOCUS is a technical proxy, not a clinical or ambulance validation cohort. The task classifies one lung-zone sequence as normal or definitely abnormal.
 
-The architecture and data foundation is complete. T009 (F003) found frame count
-to be the useful adaptive axis; T010 (F004) serves the TinyViT checkpoint at
-K = 1–16 frames as one weight file; T011 (F005) adds nested structured pruning
-with distillation, giving 4 widths × 6 K in one file. D027–D029 record these as
-accepted decisions. T010 and T011 are complete; T012b's provisional
-resource-aware controller was implemented and merged in PR #27. D030 and the
-[`F007 final-evaluation protocol`](experiments/F007/README.md) were accepted
-after independent review and recorded sign-off. The authorized held-out run
-completed on 2026-10-14; T013c publishes its frozen results for team review.
-The frozen static reference
-remains F002b MobileNetV2 (D025): K16 validation macro-F1 0.859,
-abnormal recall 0.750 and 5.11 GFLOPs.
-Charalampos and Salo selected the F002c TinyViT-5M epoch-8 checkpoint as the
-adaptive-system backbone (D026). That same checkpoint reached validation macro-F1
-0.8602/0.8676/0.8737 at K4/K8/K16 without K-specific retraining. Its canonical
-shared frozen copy is
-[`checkpoints/f002c_tinyvit5m_epoch8.pt`](checkpoints/f002c_tinyvit5m_epoch8.pt).
+The deployable family uses **one nested TinyViT checkpoint**: four channel widths × six frame counts = **24 configurations in one weight file**. A frozen controller selects a configuration or defers under an exact simulated FLOP budget. The held-out comparison followed the accepted [F007 protocol](experiments/F007/README.md).
 
-These are validation development results, distinct from the completed F007
-held-out evaluation. Neither is clinical performance or a claim of universal
-architecture superiority.
+## Key results
 
-## Project direction
+- At full compute, original TinyViT K16 scored 0.880 held-out macro-F1; nested full-width K16 scored 0.879 at the same 20.60 GFLOPs. This does not establish equivalence.
+- The nested checkpoint offers a quality–computation range, including 1.82 to 20.60 GFLOPs at the controller's served points.
+- Under the frozen mixed-budget schedule, original TinyViT K16 completed 20% of units; adaptive controller F completed 80%. External static MobileNetV2 also completed 80%, with fewer modeled FLOPs than F.
+- F never exceeded controller E's held-out abnormal recall at any positive state or on the mixed schedule, despite equal or greater computation. F had slightly higher macro-F1 at `b=0.75`.
 
-The current pathway covers completed experiments and the remaining policy and
-evaluation:
+See [final scientific results](experiments/F007/FINAL_RESULTS.md) for exact cells, paired intervals, denominators, and limitations.
 
-1. characterize useful adaptive dimensions and costs around the selected TinyViT checkpoint (T009, complete);
-2. construct measured shared-model operating points (T010, complete);
-3. integrate compute compression (T011, complete) and evaluate a provisional resource-aware policy (T012b implementation merged);
-4. assess the accepted controller under simulated edge constraints (T013b, complete);
-5. publish and review the frozen final comparison with original TinyViT as the main architectural baseline and MobileNetV2 as an external static reference (T013c).
+## Reproduction
 
-The prehospital/ambulance lung POCUS use-case design and variable-frame direction
-were accepted in TA Sudaksh's feedback. OpenPOCUS remains a technical experimental
-proxy. D025 continues to govern the MobileNetV2 static reference; D026 selects
-TinyViT for adaptive development. D027–D029 accept the frame-count family and
-nested structured pruning as compute compression. Its shared checkpoint remains
-about 20.4 MB; narrower widths reduce inference work. The T012b controller
-policy and D030 were accepted for F007 after independent review and recorded
-sign-off. Held-out predictive results are reported only under the frozen F007
-methodology in [`FINAL_RESULTS.md`](experiments/F007/FINAL_RESULTS.md).
+Use Python 3.14 with the [F002 dependency pins](experiments/F002/requirements.txt) plus Matplotlib. In an existing Python environment, download OpenPOCUS (~5.3 GB):
 
-The current technical pathway is in [`docs/design_pathway.md`](docs/design_pathway.md).
-The independently reviewed F002 qualification and static-baseline contract is
-in [`docs/f002_methodology.md`](docs/f002_methodology.md), with exact values in
-[`configs/f002_protocol.json`](configs/f002_protocol.json). The copied
-[`docs/adaptivity_project_notes.md`](docs/adaptivity_project_notes.md) contains
-course-derived advisory notes; it does not override project decisions. See the
-historical records in [`experiments/F002/README.md`](experiments/F002/README.md)
-and [`experiments/F002c/README.md`](experiments/F002c/README.md).
-
-## Repository structure
-
-```text
-adaptive-medical-edge-ai/
-│
-├── README.md
-├── PROJECT_STATE.md
-│
-├── docs/
-│   ├── decision_log.md
-│   ├── open_tasks.md
-│   ├── design_pathway.md
-│   ├── experiment_log.md
-│   ├── research_track.md
-│   └── TEAM_WORKFLOW.md
-│
-├── experiments/          # experiment-specific code and reproducibility records
-│
-├── checkpoints/          # explicitly tracked frozen/deployable handoffs
-│
-├── src/
-├── configs/
-├── tests/
-└── artifacts/
-```
-
-## Working style
-
-The project is developed through GitHub with small, reproducible changes and explicit experiment tracking.
-
-Basic Git/GitHub workflow is expected for collaboration:
-
-```text
-git pull
-git status
-git add .
-git commit
-git push
-```
-
-Branch-based work will be used when multiple people are developing in parallel.
-
-## Datasets
-
-Each dataset folder under `data/` holds its download script, a README and any small label files. The downloaded data goes into that folder's `raw/`, which is excluded from Git.
-
-**OpenPOCUS** (lung-ultrasound video, general classification, no pneumothorax labels) is fetched with:
-
-```bash
+```sh
+python -m pip install -r experiments/F002/requirements.txt matplotlib
 bash data/openpocus/download_openpocus.sh
 ```
 
-This downloads `Lung Database.zip` (~5.3 GB) and unpacks the frames into `data/openpocus/raw/`. The labels are committed as `data/openpocus/labels.csv`; `data/openpocus/README.md` explains the label codes and dataset caveats. The dataset itself is CC BY-NC-SA 4.0 (non-commercial, share-alike); the accompanying paper is CC BY 4.0. Background on the dataset (device breakdown, labeling protocol, interrater reliability) is in `docs/OpenPOCUS_paper_Kumar2026.pdf` and `docs/OpenPOCUS_supplementary_S1.pdf`.
+The images go under ignored `data/openpocus/raw/`; see the [dataset notes](data/openpocus/README.md) for labels and license. Canonical checkpoints and T006 manifests are tracked. Verify their identities without decoding images, then run the `unittest` suite:
 
-## Reproducibility
-
-Experiment-specific setup and run instructions live inside each experiment
-directory. Generated datasets, ordinary checkpoints, artifacts, caches, and local
-environments are excluded from Git. Explicit canonical checkpoints are tracked
-under `checkpoints/`. The F002c backbone's provenance and archival boundaries
-are recorded in
-[`experiments/F002c/README.md`](experiments/F002c/README.md#canonical-shared-checkpoint).
-The frozen F002b static reference and the F005b deployable bundle are also
-canonical tracked handoffs under [`checkpoints/`](checkpoints/); raw experiment
-outputs remain ignored. The F005b bundle supports T012 without retraining.
-
-The first experiment can be found in:
-
-```text
-experiments/feasibility_001/
+```sh
+python -c "from src.f007_protocol import load_protocol, verify_inputs; print(verify_inputs(load_protocol(), check_checkpoints=True))"
+python -m unittest discover -s tests -v
 ```
 
-See its README for the exact methodology, commands, outputs, and measurement caveats.
+**Saved-report figures (no model inference):** The plotter verifies the published report SHA-256 and writes both figures outside tracked source files:
+
+```sh
+python -m experiments.F007.results.plot_final_results --output-dir artifacts/F007/reproduced_figures
+```
+
+**Fresh validation inference:** Requires the downloaded images and new output directories; analysis uses the resulting prediction evidence:
+
+```sh
+python -m experiments.F007.validation_run --all-validation-units --output artifacts/F007/new_validation_run
+python -m experiments.F007.analysis --evidence artifacts/F007/new_validation_run --output artifacts/F007/new_validation_report
+```
+
+**CPU benchmark:** The [original validation-only benchmark JSON](experiments/F007/results/cpu_benchmark.json) contains the slide's practical JPEG preprocessing-plus-inference medians: 38, 164, 199, 309, 416, and 419 ms (rounded). To measure again:
+
+```sh
+python -m experiments.F007.benchmark_cpu --official --output artifacts/F007/new_cpu_benchmark
+```
+
+Absolute CPU latency depends on hardware and software. The saved job used one AMD Ryzen AI 9 HX 370, four threads, 200 timed validation requests, 50 warm-ups, and five repeats; model-only timing is a separate field.
+Its protocol SHA records the pre-acceptance JSON; the scientific settings and checkpoint identities match the accepted version.
+
+**Fresh held-out inference:** The guarded runner requires the accepted committed protocol, approval receipt, matching frozen hashes, raw images, and a clean checkout. It refuses an existing output directory. The original authorized run is published; this command was **not** rerun for submission:
+
+```sh
+python -m experiments.F007.final_test --output artifacts/F007/new_final_test_run --device cpu
+```
+
+Full reproduction from a clean clone has not been demonstrated; ignored raw images and original request-level evidence must be supplied separately. Use fresh output paths for each run.
+
+## Experiment navigation
+
+| Experiment | Purpose | Documentation |
+| --- | --- | --- |
+| F001b/F001c | Early adaptive-depth feasibility | [F001b](experiments/F001b_depth_sweep/README.md), [F001c](experiments/F001c_per_input_depth_utility/README.md) |
+| F002 | Static architecture qualification | [F002](experiments/F002/README.md) |
+| F002c | Frozen original TinyViT backbone | [F002c](experiments/F002c/README.md) |
+| F003 | Adaptive-axis tests | [F003](experiments/F003/README.md) |
+| F004 | Shared-weight frame-count family | [F004](experiments/F004/README.md) |
+| F005 | Nested width compression | [F005](experiments/F005/README.md) |
+| F006a | Cost–quality profile | [F006a](experiments/F006a/README.md) |
+| F006a_2 | Validation quality screen | [F006a_2](experiments/F006a_2/README.md) |
+| F006b | Resource-aware controller | [F006b](experiments/F006b/README.md) |
+| F007 | Frozen final evaluation | [F007](experiments/F007/README.md) |
+
+## Additional documentation
+
+[Final results](experiments/F007/FINAL_RESULTS.md) · [Submission reproducibility audit](docs/submission_reproducibility_phase_a.md) · [Decision log](docs/decision_log.md)
