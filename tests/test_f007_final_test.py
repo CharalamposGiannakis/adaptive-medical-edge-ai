@@ -23,7 +23,9 @@ ARTIFACTS = ROOT / "artifacts/F007"
 class ApprovalGateTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.proposed = f007_protocol.load_protocol()
+        cls.proposed = copy.deepcopy(f007_protocol.load_protocol())
+        cls.proposed.update(status=f007_protocol.PROPOSED,
+                            authorizes_test_inference=False)
 
     def test_unaccepted_protocol_and_missing_receipt_deny(self):
         with self.assertRaisesRegex(PermissionError, "not authorized"):
@@ -107,11 +109,16 @@ class FinalRunnerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.protocol = f007_protocol.load_protocol()
+        cls.unauthorized = copy.deepcopy(cls.protocol)
+        cls.unauthorized.update(status=f007_protocol.PROPOSED,
+                                authorizes_test_inference=False)
 
     def test_denial_occurs_before_test_manifest_or_predictor(self):
         with tempfile.TemporaryDirectory(dir=ARTIFACTS) as folder:
             output = Path(folder) / "denied"
-            with patch.object(final_test, "partition_context",
+            with patch.object(final_test, "load_protocol",
+                              return_value=self.unauthorized), \
+                    patch.object(final_test, "partition_context",
                               side_effect=AssertionError("test manifest opened")), \
                     patch.object(final_test, "CanonicalModels",
                                  side_effect=AssertionError("predictor constructed")):
@@ -124,14 +131,12 @@ class FinalRunnerTests(unittest.TestCase):
                 final_test.run(output=output)
 
     def test_partition_context_denial_precedes_manifest_verification(self):
-        with patch.object(phase_a1, "require_test_authorization",
-                          side_effect=PermissionError("denied")), \
-                patch.object(phase_a1, "verify_inputs",
+        with patch.object(phase_a1, "verify_inputs",
                              side_effect=AssertionError("manifest accessed")):
             with self.assertRaises(PermissionError):
-                phase_a1.partition_context(self.protocol, "test")
+                phase_a1.partition_context(self.unauthorized, "test")
         with self.assertRaises(PermissionError):
-            analysis.analyze({}, [{"partition": "test"}], self.protocol,
+            analysis.analyze({}, [{"partition": "test"}], self.unauthorized,
                              partition="test")
 
     def test_inventory_preflight_failure_precedes_model_construction(self):
