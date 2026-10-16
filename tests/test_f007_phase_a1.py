@@ -125,34 +125,42 @@ class RequestAndGateTests(unittest.TestCase):
         cls.protocol = load_protocol()
         cls.points = points_from_screen()
 
-    def _evaluate(self, rows, unit_of, systems, states, predictor, partition="validation"):
+    def _evaluate(self, rows, unit_of, systems, states, predictor,
+                  partition="validation", protocol=None):
         with patch.object(f007.controller, "load_policy_points", return_value=self.points), \
                 patch.object(f007.f006a_2, "read_baseline", return_value=BASELINE):
             return f007.evaluate_requests(rows, unit_of, systems, states,
-                                          self.protocol, predictor, partition=partition)
+                                          protocol or self.protocol, predictor,
+                                          partition=partition)
 
     def test_unauthorized_test_rejected_before_predictor_or_image_loader(self):
         row = synthetic_row("T", 1, partition="test")
+        unauthorized = copy.deepcopy(self.protocol)
+        unauthorized.update(status="proposed_pending_team_approval",
+                            authorizes_test_inference=False)
         called = []
         def predictor(*args):
             called.append(True)
             raise AssertionError("Predictor must not be called")
         with self.assertRaises(PermissionError):
             self._evaluate([row], {("T", "z1"): "singleton:T/z1"},
-                           ("A",), [Fraction(1)], predictor, partition="test")
+                           ("A",), [Fraction(1)], predictor, partition="test",
+                           protocol=unauthorized)
         self.assertEqual(called, [])
-        with self.assertRaises(PermissionError):
-            f007.CanonicalModels(self.protocol, partition="test")
-        forged = copy.deepcopy(self.protocol)
+        with patch.object(f007, "load_protocol", return_value=unauthorized):
+            with self.assertRaises(PermissionError):
+                f007.CanonicalModels(unauthorized, partition="test")
+        forged = copy.deepcopy(unauthorized)
         forged["status"] = "accepted_final_protocol"
         with self.assertRaises(PermissionError):
             require_test_authorization(forged)
         forged["authorizes_test_inference"] = True
-        with self.assertRaises(PermissionError):
-            require_test_authorization(forged)  # no committed approval provenance
-        forged["acceptance_provenance"] = {"protocol_commit": "0" * 40}
-        with self.assertRaises(PermissionError):
-            require_test_authorization(forged)  # an in-memory claim is not a committed receipt
+        with tempfile.TemporaryDirectory(dir=ROOT) as folder:
+            with self.assertRaises(PermissionError):
+                require_test_authorization(forged, root=Path(folder))  # no committed receipt
+            forged["acceptance_provenance"] = {"protocol_commit": "0" * 40}
+            with self.assertRaises(PermissionError):
+                require_test_authorization(forged, root=Path(folder))
 
     def test_mixed_request_order_and_state_match_across_six_systems(self):
         rows = [synthetic_row("A", 1), synthetic_row("B", 1),

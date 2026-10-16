@@ -20,10 +20,21 @@ class QuantizationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         torch.manual_seed(2026)
-        cls.fp32, cls.int8 = build("fp32"), build("int8_dynamic")
+        cls.fp32 = build("fp32")
+        supported = torch.backends.quantized.supported_engines
+        cls.int8_unavailable = None
+        if any(engine in supported for engine in ("x86", "fbgemm", "qnnpack")):
+            cls.int8 = build("int8_dynamic")
+        else:
+            cls.int8 = None
+            cls.int8_unavailable = (
+                "F005 dynamic INT8 requires x86, fbgemm, or qnnpack; "
+                f"this PyTorch build supports only {supported}")
         cls.clip = torch.randn(40, 3, 224, 224)
 
     def test_every_linear_is_int8_and_the_file_shrinks(self):
+        if self.int8_unavailable:
+            self.skipTest(self.int8_unavailable)
         self.assertEqual(quantized_linear_count(self.int8), (41, 0))
         self.assertEqual(quantized_linear_count(self.fp32), (0, 41))
         self.assertLess(serialized_bytes(self.int8), serialized_bytes(self.fp32) / 3)
@@ -36,6 +47,8 @@ class QuantizationTests(unittest.TestCase):
 
     def test_per_frame_int8_keeps_the_anytime_cache_exact(self):
         """A frame encoded alone gives the same INT8 features whatever else is in the request."""
+        if self.int8_unavailable:
+            self.skipTest(self.int8_unavailable)
         clip = AnytimeClip(self.int8, 40, lambda numbers: self.clip[numbers],
                            encode=lambda frames: encode_per_frame(self.int8, frames))
         with torch.no_grad():

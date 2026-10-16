@@ -1,5 +1,6 @@
-"""Focused checks for the proposed F007 protocol's cross-platform hash pin."""
+"""Focused checks for the accepted F007 protocol's cross-platform hash pin."""
 
+import copy
 import hashlib
 import json
 import subprocess
@@ -7,6 +8,7 @@ import unittest
 from pathlib import Path
 
 from src.f002_protocol import recording_units
+from src.f007_protocol import require_test_authorization
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,16 +41,21 @@ class F007ProtocolTests(unittest.TestCase):
             cwd=ROOT, text=True).strip()
         self.assertEqual(attribute, "configs/f002_protocol.json: eol: lf")
 
-    def test_proposal_cannot_authorize_inference(self):
+    def test_accepted_protocol_and_synthetic_denial(self):
         protocol = json.loads(F007.read_text(encoding="utf-8"))
-        self.assertEqual(protocol["status"], "proposed_pending_team_approval")
+        self.assertEqual(protocol["status"], "accepted_final_protocol")
         self.assertEqual(protocol["accepted_status_value"],
                          "accepted_final_protocol")
-        self.assertIs(protocol["authorizes_test_inference"], False)
+        self.assertIs(protocol["authorizes_test_inference"], True)
         self.assertIs(protocol["execution_gate"]
                       ["requires_authorizes_test_inference_true"], True)
         self.assertEqual(protocol["methodology_details"],
                          "experiments/F007/README.md")
+        unauthorized = copy.deepcopy(protocol)
+        unauthorized.update(status="proposed_pending_team_approval",
+                            authorizes_test_inference=False)
+        with self.assertRaisesRegex(PermissionError, "not authorized"):
+            require_test_authorization(unauthorized)
 
     def test_schedule_unit_ids_follow_recording_units(self):
         shared_rows = [

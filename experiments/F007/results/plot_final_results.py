@@ -4,9 +4,11 @@ No predictions, metrics, intervals, or operating points are recomputed here.
 Run from the repository root with the existing bde-project Python environment:
 
     C:\\venvs\\bde-project\\Scripts\\python.exe -m experiments.F007.results.plot_final_results
+    C:\\venvs\\bde-project\\Scripts\\python.exe -m experiments.F007.results.plot_final_results --output-dir artifacts/F007/regenerated_figures
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 from pathlib import Path
@@ -45,9 +47,9 @@ def load_report() -> dict:
     return report
 
 
-def _save(fig, stem: str) -> None:
-    fig.savefig(HERE / f"{stem}.png", dpi=220, facecolor="white")
-    svg = HERE / f"{stem}.svg"
+def _save(fig, stem: str, output_dir: Path) -> None:
+    fig.savefig(output_dir / f"{stem}.png", dpi=220, facecolor="white")
+    svg = output_dir / f"{stem}.svg"
     fig.savefig(svg, metadata={"Date": None}, facecolor="white")
     # Matplotlib indents multiline SVG paths with trailing spaces. Strip those
     # layout-only spaces so the generated vector remains clean in Git.
@@ -57,7 +59,7 @@ def _save(fig, stem: str) -> None:
     plt.close(fig)
 
 
-def quality_vs_flops(report: dict) -> None:
+def quality_vs_flops(report: dict, output_dir: Path = HERE) -> None:
     """Use reported factorial macro-F1 and full independent-request FLOPs."""
     fig, ax = plt.subplots(figsize=(11, 6.6))
     fig.subplots_adjust(left=0.10, right=0.98, top=0.91, bottom=0.20)
@@ -101,10 +103,10 @@ def quality_vs_flops(report: dict) -> None:
              "Reported values only; each plotted served factorial cell has 265/265 unit coverage. "
              "At b=0 every system defers (no predictive metric).",
              fontsize=8, color="#3f4852")
-    _save(fig, "heldout_quality_vs_flops")
+    _save(fig, "heldout_quality_vs_flops", output_dir)
 
 
-def heterogeneous_coverage(report: dict) -> None:
+def heterogeneous_coverage(report: dict, output_dir: Path = HERE) -> None:
     """Use the report's realized per-state completed unit counts."""
     counts = report["heterogeneous_state_counts"]
     state_colors = {"0": "#d9dde2", "0.25": "#d7a443", "0.50": "#64a9ad",
@@ -153,14 +155,19 @@ def heterogeneous_coverage(report: dict) -> None:
              "Each state contains 53 of 265 frozen units. All systems defer at b=0; "
              "unserved states contribute no predictive metric.",
              fontsize=8, color="#3f4852")
-    _save(fig, "heterogeneous_coverage")
+    _save(fig, "heterogeneous_coverage", output_dir)
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--output-dir", type=Path, default=HERE,
+                        help="directory for regenerated PNG and SVG figures")
+    args = parser.parse_args()
     plt.rcParams["svg.hashsalt"] = "F007-official-heldout-results"
     report = load_report()
-    quality_vs_flops(report)
-    heterogeneous_coverage(report)
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    quality_vs_flops(report, args.output_dir)
+    heterogeneous_coverage(report, args.output_dir)
 
 
 if __name__ == "__main__":
